@@ -91,8 +91,8 @@ export default function AdminUsersPage() {
     },
   })
 
-  // Check if current user is admin
-  if (user?.profile?.role !== 'admin') {
+  // Check if current user is admin or super_admin
+  if (!user?.profile?.role || !['admin', 'super_admin'].includes(user.profile.role)) {
     return (
       <Box sx={{ p: 3 }}>
         <Alert severity="error">
@@ -108,18 +108,15 @@ export default function AdminUsersPage() {
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch('/api/admin/users')
-      if (response.ok) {
-        const data = await response.json()
-        setUsers(data)
-      } else {
-        throw new Error('사용자 정보를 불러오는데 실패했습니다.')
-      }
-    } catch (error) {
+      // Use AuthService instead of direct API call
+      const { AuthService } = await import('@/lib/auth/auth-service')
+      const data = await AuthService.getUserList()
+      setUsers(data)
+    } catch (error: any) {
       console.error('Error fetching users:', error)
       setSnackbar({
         open: true,
-        message: '사용자 정보를 불러오는데 실패했습니다.',
+        message: error.message || '사용자 정보를 불러오는데 실패했습니다.',
         severity: 'error'
       })
     } finally {
@@ -153,31 +150,22 @@ export default function AdminUsersPage() {
 
   const onInviteSubmit = async (data: InviteFormData) => {
     try {
-      const response = await fetch('/api/admin/users/invite', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
+      const { AuthService } = await import('@/lib/auth/auth-service')
+      await AuthService.inviteUser(data.email, data.full_name, data.role)
+      
+      setSnackbar({
+        open: true,
+        message: '사용자가 성공적으로 초대되었습니다.',
+        severity: 'success'
       })
-
-      if (response.ok) {
-        setSnackbar({
-          open: true,
-          message: '사용자 초대 이메일이 발송되었습니다.',
-          severity: 'success'
-        })
-        setInviteDialogOpen(false)
-        fetchUsers()
-      } else {
-        const errorData = await response.json()
-        throw new Error(errorData.error || '사용자 초대에 실패했습니다.')
-      }
-    } catch (error) {
+      setInviteDialogOpen(false)
+      resetInvite()
+      fetchUsers()
+    } catch (error: any) {
       console.error('Error inviting user:', error)
       setSnackbar({
         open: true,
-        message: error instanceof Error ? error.message : '사용자 초대에 실패했습니다.',
+        message: error.message || '사용자 초대에 실패했습니다.',
         severity: 'error'
       })
     }
@@ -187,31 +175,26 @@ export default function AdminUsersPage() {
     if (!editingUser) return
 
     try {
-      const response = await fetch(`/api/admin/users/${editingUser.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      })
-
-      if (response.ok) {
-        setSnackbar({
-          open: true,
-          message: '사용자 정보가 수정되었습니다.',
-          severity: 'success'
-        })
-        setEditDialogOpen(false)
-        setEditingUser(null)
-        fetchUsers()
-      } else {
-        throw new Error('사용자 정보 수정에 실패했습니다.')
+      const { AuthService } = await import('@/lib/auth/auth-service')
+      
+      // Only update role if it's different and not super admin
+      if (data.role !== editingUser.role && editingUser.email !== 'lewis@motionsense.co.kr') {
+        await AuthService.changeUserRole(editingUser.id, data.role)
       }
-    } catch (error) {
+      
+      setSnackbar({
+        open: true,
+        message: '사용자 정보가 수정되었습니다.',
+        severity: 'success'
+      })
+      setEditDialogOpen(false)
+      setEditingUser(null)
+      fetchUsers()
+    } catch (error: any) {
       console.error('Error updating user:', error)
       setSnackbar({
         open: true,
-        message: '사용자 정보 수정에 실패했습니다.',
+        message: error.message || '사용자 정보 수정에 실패했습니다.',
         severity: 'error'
       })
     }
@@ -220,7 +203,7 @@ export default function AdminUsersPage() {
   const confirmDelete = async () => {
     if (!userToDelete) return
 
-    // Prevent self-deletion
+    // Prevent self-deletion and super admin deletion
     if (userToDelete.id === user?.id) {
       setSnackbar({
         open: true,
@@ -230,28 +213,32 @@ export default function AdminUsersPage() {
       return
     }
 
-    try {
-      const response = await fetch(`/api/admin/users/${userToDelete.id}`, {
-        method: 'DELETE',
-      })
-
-      if (response.ok) {
-        setSnackbar({
-          open: true,
-          message: '사용자가 삭제되었습니다.',
-          severity: 'success'
-        })
-        setDeleteDialogOpen(false)
-        setUserToDelete(null)
-        fetchUsers()
-      } else {
-        throw new Error('사용자 삭제에 실패했습니다.')
-      }
-    } catch (error) {
-      console.error('Error deleting user:', error)
+    if (userToDelete.email === 'lewis@motionsense.co.kr') {
       setSnackbar({
         open: true,
-        message: '사용자 삭제에 실패했습니다.',
+        message: 'Super Admin 계정은 삭제할 수 없습니다.',
+        severity: 'error'
+      })
+      return
+    }
+
+    try {
+      const { AuthService } = await import('@/lib/auth/auth-service')
+      await AuthService.deactivateUser(userToDelete.id)
+      
+      setSnackbar({
+        open: true,
+        message: '사용자가 비활성화되었습니다.',
+        severity: 'success'
+      })
+      setDeleteDialogOpen(false)
+      setUserToDelete(null)
+      fetchUsers()
+    } catch (error: any) {
+      console.error('Error deactivating user:', error)
+      setSnackbar({
+        open: true,
+        message: error.message || '사용자 비활성화에 실패했습니다.',
         severity: 'error'
       })
     }

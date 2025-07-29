@@ -81,28 +81,83 @@ export class AuthService {
   }
 
   /**
-   * 프로필 생성 또는 업데이트
+   * 프로필 생성 또는 업데이트 (데이터베이스 함수 사용)
    */
   static async upsertProfile(userId: string, email: string, fullName?: string): Promise<Profile> {
-    const { data, error } = await supabase
-      .from('profiles')
-      .upsert({
-        id: userId,
-        email,
-        full_name: fullName,
-        role: 'member', // 기본값은 member, admin은 수동으로 설정
-        is_active: true
-      }, {
-        onConflict: 'id'
-      })
-      .select()
-      .single()
+    const { data, error } = await supabase.rpc('upsert_user_profile', {
+      p_user_id: userId,
+      p_email: email,
+      p_full_name: fullName
+    })
 
     if (error) {
       throw new Error(`프로필 생성/업데이트 실패: ${error.message}`)
     }
 
     return data
+  }
+
+  /**
+   * 사용자 초대 (관리자 전용)
+   */
+  static async inviteUser(email: string, fullName?: string, role: 'member' | 'admin' = 'member'): Promise<Profile> {
+    const { data, error } = await supabase.rpc('invite_user', {
+      p_email: email,
+      p_full_name: fullName,
+      p_role: role
+    })
+
+    if (error) {
+      throw new Error(`사용자 초대 실패: ${error.message}`)
+    }
+
+    return data
+  }
+
+  /**
+   * 사용자 역할 변경 (관리자 전용)
+   */
+  static async changeUserRole(userId: string, newRole: 'member' | 'admin'): Promise<Profile> {
+    const { data, error } = await supabase.rpc('change_user_role', {
+      p_user_id: userId,
+      p_new_role: newRole
+    })
+
+    if (error) {
+      throw new Error(`역할 변경 실패: ${error.message}`)
+    }
+
+    return data
+  }
+
+  /**
+   * 사용자 비활성화 (관리자 전용)
+   */
+  static async deactivateUser(userId: string): Promise<Profile> {
+    const { data, error } = await supabase.rpc('deactivate_user', {
+      p_user_id: userId
+    })
+
+    if (error) {
+      throw new Error(`사용자 비활성화 실패: ${error.message}`)
+    }
+
+    return data
+  }
+
+  /**
+   * 사용자 목록 조회 (관리자 전용)
+   */
+  static async getUserList(): Promise<any[]> {
+    const { data, error } = await supabase
+      .from('user_management_view')
+      .select('*')
+
+    if (error) {
+      throw new Error(`사용자 목록 조회 실패: ${error.message}`)
+    }
+
+    return data || []
   }
 
   /**
