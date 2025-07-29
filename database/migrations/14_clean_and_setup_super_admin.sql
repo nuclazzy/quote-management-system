@@ -17,7 +17,10 @@ DROP POLICY IF EXISTS "profiles_update_own" ON profiles;
 DROP POLICY IF EXISTS "profiles_update_admin" ON profiles;
 DROP POLICY IF EXISTS "profiles_delete_admin" ON profiles;
 
-RAISE NOTICE '기존 profiles 정책들을 모두 삭제했습니다.';
+DO $$
+BEGIN
+    RAISE NOTICE '기존 profiles 정책들을 모두 삭제했습니다.';
+END $$;
 
 -- ========================================
 -- 2. 기존 함수들 정리
@@ -33,7 +36,10 @@ DROP FUNCTION IF EXISTS change_user_role(UUID, TEXT);
 DROP FUNCTION IF EXISTS deactivate_user(UUID);
 DROP FUNCTION IF EXISTS handle_new_user();
 
-RAISE NOTICE '기존 함수들을 정리했습니다.';
+DO $$
+BEGIN
+    RAISE NOTICE '기존 함수들을 정리했습니다.';
+END $$;
 
 -- ========================================
 -- 3. 역할 제약 조건 수정
@@ -47,7 +53,10 @@ ALTER TABLE profiles
 ADD CONSTRAINT profiles_role_check 
 CHECK (role IN ('member', 'admin', 'super_admin'));
 
-RAISE NOTICE '역할 제약 조건을 업데이트했습니다 (super_admin 포함).';
+DO $$
+BEGIN
+    RAISE NOTICE '역할 제약 조건을 업데이트했습니다 (super_admin 포함).';
+END $$;
 
 -- ========================================
 -- 4. 슈퍼 관리자 계정 생성/업데이트
@@ -76,7 +85,10 @@ INSERT INTO profiles (
     full_name = COALESCE(EXCLUDED.full_name, profiles.full_name),
     updated_at = NOW();
 
-RAISE NOTICE 'lewis@motionsense.co.kr 슈퍼 관리자 계정을 설정했습니다.';
+DO $$
+BEGIN
+    RAISE NOTICE 'lewis@motionsense.co.kr 슈퍼 관리자 계정을 설정했습니다.';
+END $$;
 
 -- ========================================
 -- 5. 권한 관리 함수들 재생성
@@ -178,7 +190,10 @@ BEGIN
 END;
 $$;
 
-RAISE NOTICE '권한 관리 함수들을 생성했습니다.';
+DO $$
+BEGIN
+    RAISE NOTICE '권한 관리 함수들을 생성했습니다.';
+END $$;
 
 -- ========================================
 -- 6. 프로필 관리 함수
@@ -250,7 +265,10 @@ BEGIN
 END;
 $$;
 
-RAISE NOTICE 'upsert_user_profile 함수를 생성했습니다.';
+DO $$
+BEGIN
+    RAISE NOTICE 'upsert_user_profile 함수를 생성했습니다.';
+END $$;
 
 -- ========================================
 -- 7. 새로운 RLS 정책 생성
@@ -306,7 +324,10 @@ FOR UPDATE USING (
     AND is_current_user_active()
 );
 
-RAISE NOTICE '새로운 RLS 정책들을 생성했습니다.';
+DO $$
+BEGIN
+    RAISE NOTICE '새로운 RLS 정책들을 생성했습니다.';
+END $$;
 
 -- ========================================
 -- 8. Auth 트리거 설정
@@ -348,7 +369,10 @@ CREATE TRIGGER on_auth_user_created
     AFTER INSERT ON auth.users
     FOR EACH ROW EXECUTE FUNCTION handle_new_user();
 
-RAISE NOTICE 'Auth 트리거를 설정했습니다.';
+DO $$
+BEGIN
+    RAISE NOTICE 'Auth 트리거를 설정했습니다.';
+END $$;
 
 -- ========================================
 -- 9. 완료 메시지
