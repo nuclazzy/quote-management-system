@@ -3,607 +3,606 @@
 import { useState, useEffect } from 'react'
 import {
   Box,
+  Card,
+  CardContent,
   Typography,
   Button,
-  Paper,
+  TextField,
+  MenuItem,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  TextField,
-  Grid,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
   Chip,
+  IconButton,
+  Menu,
   Alert,
   Snackbar,
+  Grid,
   FormControl,
   InputLabel,
   Select,
-  MenuItem,
-  Card,
-  CardContent,
-  Avatar,
+  Switch,
+  FormControlLabel,
+  Pagination
 } from '@mui/material'
 import {
-  Add,
-  Edit,
-  Delete,
-  PersonAdd,
-  Email,
-  AdminPanelSettings,
-  Person,
-  Search,
+  Add as AddIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  MoreVert as MoreVertIcon,
+  Security as SecurityIcon,
+  Search as SearchIcon
 } from '@mui/icons-material'
-import { DataGrid, GridColDef, GridActionsCellItem } from '@mui/x-data-grid'
-import { useForm, Controller } from 'react-hook-form'
-import { useAuth } from '@/contexts/AuthContext'
+import { supabase } from '@/lib/supabase/client'
+import UserPermissionsDialog from '@/components/UserPermissionsDialog'
 
 interface User {
   id: string
   email: string
   full_name: string
-  role: 'admin' | 'member'
-  avatar_url?: string
+  role: string
+  is_active: boolean
   created_at: string
+  updated_at: string
   last_sign_in_at?: string
 }
 
 interface UserFormData {
   email: string
+  password: string
   full_name: string
-  role: 'admin' | 'member'
+  role: 'member' | 'admin'
 }
 
-interface InviteFormData {
-  email: string
-  full_name: string
-  role: 'admin' | 'member'
-}
-
-export default function AdminUsersPage() {
-  const { user } = useAuth()
+export default function UsersManagementPage() {
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
-  const [editDialogOpen, setEditDialogOpen] = useState(false)
-  const [inviteDialogOpen, setInviteDialogOpen] = useState(false)
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [editingUser, setEditingUser] = useState<User | null>(null)
-  const [userToDelete, setUserToDelete] = useState<User | null>(null)
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
   const [searchTerm, setSearchTerm] = useState('')
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' })
-
-  const {
-    control: editControl,
-    handleSubmit: handleEditSubmit,
-    reset: resetEdit,
-    formState: { errors: editErrors },
-  } = useForm<UserFormData>()
-
-  const {
-    control: inviteControl,
-    handleSubmit: handleInviteSubmit,
-    reset: resetInvite,
-    formState: { errors: inviteErrors },
-  } = useForm<InviteFormData>({
-    defaultValues: {
-      email: '',
-      full_name: '',
-      role: 'member',
-    },
+  const [roleFilter, setRoleFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
+  
+  // 다이얼로그 상태
+  const [openAddDialog, setOpenAddDialog] = useState(false)
+  const [openEditDialog, setOpenEditDialog] = useState(false)
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false)
+  const [openPermissionsDialog, setOpenPermissionsDialog] = useState(false)
+  
+  // 선택된 사용자
+  const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  
+  // 폼 데이터
+  const [formData, setFormData] = useState<UserFormData>({
+    email: '',
+    password: '',
+    full_name: '',
+    role: 'member'
+  })
+  
+  // 메뉴 상태
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
+  
+  // 알림 상태
+  const [notification, setNotification] = useState<{
+    open: boolean
+    message: string
+    severity: 'success' | 'error' | 'warning' | 'info'
+  }>({
+    open: false,
+    message: '',
+    severity: 'success'
   })
 
-  // Check if current user is admin or super_admin
-  if (!user?.profile?.role || !['admin', 'super_admin'].includes(user.profile.role)) {
-    return (
-      <Box sx={{ p: 3 }}>
-        <Alert severity="error">
-          관리자 권한이 필요합니다.
-        </Alert>
-      </Box>
-    )
-  }
-
-  useEffect(() => {
-    fetchUsers()
-  }, [])
-
-  const fetchUsers = async () => {
+  // 사용자 목록 로드
+  const loadUsers = async () => {
     try {
-      // Use AuthService instead of direct API call
-      const { AuthService } = await import('@/lib/auth/auth-service')
-      const data = await AuthService.getUserList()
-      setUsers(data)
-    } catch (error: any) {
-      console.error('Error fetching users:', error)
-      setSnackbar({
-        open: true,
-        message: error.message || '사용자 정보를 불러오는데 실패했습니다.',
-        severity: 'error'
+      setLoading(true)
+      
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: '10'
       })
+      
+      if (searchTerm) params.append('search', searchTerm)
+      if (roleFilter) params.append('role', roleFilter)
+      if (statusFilter) params.append('status', statusFilter)
+      
+      const response = await fetch(`/api/admin/users?${params}`)
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch users')
+      }
+      
+      const data = await response.json()
+      setUsers(data.users)
+      setTotalPages(data.pagination.totalPages)
+    } catch (error) {
+      console.error('Error loading users:', error)
+      showNotification('사용자 목록을 불러오는데 실패했습니다.', 'error')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleInviteUser = () => {
-    resetInvite({
-      email: '',
-      full_name: '',
-      role: 'member',
-    })
-    setInviteDialogOpen(true)
-  }
-
-  const handleEditUser = (userToEdit: User) => {
-    setEditingUser(userToEdit)
-    resetEdit({
-      email: userToEdit.email,
-      full_name: userToEdit.full_name,
-      role: userToEdit.role,
-    })
-    setEditDialogOpen(true)
-  }
-
-  const handleDeleteUser = (userToDelete: User) => {
-    setUserToDelete(userToDelete)
-    setDeleteDialogOpen(true)
-  }
-
-  const onInviteSubmit = async (data: InviteFormData) => {
+  // 사용자 생성
+  const handleCreateUser = async () => {
     try {
-      const { AuthService } = await import('@/lib/auth/auth-service')
-      await AuthService.inviteUser(data.email, data.full_name, data.role)
-      
-      setSnackbar({
-        open: true,
-        message: '사용자가 성공적으로 초대되었습니다.',
-        severity: 'success'
+      const response = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
       })
-      setInviteDialogOpen(false)
-      resetInvite()
-      fetchUsers()
-    } catch (error: any) {
-      console.error('Error inviting user:', error)
-      setSnackbar({
-        open: true,
-        message: error.message || '사용자 초대에 실패했습니다.',
-        severity: 'error'
-      })
-    }
-  }
-
-  const onEditSubmit = async (data: UserFormData) => {
-    if (!editingUser) return
-
-    try {
-      const { AuthService } = await import('@/lib/auth/auth-service')
       
-      // Only update role if it's different and not super admin
-      if (data.role !== editingUser.role && editingUser.email !== 'lewis@motionsense.co.kr') {
-        await AuthService.changeUserRole(editingUser.id, data.role)
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to create user')
       }
       
-      setSnackbar({
-        open: true,
-        message: '사용자 정보가 수정되었습니다.',
-        severity: 'success'
-      })
-      setEditDialogOpen(false)
-      setEditingUser(null)
-      fetchUsers()
-    } catch (error: any) {
-      console.error('Error updating user:', error)
-      setSnackbar({
-        open: true,
-        message: error.message || '사용자 정보 수정에 실패했습니다.',
-        severity: 'error'
-      })
+      showNotification('사용자가 성공적으로 생성되었습니다.', 'success')
+      setOpenAddDialog(false)
+      resetForm()
+      loadUsers()
+    } catch (error) {
+      console.error('Error creating user:', error)
+      showNotification(
+        error instanceof Error ? error.message : '사용자 생성에 실패했습니다.',
+        'error'
+      )
     }
   }
 
-  const confirmDelete = async () => {
-    if (!userToDelete) return
-
-    // Prevent self-deletion and super admin deletion
-    if (userToDelete.id === user?.id) {
-      setSnackbar({
-        open: true,
-        message: '자신의 계정은 삭제할 수 없습니다.',
-        severity: 'error'
-      })
-      return
-    }
-
-    if (userToDelete.email === 'lewis@motionsense.co.kr') {
-      setSnackbar({
-        open: true,
-        message: 'Super Admin 계정은 삭제할 수 없습니다.',
-        severity: 'error'
-      })
-      return
-    }
-
+  // 사용자 수정
+  const handleUpdateUser = async () => {
+    if (!selectedUser) return
+    
     try {
-      const { AuthService } = await import('@/lib/auth/auth-service')
-      await AuthService.deactivateUser(userToDelete.id)
+      const response = await fetch(`/api/admin/users/${selectedUser.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.email,
+          full_name: formData.full_name,
+          role: formData.role,
+          is_active: selectedUser.is_active
+        })
+      })
       
-      setSnackbar({
-        open: true,
-        message: '사용자가 비활성화되었습니다.',
-        severity: 'success'
-      })
-      setDeleteDialogOpen(false)
-      setUserToDelete(null)
-      fetchUsers()
-    } catch (error: any) {
-      console.error('Error deactivating user:', error)
-      setSnackbar({
-        open: true,
-        message: error.message || '사용자 비활성화에 실패했습니다.',
-        severity: 'error'
-      })
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to update user')
+      }
+      
+      showNotification('사용자 정보가 성공적으로 수정되었습니다.', 'success')
+      setOpenEditDialog(false)
+      resetForm()
+      loadUsers()
+    } catch (error) {
+      console.error('Error updating user:', error)
+      showNotification(
+        error instanceof Error ? error.message : '사용자 수정에 실패했습니다.',
+        'error'
+      )
     }
   }
 
-  const filteredUsers = users.filter(u =>
-    u.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    u.email.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  // 사용자 삭제
+  const handleDeleteUser = async () => {
+    if (!selectedUser) return
+    
+    try {
+      const response = await fetch(`/api/admin/users/${selectedUser.id}`, {
+        method: 'DELETE'
+      })
+      
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to delete user')
+      }
+      
+      showNotification('사용자가 성공적으로 삭제되었습니다.', 'success')
+      setOpenDeleteDialog(false)
+      setSelectedUser(null)
+      loadUsers()
+    } catch (error) {
+      console.error('Error deleting user:', error)
+      showNotification(
+        error instanceof Error ? error.message : '사용자 삭제에 실패했습니다.',
+        'error'
+      )
+    }
+  }
 
-  const columns: GridColDef[] = [
-    {
-      field: 'avatar',
-      headerName: '',
-      width: 60,
-      renderCell: (params) => (
-        <Avatar
-          src={params.row.avatar_url}
-          sx={{ width: 32, height: 32 }}
-        >
-          {params.row.full_name[0]}
-        </Avatar>
-      ),
-      sortable: false,
-    },
-    { field: 'full_name', headerName: '이름', width: 150, flex: 1 },
-    { field: 'email', headerName: '이메일', width: 250, flex: 1 },
-    {
-      field: 'role',
-      headerName: '권한',
-      width: 120,
-      renderCell: (params) => (
-        <Chip
-          icon={params.value === 'admin' ? <AdminPanelSettings /> : <Person />}
-          label={params.value === 'admin' ? '관리자' : '사용자'}
-          color={params.value === 'admin' ? 'primary' : 'default'}
-          size="small"
-        />
-      ),
-    },
-    {
-      field: 'last_sign_in_at',
-      headerName: '마지막 로그인',
-      width: 150,
-      valueFormatter: (params) => {
-        if (!params.value) return '없음'
-        return new Date(params.value).toLocaleDateString('ko-KR')
-      },
-    },
-    {
-      field: 'created_at',
-      headerName: '가입일',
-      width: 120,
-      valueFormatter: (params) => new Date(params.value).toLocaleDateString('ko-KR'),
-    },
-    {
-      field: 'actions',
-      type: 'actions',
-      headerName: '작업',
-      width: 100,
-      getActions: (params) => {
-        const actions = [
-          <GridActionsCellItem
-            key="edit"
-            icon={<Edit />}
-            label="수정"
-            onClick={() => handleEditUser(params.row)}
-          />
-        ]
+  // 알림 표시
+  const showNotification = (message: string, severity: 'success' | 'error' | 'warning' | 'info') => {
+    setNotification({ open: true, message, severity })
+  }
 
-        // Only allow deletion if not current user
-        if (params.row.id !== user?.id) {
-          actions.push(
-            <GridActionsCellItem
-              key="delete"
-              icon={<Delete />}
-              label="삭제"
-              onClick={() => handleDeleteUser(params.row)}
-            />
-          )
-        }
+  // 폼 리셋
+  const resetForm = () => {
+    setFormData({
+      email: '',
+      password: '',
+      full_name: '',
+      role: 'member'
+    })
+  }
 
-        return actions
-      },
-    },
-  ]
+  // 사용자 편집 모드 시작
+  const startEditUser = (user: User) => {
+    setSelectedUser(user)
+    setFormData({
+      email: user.email,
+      password: '',
+      full_name: user.full_name,
+      role: user.role as 'member' | 'admin'
+    })
+    setOpenEditDialog(true)
+    setAnchorEl(null)
+  }
 
-  const stats = [
-    {
-      title: '전체 사용자',
-      value: users.length,
-      icon: <Person />,
-    },
-    {
-      title: '관리자',
-      value: users.filter(u => u.role === 'admin').length,
-      icon: <AdminPanelSettings />,
-    },
-    {
-      title: '활성 사용자',
-      value: users.filter(u => u.last_sign_in_at).length,
-      icon: <Person />,
-    },
-  ]
+  // 권한 관리 모드 시작
+  const startManagePermissions = (user: User) => {
+    setSelectedUser(user)
+    setOpenPermissionsDialog(true)
+    setAnchorEl(null)
+  }
+
+  // 사용자 삭제 확인
+  const confirmDeleteUser = (user: User) => {
+    setSelectedUser(user)
+    setOpenDeleteDialog(true)
+    setAnchorEl(null)
+  }
+
+  // 역할 색상
+  const getRoleColor = (role: string) => {
+    switch (role) {
+      case 'super_admin': return 'error'
+      case 'admin': return 'warning'
+      case 'member': return 'primary'
+      default: return 'default'
+    }
+  }
+
+  // 역할 한글명
+  const getRoleLabel = (role: string) => {
+    switch (role) {
+      case 'super_admin': return '최고 관리자'
+      case 'admin': return '관리자'
+      case 'member': return '일반 사용자'
+      default: return role
+    }
+  }
+
+  useEffect(() => {
+    loadUsers()
+  }, [page, searchTerm, roleFilter, statusFilter])
 
   return (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" component="h1">
-          사용자 관리
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<PersonAdd />}
-          onClick={handleInviteUser}
-        >
-          사용자 초대
-        </Button>
-      </Box>
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h4" sx={{ mb: 3, fontWeight: 'bold' }}>
+        사용자 관리
+      </Typography>
 
-      {/* 통계 카드 */}
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        {stats.map((stat, index) => (
-          <Grid item xs={12} sm={6} md={4} key={index}>
-            <Card>
-              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                {stat.icon}
-                <Box>
-                  <Typography variant="h4" component="div">
-                    {stat.value}
-                  </Typography>
-                  <Typography color="text.secondary">
-                    {stat.title}
-                  </Typography>
-                </Box>
-              </CardContent>
-            </Card>
+      {/* 검색 및 필터 */}
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={12} md={4}>
+              <TextField
+                fullWidth
+                label="검색"
+                placeholder="이메일 또는 이름으로 검색"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                InputProps={{
+                  startAdornment: <SearchIcon sx={{ mr: 1, color: 'text.secondary' }} />
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <FormControl fullWidth>
+                <InputLabel>역할</InputLabel>
+                <Select
+                  value={roleFilter}
+                  label="역할"
+                  onChange={(e) => setRoleFilter(e.target.value)}
+                >
+                  <MenuItem value="">모든 역할</MenuItem>
+                  <MenuItem value="super_admin">최고 관리자</MenuItem>
+                  <MenuItem value="admin">관리자</MenuItem>
+                  <MenuItem value="member">일반 사용자</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <FormControl fullWidth>
+                <InputLabel>상태</InputLabel>
+                <Select
+                  value={statusFilter}
+                  label="상태"
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                  <MenuItem value="">모든 상태</MenuItem>
+                  <MenuItem value="active">활성</MenuItem>
+                  <MenuItem value="inactive">비활성</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={2}>
+              <Button
+                fullWidth
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => setOpenAddDialog(true)}
+              >
+                사용자 추가
+              </Button>
+            </Grid>
           </Grid>
-        ))}
-      </Grid>
+        </CardContent>
+      </Card>
 
-      <Paper sx={{ mb: 3, p: 2 }}>
-        <TextField
-          fullWidth
-          placeholder="이름 또는 이메일로 검색..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          InputProps={{
-            startAdornment: <Search sx={{ mr: 1, color: 'text.secondary' }} />,
-          }}
-        />
-      </Paper>
+      {/* 사용자 테이블 */}
+      <Card>
+        <CardContent>
+          <TableContainer component={Paper}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>이메일</TableCell>
+                  <TableCell>이름</TableCell>
+                  <TableCell>역할</TableCell>
+                  <TableCell>상태</TableCell>
+                  <TableCell>생성일</TableCell>
+                  <TableCell>마지막 로그인</TableCell>
+                  <TableCell align="center">작업</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={7} align="center">
+                      로딩 중...
+                    </TableCell>
+                  </TableRow>
+                ) : users.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} align="center">
+                      사용자가 없습니다.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  users.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell>{user.email}</TableCell>
+                      <TableCell>{user.full_name}</TableCell>
+                      <TableCell>
+                        <Chip
+                          label={getRoleLabel(user.role)}
+                          color={getRoleColor(user.role) as any}
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={user.is_active ? '활성' : '비활성'}
+                          color={user.is_active ? 'success' : 'default'}
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        {new Date(user.created_at).toLocaleDateString('ko-KR')}
+                      </TableCell>
+                      <TableCell>
+                        {user.last_sign_in_at 
+                          ? new Date(user.last_sign_in_at).toLocaleDateString('ko-KR')
+                          : '없음'
+                        }
+                      </TableCell>
+                      <TableCell align="center">
+                        <IconButton
+                          onClick={(e) => {
+                            setSelectedUser(user)
+                            setAnchorEl(e.currentTarget)
+                          }}
+                        >
+                          <MoreVertIcon />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
 
-      <Paper sx={{ height: 600, width: '100%' }}>
-        <DataGrid
-          rows={filteredUsers}
-          columns={columns}
-          loading={loading}
-          disableRowSelectionOnClick
-          initialState={{
-            pagination: {
-              paginationModel: { page: 0, pageSize: 25 },
-            },
-          }}
-          pageSizeOptions={[25, 50, 100]}
-        />
-      </Paper>
+          {/* 페이지네이션 */}
+          {totalPages > 1 && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+              <Pagination
+                count={totalPages}
+                page={page}
+                onChange={(_, newPage) => setPage(newPage)}
+                color="primary"
+              />
+            </Box>
+          )}
+        </CardContent>
+      </Card>
 
-      {/* 사용자 초대 다이얼로그 */}
-      <Dialog
-        open={inviteDialogOpen}
-        onClose={() => setInviteDialogOpen(false)}
-        maxWidth="sm"
-        fullWidth
+      {/* 작업 메뉴 */}
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={() => setAnchorEl(null)}
       >
-        <DialogTitle>사용자 초대</DialogTitle>
-        <form onSubmit={handleInviteSubmit(onInviteSubmit)}>
-          <DialogContent>
-            <Grid container spacing={2}>
-              <Grid item xs={12}>
-                <Controller
-                  name="email"
-                  control={inviteControl}
-                  rules={{ 
-                    required: '이메일은 필수입니다.',
-                    pattern: {
-                      value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                      message: '올바른 이메일 형식이 아닙니다.'
-                    }
-                  }}
-                  render={({ field }) => (
-                    <TextField
-                      {...field}
-                      fullWidth
-                      label="이메일"
-                      type="email"
-                      error={!!inviteErrors.email}
-                      helperText={inviteErrors.email?.message}
-                      margin="normal"
-                    />
-                  )}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <Controller
-                  name="full_name"
-                  control={inviteControl}
-                  rules={{ required: '이름은 필수입니다.' }}
-                  render={({ field }) => (
-                    <TextField
-                      {...field}
-                      fullWidth
-                      label="이름"
-                      error={!!inviteErrors.full_name}
-                      helperText={inviteErrors.full_name?.message}
-                      margin="normal"
-                    />
-                  )}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <Controller
-                  name="role"
-                  control={inviteControl}
-                  render={({ field }) => (
-                    <FormControl fullWidth margin="normal">
-                      <InputLabel>권한</InputLabel>
-                      <Select
-                        {...field}
-                        label="권한"
-                      >
-                        <MenuItem value="member">사용자</MenuItem>
-                        <MenuItem value="admin">관리자</MenuItem>
-                      </Select>
-                    </FormControl>
-                  )}
-                />
-              </Grid>
+        <MenuItem onClick={() => startEditUser(selectedUser!)}>
+          <EditIcon sx={{ mr: 1 }} />
+          편집
+        </MenuItem>
+        <MenuItem onClick={() => startManagePermissions(selectedUser!)}>
+          <SecurityIcon sx={{ mr: 1 }} />
+          권한 관리
+        </MenuItem>
+        <MenuItem 
+          onClick={() => confirmDeleteUser(selectedUser!)}
+          sx={{ color: 'error.main' }}
+        >
+          <DeleteIcon sx={{ mr: 1 }} />
+          삭제
+        </MenuItem>
+      </Menu>
+
+      {/* 사용자 추가 다이얼로그 */}
+      <Dialog open={openAddDialog} onClose={() => setOpenAddDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>새 사용자 추가</DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="이메일"
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                placeholder="user@motionsense.co.kr"
+              />
             </Grid>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setInviteDialogOpen(false)}>취소</Button>
-            <Button type="submit" variant="contained" startIcon={<Email />}>
-              초대 발송
-            </Button>
-          </DialogActions>
-        </form>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="비밀번호"
+                type="password"
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                placeholder="최소 6자리"
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="이름"
+                value={formData.full_name}
+                onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <FormControl fullWidth>
+                <InputLabel>역할</InputLabel>
+                <Select
+                  value={formData.role}
+                  label="역할"
+                  onChange={(e) => setFormData({ ...formData, role: e.target.value as 'member' | 'admin' })}
+                >
+                  <MenuItem value="member">일반 사용자</MenuItem>
+                  <MenuItem value="admin">관리자</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenAddDialog(false)}>취소</Button>
+          <Button onClick={handleCreateUser} variant="contained">추가</Button>
+        </DialogActions>
       </Dialog>
 
-      {/* 사용자 수정 다이얼로그 */}
-      <Dialog
-        open={editDialogOpen}
-        onClose={() => setEditDialogOpen(false)}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>사용자 정보 수정</DialogTitle>
-        <form onSubmit={handleEditSubmit(onEditSubmit)}>
-          <DialogContent>
-            <Grid container spacing={2}>
-              <Grid item xs={12}>
-                <Controller
-                  name="email"
-                  control={editControl}
-                  rules={{ 
-                    required: '이메일은 필수입니다.',
-                    pattern: {
-                      value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                      message: '올바른 이메일 형식이 아닙니다.'
-                    }
-                  }}
-                  render={({ field }) => (
-                    <TextField
-                      {...field}
-                      fullWidth
-                      label="이메일"
-                      type="email"
-                      error={!!editErrors.email}
-                      helperText={editErrors.email?.message}
-                      margin="normal"
-                      disabled
-                    />
-                  )}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <Controller
-                  name="full_name"
-                  control={editControl}
-                  rules={{ required: '이름은 필수입니다.' }}
-                  render={({ field }) => (
-                    <TextField
-                      {...field}
-                      fullWidth
-                      label="이름"
-                      error={!!editErrors.full_name}
-                      helperText={editErrors.full_name?.message}
-                      margin="normal"
-                    />
-                  )}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <Controller
-                  name="role"
-                  control={editControl}
-                  render={({ field }) => (
-                    <FormControl fullWidth margin="normal">
-                      <InputLabel>권한</InputLabel>
-                      <Select
-                        {...field}
-                        label="권한"
-                        disabled={editingUser?.id === user?.id} // Can't change own role
-                      >
-                        <MenuItem value="member">사용자</MenuItem>
-                        <MenuItem value="admin">관리자</MenuItem>
-                      </Select>
-                    </FormControl>
-                  )}
-                />
-              </Grid>
+      {/* 사용자 편집 다이얼로그 */}
+      <Dialog open={openEditDialog} onClose={() => setOpenEditDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>사용자 편집</DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="이메일"
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              />
             </Grid>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setEditDialogOpen(false)}>취소</Button>
-            <Button type="submit" variant="contained">
-              수정
-            </Button>
-          </DialogActions>
-        </form>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="이름"
+                value={formData.full_name}
+                onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <FormControl fullWidth>
+                <InputLabel>역할</InputLabel>
+                <Select
+                  value={formData.role}
+                  label="역할"
+                  onChange={(e) => setFormData({ ...formData, role: e.target.value as 'member' | 'admin' })}
+                >
+                  <MenuItem value="member">일반 사용자</MenuItem>
+                  <MenuItem value="admin">관리자</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenEditDialog(false)}>취소</Button>
+          <Button onClick={handleUpdateUser} variant="contained">수정</Button>
+        </DialogActions>
       </Dialog>
 
-      {/* 삭제 확인 다이얼로그 */}
-      <Dialog
-        open={deleteDialogOpen}
-        onClose={() => setDeleteDialogOpen(false)}
-      >
-        <DialogTitle>사용자 삭제</DialogTitle>
+      {/* 사용자 삭제 확인 다이얼로그 */}
+      <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)}>
+        <DialogTitle>사용자 삭제 확인</DialogTitle>
         <DialogContent>
           <Typography>
-            '{userToDelete?.full_name}' 사용자를 정말 삭제하시겠습니까?
+            사용자 "{selectedUser?.full_name} ({selectedUser?.email})"를 삭제하시겠습니까?
+          </Typography>
+          <Typography variant="body2" color="error" sx={{ mt: 1 }}>
             이 작업은 되돌릴 수 없습니다.
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)}>취소</Button>
-          <Button onClick={confirmDelete} color="error" variant="contained">
+          <Button onClick={() => setOpenDeleteDialog(false)}>취소</Button>
+          <Button onClick={handleDeleteUser} color="error" variant="contained">
             삭제
           </Button>
         </DialogActions>
       </Dialog>
 
+      {/* 알림 스낵바 */}
       <Snackbar
-        open={snackbar.open}
+        open={notification.open}
         autoHideDuration={6000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        onClose={() => setNotification({ ...notification, open: false })}
       >
         <Alert
-          onClose={() => setSnackbar({ ...snackbar, open: false })}
-          severity={snackbar.severity}
+          onClose={() => setNotification({ ...notification, open: false })}
+          severity={notification.severity}
           sx={{ width: '100%' }}
         >
-          {snackbar.message}
+          {notification.message}
         </Alert>
       </Snackbar>
+
+      {/* 권한 관리 다이얼로그 */}
+      <UserPermissionsDialog
+        open={openPermissionsDialog}
+        onClose={() => {
+          setOpenPermissionsDialog(false)
+          setSelectedUser(null)
+        }}
+        user={selectedUser}
+      />
     </Box>
   )
 }
