@@ -23,7 +23,10 @@ ALTER TABLE profiles
 ADD CONSTRAINT profiles_role_check 
 CHECK (role IN ('member', 'admin', 'super_admin'));
 
-RAISE NOTICE '새로운 profiles_role_check 제약 조건을 추가했습니다 (super_admin 포함).';
+DO $$
+BEGIN
+    RAISE NOTICE '새로운 profiles_role_check 제약 조건을 추가했습니다 (super_admin 포함).';
+END $$;
 
 -- 제약 조건 확인
 SELECT constraint_name, check_clause
