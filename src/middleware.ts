@@ -82,6 +82,7 @@ export async function middleware(request: NextRequest) {
 
   // Note: Auth session handling moved to individual pages/API routes
   // Edge Runtime doesn't support Supabase client operations
+  // Authentication is handled in individual route handlers and pages
 
   // Create response with security headers
   const response = NextResponse.next()

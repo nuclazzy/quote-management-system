@@ -3,15 +3,21 @@ import type { Database } from '@/types/database'
 import { NotificationType } from '@/types/notification'
 
 // Server-side Supabase client with service role key
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+const getSupabaseAdmin = () => {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false
+  if (!supabaseUrl || !supabaseServiceKey) {
+    throw new Error('Missing Supabase environment variables for admin client')
   }
-})
+
+  return createClient<Database>(supabaseUrl, supabaseServiceKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  })
+}
 
 export interface CreateNotificationParams {
   user_id: string
@@ -25,13 +31,17 @@ export interface CreateNotificationParams {
 }
 
 export class NotificationService {
+  private static getAdmin() {
+    return getSupabaseAdmin()
+  }
+
   /**
    * Create a notification for a specific user
    */
   static async createNotification(params: CreateNotificationParams): Promise<void> {
     try {
       // Use the database function that checks notification settings
-      const { error } = await supabaseAdmin.rpc('create_notification', {
+      const { error } = await this.getAdmin().rpc('create_notification', {
         p_user_id: params.user_id,
         p_title: params.title,
         p_message: params.message,
@@ -75,7 +85,7 @@ export class NotificationService {
    */
   static async getAdminUsers(): Promise<string[]> {
     try {
-      const { data, error } = await supabaseAdmin
+      const { data, error } = await this.getAdmin()
         .from('profiles')
         .select('id')
         .eq('role', 'admin')
@@ -92,7 +102,7 @@ export class NotificationService {
   // Quote-related notifications
   static async notifyQuoteCreated(quoteId: string, createdBy: string): Promise<void> {
     try {
-      const { data: quote, error } = await supabaseAdmin
+      const { data: quote, error } = await this.getAdmin()
         .from('quotes')
         .select(`
           quote_number,
@@ -130,7 +140,7 @@ export class NotificationService {
     updatedBy: string
   ): Promise<void> {
     try {
-      const { data: quote, error } = await supabaseAdmin
+      const { data: quote, error } = await this.getAdmin()
         .from('quotes')
         .select(`
           quote_number,
@@ -191,7 +201,7 @@ export class NotificationService {
       const threeDaysFromNow = new Date()
       threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3)
 
-      const { data: expiringQuotes, error } = await supabaseAdmin
+      const { data: expiringQuotes, error } = await this.getAdmin()
         .from('quotes')
         .select(`
           id,
@@ -232,7 +242,7 @@ export class NotificationService {
   // Project-related notifications
   static async notifyProjectCreated(projectId: string, createdBy: string): Promise<void> {
     try {
-      const { data: project, error } = await supabaseAdmin
+      const { data: project, error } = await this.getAdmin()
         .from('projects')
         .select(`
           name,
@@ -270,7 +280,7 @@ export class NotificationService {
     updatedBy: string
   ): Promise<void> {
     try {
-      const { data: project, error } = await supabaseAdmin
+      const { data: project, error } = await this.getAdmin()
         .from('projects')
         .select(`
           name,
@@ -316,7 +326,7 @@ export class NotificationService {
       const threeDaysFromNow = new Date()
       threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3)
 
-      const { data: projects, error } = await supabaseAdmin
+      const { data: projects, error } = await this.getAdmin()
         .from('projects')
         .select(`
           id,
@@ -360,7 +370,7 @@ export class NotificationService {
       const threeDaysFromNow = new Date()
       threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3)
 
-      const { data: transactions, error } = await supabaseAdmin
+      const { data: transactions, error } = await this.getAdmin()
         .from('transactions')
         .select(`
           id,
@@ -406,7 +416,7 @@ export class NotificationService {
       // Get overdue transactions
       const today = new Date().toISOString().split('T')[0]
 
-      const { data: transactions, error } = await supabaseAdmin
+      const { data: transactions, error } = await this.getAdmin()
         .from('transactions')
         .select(`
           id,
@@ -448,7 +458,7 @@ export class NotificationService {
 
   static async notifySettlementCompleted(transactionId: string, updatedBy: string): Promise<void> {
     try {
-      const { data: transaction, error } = await supabaseAdmin
+      const { data: transaction, error } = await this.getAdmin()
         .from('transactions')
         .select(`
           partner_name,
@@ -486,7 +496,7 @@ export class NotificationService {
   // System-related notifications
   static async notifyUserJoined(userId: string): Promise<void> {
     try {
-      const { data: user, error } = await supabaseAdmin
+      const { data: user, error } = await this.getAdmin()
         .from('profiles')
         .select('full_name, email')
         .eq('id', userId)
@@ -515,7 +525,7 @@ export class NotificationService {
 
   static async notifyPermissionChanged(userId: string, newRole: string, changedBy: string): Promise<void> {
     try {
-      const { data: user, error } = await supabaseAdmin
+      const { data: user, error } = await this.getAdmin()
         .from('profiles')
         .select('full_name, email')
         .eq('id', userId)
