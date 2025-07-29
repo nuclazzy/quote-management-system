@@ -211,3 +211,7 @@ Modern quote management system built with Next.js 14, Supabase, and Material-UI.
 
 ## Deployment
 Automatically deployed to Vercel on push to main branch.
+
+## OAuth Configuration
+
+Production redirect URI configured for Vercel deployment.
