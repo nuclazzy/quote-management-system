@@ -38,8 +38,7 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   MoreVert as MoreVertIcon,
-  Security as SecurityIcon,
-  Search as SearchIcon
+  Security as SecurityIcon
 } from '@mui/icons-material'
 import { supabase } from '@/lib/supabase/client'
 import UserPermissionsDialog from '@/components/UserPermissionsDialog'
@@ -67,7 +66,6 @@ export default function UsersManagementPage() {
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
-  const [searchTerm, setSearchTerm] = useState('')
   const [roleFilter, setRoleFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   
@@ -112,7 +110,7 @@ export default function UsersManagementPage() {
         limit: '10'
       })
       
-      if (debouncedSearchTerm) params.append('search', debouncedSearchTerm)
+      // 검색 기능 제거 - 단순한 목록 표시만
       if (roleFilter) params.append('role', roleFilter)
       if (statusFilter) params.append('status', statusFilter)
       
@@ -283,29 +281,10 @@ export default function UsersManagementPage() {
     }
   }
 
-  // 디바운스된 검색어
-  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
-
-  // 검색어 디바운스 효과
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearchTerm(searchTerm)
-    }, 500) // 500ms 디바운스
-
-    return () => clearTimeout(timer)
-  }, [searchTerm])
-
-  // 검색어가 변경되면 첫 페이지로 리셋
-  useEffect(() => {
-    if (debouncedSearchTerm !== searchTerm) {
-      setPage(1)
-    }
-  }, [debouncedSearchTerm])
-
   // API 호출 효과
   useEffect(() => {
     loadUsers()
-  }, [page, debouncedSearchTerm, roleFilter, statusFilter])
+  }, [page, roleFilter, statusFilter])
 
   return (
     <Box sx={{ p: 3 }}>
@@ -313,65 +292,19 @@ export default function UsersManagementPage() {
         사용자 관리
       </Typography>
 
-      {/* 검색 및 필터 */}
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} md={4}>
-              <TextField
-                fullWidth
-                label="검색"
-                placeholder="이메일 또는 이름으로 검색"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                InputProps={{
-                  startAdornment: <SearchIcon sx={{ mr: 1, color: 'text.secondary' }} />
-                }}
-                helperText={searchTerm && searchTerm !== debouncedSearchTerm ? '검색 중...' : ''}
-              />
-            </Grid>
-            <Grid item xs={12} md={3}>
-              <FormControl fullWidth>
-                <InputLabel>역할</InputLabel>
-                <Select
-                  value={roleFilter}
-                  label="역할"
-                  onChange={(e) => setRoleFilter(e.target.value)}
-                >
-                  <MenuItem value="">모든 역할</MenuItem>
-                  <MenuItem value="super_admin">최고 관리자</MenuItem>
-                  <MenuItem value="admin">관리자</MenuItem>
-                  <MenuItem value="member">일반 사용자</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} md={3}>
-              <FormControl fullWidth>
-                <InputLabel>상태</InputLabel>
-                <Select
-                  value={statusFilter}
-                  label="상태"
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                >
-                  <MenuItem value="">모든 상태</MenuItem>
-                  <MenuItem value="active">활성</MenuItem>
-                  <MenuItem value="inactive">비활성</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} md={2}>
-              <Button
-                fullWidth
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={() => setOpenAddDialog(true)}
-              >
-                사용자 추가
-              </Button>
-            </Grid>
-          </Grid>
-        </CardContent>
-      </Card>
+      {/* 사용자 추가 버튼 */}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h5" sx={{ fontWeight: 'medium' }}>
+          등록된 사용자 목록
+        </Typography>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => setOpenAddDialog(true)}
+        >
+          사용자 추가
+        </Button>
+      </Box>
 
       {/* 사용자 테이블 */}
       <Card>

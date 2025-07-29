@@ -25,7 +25,6 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
     const limit = Math.min(parseInt(searchParams.get('limit') || '10'), 100)
-    const search = searchParams.get('search')
     const role = searchParams.get('role')
     const status = searchParams.get('status')
 
@@ -41,11 +40,6 @@ export async function GET(request: NextRequest) {
         updated_at,
         last_sign_in_at
       `, { count: 'exact' })
-
-    // 검색 필터
-    if (search) {
-      query = query.or(`email.ilike.%${search}%,full_name.ilike.%${search}%`)
-    }
 
     // 역할 필터
     if (role) {
