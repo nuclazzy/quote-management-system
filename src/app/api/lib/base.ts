@@ -1,6 +1,5 @@
 import { NextRequest } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { createErrorResponse, createSuccessResponse, createPaginatedResponse } from './utils/response'
 import { withErrorHandler } from './middleware/error-handler'
@@ -8,7 +7,7 @@ import { AuthenticatedUser } from './middleware/auth'
 
 export interface AuthContext {
   user: AuthenticatedUser
-  supabase: ReturnType<typeof createRouteHandlerClient<Database>>
+  supabase: ReturnType<typeof createClient<Database>>
 }
 
 /**
@@ -20,7 +19,19 @@ export function withAuth<T = any>(
   options: { requireAdmin?: boolean } = {}
 ) {
   return withErrorHandler(async (req: NextRequest) => {
-    const supabase = createRouteHandlerClient<Database>({ cookies })
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+    if (!supabaseUrl || !supabaseKey) {
+      return createErrorResponse(
+        'CONFIGURATION_ERROR',
+        'Supabase configuration error',
+        null,
+        500
+      )
+    }
+
+    const supabase = createClient<Database>(supabaseUrl, supabaseKey)
     
     // 사용자 인증 확인
     const { data: { session }, error: sessionError } = await supabase.auth.getSession()

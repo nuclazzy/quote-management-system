@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { updateSession } from '@/lib/supabase/middleware'
 
 // Rate limiting store (in production, use Redis)
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>()
@@ -81,13 +80,8 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Handle authentication
-  const authResponse = await updateSession(request)
-  
-  // If auth middleware returned a redirect, use it
-  if (authResponse.status === 302) {
-    return authResponse
-  }
+  // Note: Auth session handling moved to individual pages/API routes
+  // Edge Runtime doesn't support Supabase client operations
 
   // Create response with security headers
   const response = NextResponse.next()
