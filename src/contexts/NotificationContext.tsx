@@ -2,10 +2,10 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { useAuth } from './AuthContext'
-import { Notification, NotificationResponse } from '@/types'
+import { Notification as AppNotification, NotificationResponse } from '@/types/notification'
 
 interface NotificationContextType {
-  notifications: Notification[]
+  notifications: AppNotification[]
   unreadCount: number
   loading: boolean
   error: string | null
@@ -13,7 +13,7 @@ interface NotificationContextType {
   markAllAsRead: () => Promise<void>
   deleteNotification: (notificationId: string) => Promise<void>
   refetchNotifications: () => Promise<void>
-  addNotification: (notification: Notification) => void
+  addNotification: (notification: AppNotification) => void
 }
 
 const NotificationContext = createContext<NotificationContextType | null>(null)
@@ -24,7 +24,7 @@ interface NotificationProviderProps {
 
 export function NotificationProvider({ children }: NotificationProviderProps) {
   const { user } = useAuth()
-  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [notifications, setNotifications] = useState<AppNotification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -135,7 +135,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     }
   }
 
-  const addNotification = (notification: Notification) => {
+  const addNotification = (notification: AppNotification) => {
     setNotifications(prev => [notification, ...prev])
     if (!notification.is_read) {
       setUnreadCount(prev => prev + 1)
