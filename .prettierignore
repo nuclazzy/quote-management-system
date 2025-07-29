@@ -1,0 +1,47 @@
+# Prettier 무시 파일 목록
+
+# 빌드 결과물
+.next/
+out/
+dist/
+build/
+
+# 의존성
+node_modules/
+
+# 로그
+*.log
+
+# 환경 설정
+.env*
+
+# 운영체제 파일
+.DS_Store
+Thumbs.db
+
+# 에디터 설정
+.vscode/
+.idea/
+
+# Git
+.git/
+
+# 패키지 매니저 락 파일
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# 자동 생성 파일
+next-env.d.ts
+
+# 데이터베이스 파일
+*.db
+*.sqlite
+
+# 백업 파일
+*.backup
+*.bak
+
+# 임시 파일
+*.tmp
+*.temp

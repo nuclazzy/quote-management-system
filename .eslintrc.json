@@ -1,0 +1,102 @@
+{
+  "root": true,
+  "env": {
+    "browser": true,
+    "es2020": true,
+    "node": true
+  },
+  "extends": [
+    "next/core-web-vitals",
+    "eslint:recommended",
+    "@typescript-eslint/recommended",
+    "plugin:react/recommended",
+    "plugin:react-hooks/recommended",
+    "plugin:jsx-a11y/recommended",
+    "plugin:import/recommended",
+    "plugin:import/typescript",
+    "prettier"
+  ],
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "ecmaFeatures": {
+      "jsx": true
+    },
+    "ecmaVersion": 2020,
+    "sourceType": "module",
+    "project": "./tsconfig.json"
+  },
+  "plugins": [
+    "react",
+    "react-hooks",
+    "@typescript-eslint",
+    "jsx-a11y",
+    "import"
+  ],
+  "settings": {
+    "react": {
+      "version": "detect"
+    },
+    "import/resolver": {
+      "typescript": {
+        "alwaysTryTypes": true,
+        "project": "./tsconfig.json"
+      }
+    }
+  },
+  "rules": {
+    // TypeScript 규칙
+    "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
+    "@typescript-eslint/no-explicit-any": "warn",
+    "@typescript-eslint/prefer-const": "error",
+    "@typescript-eslint/no-var-requires": "error",
+    
+    // React 규칙
+    "react/react-in-jsx-scope": "off", // Next.js에서는 불필요
+    "react/prop-types": "off", // TypeScript 사용 시 불필요
+    "react/display-name": "warn",
+    "react-hooks/rules-of-hooks": "error",
+    "react-hooks/exhaustive-deps": "warn",
+    
+    // Import 규칙
+    "import/order": [
+      "warn",
+      {
+        "groups": [
+          "builtin",
+          "external",
+          "internal",
+          "parent",
+          "sibling",
+          "index"
+        ],
+        "newlines-between": "always",
+        "alphabetize": {
+          "order": "asc",
+          "caseInsensitive": true
+        }
+      }
+    ],
+    "import/no-unresolved": "error",
+    "import/no-duplicates": "warn",
+    
+    // 일반 규칙
+    "no-console": "warn",
+    "no-debugger": "error",
+    "prefer-const": "error",
+    "no-var": "error",
+    
+    // 접근성 규칙
+    "jsx-a11y/anchor-is-valid": "off", // Next.js Link 컴포넌트 때문에 비활성화
+    
+    // Next.js 특화 규칙
+    "@next/next/no-img-element": "warn"
+  },
+  "overrides": [
+    {
+      "files": ["**/*.js", "**/*.jsx"],
+      "rules": {
+        "@typescript-eslint/no-var-requires": "off"
+      }
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "low": true,
+  "moderate": true,
+  "high": true,
+  "critical": true,
+  "report-type": "summary",
+  "skip-dev": false,
+  "allowlist": [],
+  "registry": "https://registry.npmjs.org/",
+  "show-found": true,
+  "show-not-found": false,
+  "retry": {
+    "count": 2,
+    "factor": 1.5,
+    "maxTimeout": 10000,
+    "minTimeout": 1000
+  }
+}

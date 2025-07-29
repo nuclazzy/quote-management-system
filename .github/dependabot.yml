@@ -1,0 +1,40 @@
+version: 2
+updates:
+  # npm 패키지 업데이트
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Seoul"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "lewis"
+    assignees:
+      - "lewis"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "npm"
+    
+  # GitHub Actions 업데이트
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Seoul"
+    open-pull-requests-limit: 3
+    reviewers:
+      - "lewis"
+    assignees:
+      - "lewis"
+    commit-message:
+      prefix: "ci"
+    labels:
+      - "dependencies"
+      - "github-actions"

@@ -1,0 +1,71 @@
+{
+  "compilerOptions": {
+    // 컴파일 대상
+    "target": "es2017",
+    "lib": ["dom", "dom.iterable", "es2017", "es2018", "es2019", "es2020"],
+    
+    // 모듈 시스템
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "allowJs": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    
+    // JSX 설정
+    "jsx": "preserve",
+    "jsxImportSource": "react",
+    
+    // 타입 체크 옵션
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    
+    // 출력 설정
+    "noEmit": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    
+    // 상호 운용성
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    
+    // 성능 최적화
+    "incremental": true,
+    
+    // Next.js 플러그인
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    
+    // 경로 매핑
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@/components/*": ["./src/components/*"],
+      "@/lib/*": ["./src/lib/*"],
+      "@/types/*": ["./src/types/*"],
+      "@/utils/*": ["./src/utils/*"],
+      "@/hooks/*": ["./src/hooks/*"],
+      "@/contexts/*": ["./src/contexts/*"]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    ".next",
+    "out",
+    "dist",
+    "build"
+  ]
+}
