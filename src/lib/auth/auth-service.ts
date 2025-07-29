@@ -81,7 +81,7 @@ export class AuthService {
   }
 
   /**
-   * 프로필 생성 또는 업데이트 (데이터베이스 함수 사용)
+   * 프로필 생성 또는 업데이트 (17번 마이그레이션 호환)
    */
   static async upsertProfile(userId: string, email: string, fullName?: string): Promise<Profile> {
     console.log('🔄 AuthService.upsertProfile called with:', {
@@ -92,74 +92,66 @@ export class AuthService {
     })
     
     try {
-      console.log('🔄 Attempting Supabase RPC call to upsert_user_profile...')
-      const { data, error } = await supabase.rpc('upsert_user_profile', {
-        p_user_id: userId,
-        p_email: email,
-        p_full_name: fullName
-      })
+      // 기존 프로필 확인
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single()
 
-      if (error) {
-        console.error('❌ Supabase RPC error:', {
-          error,
-          code: error.code,
-          message: error.message,
-          details: error.details,
-          hint: error.hint
-        })
-        throw new Error(`RPC 프로필 생성/업데이트 실패: ${error.message}`)
+      const profileData = {
+        id: userId,
+        email,
+        full_name: fullName || email.split('@')[0],
+        role: email === 'lewis@motionsense.co.kr' ? 'super_admin' : 'member',
+        is_active: true,
+        updated_at: new Date().toISOString()
       }
 
-      console.log('✅ RPC Profile upsert successful:', data)
-      return data
-    } catch (error) {
-      console.error('❌ RPC upsertProfile error, trying fallback:', {
-        error,
-        message: error instanceof Error ? error.message : error,
-        type: typeof error
-      })
-      
-      // 함수가 없으면 직접 테이블에 upsert
-      console.log('🔄 Falling back to direct table upsert...')
-      
-      try {
-        const profileData = {
-          id: userId,
-          email,
-          full_name: fullName,
-          role: email === 'lewis@motionsense.co.kr' ? 'super_admin' : 'member',
-          is_active: true
-        }
-        
-        console.log('🔄 Direct table upsert data:', profileData)
-        
-        const { data, error: directError } = await supabase
+      if (existingProfile) {
+        // 업데이트
+        console.log('🔄 Updating existing profile...')
+        const { data, error } = await supabase
           .from('profiles')
-          .upsert(profileData, {
-            onConflict: 'id'
+          .update({
+            email: profileData.email,
+            full_name: profileData.full_name,
+            updated_at: profileData.updated_at
           })
+          .eq('id', userId)
           .select()
           .single()
 
-        if (directError) {
-          console.error('❌ Direct table upsert error:', {
-            error: directError,
-            code: directError.code,
-            message: directError.message,
-            details: directError.details
-          })
-          throw new Error(`직접 프로필 생성/업데이트 실패: ${directError.message}`)
+        if (error) {
+          console.error('❌ Profile update error:', error)
+          throw new Error(`프로필 업데이트 실패: ${error.message}`)
         }
 
-        console.log('✅ Direct table upsert successful:', data)
+        console.log('✅ Profile update successful:', data)
         return data
-      } catch (fallbackError) {
-        console.error('❌ Fallback upsert also failed:', {
-          error: fallbackError,
-          message: fallbackError instanceof Error ? fallbackError.message : fallbackError
-        })
-        throw fallbackError
+      } else {
+        // 새로 생성
+        console.log('🔄 Creating new profile...')
+        const { data, error } = await supabase
+          .from('profiles')
+          .insert(profileData)
+          .select()
+          .single()
+
+        if (error) {
+          console.error('❌ Profile insert error:', error)
+          throw new Error(`프로필 생성 실패: ${error.message}`)
+        }
+
+        console.log('✅ Profile creation successful:', data)
+        return data
       }
+    } catch (error) {
+      console.error('❌ upsertProfile failed:', {
+        error,
+        message: error instanceof Error ? error.message : error
+      })
+      throw error
     }
   }
 
