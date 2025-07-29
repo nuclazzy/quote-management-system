@@ -1,132 +1,138 @@
-import { NextRequest } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
-import { withAuth } from '../lib/middleware/auth'
-import { withErrorHandler } from '../lib/middleware/error-handler'
-import { withValidation, withQueryValidation } from '../lib/middleware/validation'
-import { withRateLimit, RateLimitPresets } from '../lib/middleware/rate-limit'
-import { 
-  createSuccessResponse, 
-  createPaginatedResponse, 
-  createCreatedResponse,
-  createMethodNotAllowedResponse 
-} from '../lib/utils/response'
-import { SupplierSchema, ListQuerySchema } from '../lib/schemas/common'
-import type { Database } from '@/types/database'
-import type { AuthenticatedRequest } from '../lib/middleware/auth'
+import { NextRequest, NextResponse } from 'next/server'
+import { createServerClient } from '@/lib/supabase/server'
 
-/**
- * GET /api/suppliers - 공급업체 목록 조회
- */
-async function handleGet(req: AuthenticatedRequest, query: any) {
-  const supabase = createRouteHandlerClient<Database>({ cookies })
-  const { page, per_page, sort_by, sort_order, search, is_active } = query
-
-  let queryBuilder = supabase
-    .from('suppliers')
-    .select('*', { count: 'exact' })
-
-  // 검색 조건 적용
-  if (search) {
-    queryBuilder = queryBuilder.or(`name.ilike.%${search}%,contact_person.ilike.%${search}%,email.ilike.%${search}%`)
-  }
-
-  // 활성/비활성 필터
-  if (is_active !== undefined) {
-    queryBuilder = queryBuilder.eq('is_active', is_active)
-  }
-
-  // 정렬
-  const validSortFields = ['name', 'created_at', 'updated_at']
-  const sortField = validSortFields.includes(sort_by) ? sort_by : 'created_at'
-  queryBuilder = queryBuilder.order(sortField, { ascending: sort_order === 'asc' })
-
-  // 페이지네이션
-  const from = (page - 1) * per_page
-  const to = from + per_page - 1
-  queryBuilder = queryBuilder.range(from, to)
-
-  const { data, error, count } = await queryBuilder
-
-  if (error) {
-    throw new Error(`공급업체 목록 조회 실패: ${error.message}`)
-  }
-
-  return createPaginatedResponse(
-    data || [],
-    {
-      page,
-      per_page,
-      total_count: count || 0
-    },
-    '공급업체 목록을 성공적으로 조회했습니다.'
-  )
-}
-
-/**
- * POST /api/suppliers - 공급업체 생성
- */
-async function handlePost(req: AuthenticatedRequest, validatedData: any) {
-  const supabase = createRouteHandlerClient<Database>({ cookies })
-
-  const { data, error } = await supabase
-    .from('suppliers')
-    .insert({
-      ...validatedData,
-      created_by: req.user.id
-    })
-    .select()
-    .single()
-
-  if (error) {
-    // 중복 체크
-    if (error.code === '23505') {
-      throw new Error('이미 존재하는 공급업체입니다.')
+export async function GET(request: NextRequest) {
+  try {
+    const supabase = createServerClient()
+    
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    throw new Error(`공급업체 생성 실패: ${error.message}`)
+
+    const { searchParams } = new URL(request.url)
+    const page = parseInt(searchParams.get('page') || '1')
+    const per_page = Math.min(parseInt(searchParams.get('per_page') || '10'), 100)
+    const search = searchParams.get('search')
+    const is_active = searchParams.get('is_active')
+    const sort_by = searchParams.get('sort_by') || 'created_at'
+    const sort_order = searchParams.get('sort_order') || 'desc'
+
+    let queryBuilder = supabase
+      .from('suppliers')
+      .select('*', { count: 'exact' })
+
+    // 검색 조건 적용
+    if (search) {
+      queryBuilder = queryBuilder.or(`name.ilike.%${search}%,contact_person.ilike.%${search}%,email.ilike.%${search}%`)
+    }
+
+    // 활성/비활성 필터
+    if (is_active !== null && is_active !== undefined) {
+      queryBuilder = queryBuilder.eq('is_active', is_active === 'true')
+    }
+
+    // 정렬
+    const validSortFields = ['name', 'created_at', 'updated_at']
+    const sortField = validSortFields.includes(sort_by) ? sort_by : 'created_at'
+    queryBuilder = queryBuilder.order(sortField, { ascending: sort_order === 'asc' })
+
+    // 페이지네이션
+    const from = (page - 1) * per_page
+    const to = from + per_page - 1
+    queryBuilder = queryBuilder.range(from, to)
+
+    const { data, error, count } = await queryBuilder
+
+    if (error) {
+      console.error('Error fetching suppliers:', error)
+      return NextResponse.json({ error: 'Failed to fetch suppliers' }, { status: 500 })
+    }
+
+    return NextResponse.json({
+      suppliers: data || [],
+      pagination: {
+        page,
+        per_page,
+        total_count: count || 0,
+        total_pages: Math.ceil((count || 0) / per_page)
+      }
+    })
+  } catch (error) {
+    console.error('Error in suppliers GET:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
-
-  return createCreatedResponse(data, '공급업체가 성공적으로 생성되었습니다.')
 }
 
-/**
- * 메서드별 핸들러 래핑
- */
-const getHandler = withAuth(
-  withRateLimit(
-    RateLimitPresets.standard,
-    withQueryValidation(
-      ListQuerySchema,
-      handleGet
-    )
-  )
-)
+export async function POST(request: NextRequest) {
+  try {
+    const supabase = createServerClient()
+    
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
-const postHandler = withAuth(
-  withRateLimit(
-    RateLimitPresets.standard,
-    withValidation(
-      SupplierSchema,
-      handlePost
-    )
-  )
-)
+    const body = await request.json()
+    const {
+      name,
+      contact_person,
+      email,
+      phone,
+      address,
+      tax_number,
+      payment_terms,
+      notes,
+      is_active = true
+    } = body
 
-/**
- * 라우트 핸들러
- */
-export const GET = withErrorHandler(getHandler)
-export const POST = withErrorHandler(postHandler)
+    // Validate required fields
+    if (!name || !contact_person || !email) {
+      return NextResponse.json(
+        { error: 'Missing required fields: name, contact_person, email' },
+        { status: 400 }
+      )
+    }
 
-// 허용되지 않는 메서드에 대한 응답
-export async function PUT() {
-  return createMethodNotAllowedResponse(['GET', 'POST'])
-}
+    // Check if supplier with same name already exists
+    const { data: existingSupplier } = await supabase
+      .from('suppliers')
+      .select('id')
+      .eq('name', name)
+      .single()
 
-export async function PATCH() {
-  return createMethodNotAllowedResponse(['GET', 'POST'])
-}
+    if (existingSupplier) {
+      return NextResponse.json(
+        { error: 'Supplier with this name already exists' },
+        { status: 400 }
+      )
+    }
 
-export async function DELETE() {
-  return createMethodNotAllowedResponse(['GET', 'POST'])
+    const { data: supplier, error } = await supabase
+      .from('suppliers')
+      .insert({
+        name,
+        contact_person,
+        email,
+        phone: phone || null,
+        address: address || null,
+        tax_number: tax_number || null,
+        payment_terms: payment_terms || null,
+        notes: notes || null,
+        is_active,
+        created_by: user.id
+      })
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error creating supplier:', error)
+      return NextResponse.json({ error: 'Failed to create supplier' }, { status: 500 })
+    }
+
+    return NextResponse.json(supplier, { status: 201 })
+  } catch (error) {
+    console.error('Error in suppliers POST:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
 }

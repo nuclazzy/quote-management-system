@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { cookies } from 'next/headers'
 import { Database } from '@/types/database'
 
 export const createServerClient = () => {
@@ -9,5 +10,22 @@ export const createServerClient = () => {
     throw new Error('Missing Supabase environment variables')
   }
 
-  return createClient<Database>(supabaseUrl, supabaseKey)
+  const cookieStore = cookies()
+
+  return createClient<Database>(supabaseUrl, supabaseKey, {
+    auth: {
+      storage: {
+        getItem: (key: string) => {
+          const cookie = cookieStore.get(key)
+          return cookie?.value || null
+        },
+        setItem: (key: string, value: string) => {
+          // Server-side storage is read-only
+        },
+        removeItem: (key: string) => {
+          // Server-side storage is read-only
+        }
+      }
+    }
+  })
 }
