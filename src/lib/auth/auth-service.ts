@@ -84,17 +84,47 @@ export class AuthService {
    * 프로필 생성 또는 업데이트 (데이터베이스 함수 사용)
    */
   static async upsertProfile(userId: string, email: string, fullName?: string): Promise<Profile> {
-    const { data, error } = await supabase.rpc('upsert_user_profile', {
-      p_user_id: userId,
-      p_email: email,
-      p_full_name: fullName
-    })
+    console.log('Calling upsert_user_profile with:', { userId, email, fullName })
+    
+    try {
+      const { data, error } = await supabase.rpc('upsert_user_profile', {
+        p_user_id: userId,
+        p_email: email,
+        p_full_name: fullName
+      })
 
-    if (error) {
-      throw new Error(`프로필 생성/업데이트 실패: ${error.message}`)
+      if (error) {
+        console.error('Supabase RPC error:', error)
+        throw new Error(`프로필 생성/업데이트 실패: ${error.message}`)
+      }
+
+      console.log('Profile upsert result:', data)
+      return data
+    } catch (error) {
+      console.error('upsertProfile error:', error)
+      
+      // 함수가 없으면 직접 테이블에 upsert
+      console.log('Falling back to direct table upsert')
+      const { data, error: directError } = await supabase
+        .from('profiles')
+        .upsert({
+          id: userId,
+          email,
+          full_name: fullName,
+          role: email === 'lewis@motionsense.co.kr' ? 'super_admin' : 'member',
+          is_active: true
+        }, {
+          onConflict: 'id'
+        })
+        .select()
+        .single()
+
+      if (directError) {
+        throw new Error(`직접 프로필 생성/업데이트 실패: ${directError.message}`)
+      }
+
+      return data
     }
-
-    return data
   }
 
   /**
