@@ -6,10 +6,14 @@ export class AuthService {
    * Google OAuth 로그인
    */
   static async signInWithGoogle() {
+    // 환경 변수에서 사이트 URL 가져오기
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
+    const redirectTo = `${siteUrl}/auth/callback`
+
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo,
         queryParams: {
           hd: 'motionsense.co.kr' // Google Workspace 도메인 제한
         }
