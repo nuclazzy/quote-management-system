@@ -73,6 +73,7 @@ export default function AuthCallbackPage() {
               return
             }
             
+            if (sessionData.session?.user) {
               await processUser(sessionData.session.user)
               return
             }
