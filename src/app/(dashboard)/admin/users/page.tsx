@@ -112,7 +112,7 @@ export default function UsersManagementPage() {
         limit: '10'
       })
       
-      if (searchTerm) params.append('search', searchTerm)
+      if (debouncedSearchTerm) params.append('search', debouncedSearchTerm)
       if (roleFilter) params.append('role', roleFilter)
       if (statusFilter) params.append('status', statusFilter)
       
@@ -283,9 +283,29 @@ export default function UsersManagementPage() {
     }
   }
 
+  // 디바운스된 검색어
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
+
+  // 검색어 디바운스 효과
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm)
+    }, 500) // 500ms 디바운스
+
+    return () => clearTimeout(timer)
+  }, [searchTerm])
+
+  // 검색어가 변경되면 첫 페이지로 리셋
+  useEffect(() => {
+    if (debouncedSearchTerm !== searchTerm) {
+      setPage(1)
+    }
+  }, [debouncedSearchTerm])
+
+  // API 호출 효과
   useEffect(() => {
     loadUsers()
-  }, [page, searchTerm, roleFilter, statusFilter])
+  }, [page, debouncedSearchTerm, roleFilter, statusFilter])
 
   return (
     <Box sx={{ p: 3 }}>
@@ -307,6 +327,7 @@ export default function UsersManagementPage() {
                 InputProps={{
                   startAdornment: <SearchIcon sx={{ mr: 1, color: 'text.secondary' }} />
                 }}
+                helperText={searchTerm && searchTerm !== debouncedSearchTerm ? '검색 중...' : ''}
               />
             </Grid>
             <Grid item xs={12} md={3}>

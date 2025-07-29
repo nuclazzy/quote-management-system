@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 
-// GET /api/admin/users - 모든 사용자 조회 (최고 관리자만)
+// GET /api/admin/users - 모든 사용자 조회 (관리자 이상)
 export async function GET(request: NextRequest) {
   try {
     const supabase = createServerClient()
@@ -11,15 +11,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // 최고 관리자 권한 확인
+    // 관리자 권한 확인 (super_admin 또는 admin)
     const { data: profile } = await supabase
       .from('profiles')
       .select('role')
       .eq('id', user.id)
       .single()
 
-    if (!profile || profile.role !== 'super_admin') {
-      return NextResponse.json({ error: 'Super admin access required' }, { status: 403 })
+    if (!profile || !['super_admin', 'admin'].includes(profile.role)) {
+      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
 
     const { searchParams } = new URL(request.url)
@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // 최고 관리자 권한 확인
+    // 최고 관리자 권한 확인 (사용자 생성은 super_admin만 가능)
     const { data: profile } = await supabase
       .from('profiles')
       .select('role')

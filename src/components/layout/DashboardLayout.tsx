@@ -101,7 +101,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     }
   }
 
-  const isAdmin = user?.profile?.role === 'admin'
+  const isAdmin = user?.profile?.role === 'admin' || user?.profile?.role === 'super_admin'
 
   const drawer = (
     <div>
@@ -194,7 +194,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             </MenuItem>
             <MenuItem disabled>
               <Typography variant="caption" color="textSecondary">
-                {user?.profile?.role === 'admin' ? '관리자' : '사용자'}
+                {user?.profile?.role === 'super_admin' ? '최고 관리자' : 
+                 user?.profile?.role === 'admin' ? '관리자' : '사용자'}
               </Typography>
             </MenuItem>
             <Divider />
