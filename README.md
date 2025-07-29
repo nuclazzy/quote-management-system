@@ -197,3 +197,17 @@ npm run lighthouse
 
 **MotionSense 견적서 관리 시스템 v1.0**  
 개발팀: Claude AI Assistant
+# Quote Management System
+
+Modern quote management system built with Next.js 14, Supabase, and Material-UI.
+
+## Features
+- Quote creation and management
+- PDF generation
+- Customer management
+- Project conversion
+- Material-UI theme system with dark mode
+- Google OAuth authentication
+
+## Deployment
+Automatically deployed to Vercel on push to main branch.
