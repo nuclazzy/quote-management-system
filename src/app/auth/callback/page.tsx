@@ -12,40 +12,56 @@ export default function AuthCallbackPage() {
   const [errorMessage, setErrorMessage] = useState<string>('')
 
   const processUser = async (user: any) => {
-    console.log('Processing user:', user)
+    console.log('🔄 Processing user:', {
+      id: user.id,
+      email: user.email,
+      metadata: user.user_metadata
+    })
     
     // 도메인 제한 확인
     if (!user.email?.endsWith('@motionsense.co.kr')) {
-      console.log('Domain restriction failed:', user.email)
+      console.log('❌ Domain restriction failed:', user.email)
       await supabase.auth.signOut()
       setStatus('error')
       setErrorMessage('접근이 제한된 도메인입니다. @motionsense.co.kr 계정을 사용해주세요.')
       return
     }
 
+    console.log('✅ Domain check passed for:', user.email)
+
     // 프로필 생성/업데이트
     try {
-      console.log('Attempting to upsert profile for:', user.email)
-      await AuthService.upsertProfile(
+      console.log('🔄 Attempting to upsert profile for:', {
+        userId: user.id,
+        email: user.email,
+        fullName: user.user_metadata?.full_name || user.user_metadata?.name
+      })
+      
+      const profile = await AuthService.upsertProfile(
         user.id,
         user.email,
         user.user_metadata?.full_name || user.user_metadata?.name || user.email.split('@')[0]
       )
-      console.log('Profile upsert successful')
+      
+      console.log('✅ Profile upsert successful:', profile)
     } catch (profileError) {
-      console.error('Profile upsert error:', profileError)
-      // 프로필 생성 실패 시 에러 표시
+      console.error('❌ Profile upsert error:', {
+        error: profileError,
+        message: profileError instanceof Error ? profileError.message : profileError,
+        stack: profileError instanceof Error ? profileError.stack : undefined
+      })
+      
       setStatus('error')
       setErrorMessage(`프로필 생성 실패: ${profileError instanceof Error ? profileError.message : '알 수 없는 오류'}`)
       return
     }
 
-    console.log('Setting success status')
+    console.log('✅ Setting success status')
     setStatus('success')
     
     // 성공 시 대시보드로 리디렉트
     setTimeout(() => {
-      console.log('Redirecting to dashboard')
+      console.log('🔄 Redirecting to dashboard')
       router.push('/dashboard')
     }, 1000)
   }

@@ -84,9 +84,15 @@ export class AuthService {
    * 프로필 생성 또는 업데이트 (데이터베이스 함수 사용)
    */
   static async upsertProfile(userId: string, email: string, fullName?: string): Promise<Profile> {
-    console.log('Calling upsert_user_profile with:', { userId, email, fullName })
+    console.log('🔄 AuthService.upsertProfile called with:', {
+      userId,
+      email,
+      fullName,
+      timestamp: new Date().toISOString()
+    })
     
     try {
+      console.log('🔄 Attempting Supabase RPC call to upsert_user_profile...')
       const { data, error } = await supabase.rpc('upsert_user_profile', {
         p_user_id: userId,
         p_email: email,
@@ -94,36 +100,66 @@ export class AuthService {
       })
 
       if (error) {
-        console.error('Supabase RPC error:', error)
-        throw new Error(`프로필 생성/업데이트 실패: ${error.message}`)
+        console.error('❌ Supabase RPC error:', {
+          error,
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        })
+        throw new Error(`RPC 프로필 생성/업데이트 실패: ${error.message}`)
       }
 
-      console.log('Profile upsert result:', data)
+      console.log('✅ RPC Profile upsert successful:', data)
       return data
     } catch (error) {
-      console.error('upsertProfile error:', error)
+      console.error('❌ RPC upsertProfile error, trying fallback:', {
+        error,
+        message: error instanceof Error ? error.message : error,
+        type: typeof error
+      })
       
       // 함수가 없으면 직접 테이블에 upsert
-      console.log('Falling back to direct table upsert')
-      const { data, error: directError } = await supabase
-        .from('profiles')
-        .upsert({
+      console.log('🔄 Falling back to direct table upsert...')
+      
+      try {
+        const profileData = {
           id: userId,
           email,
           full_name: fullName,
           role: email === 'lewis@motionsense.co.kr' ? 'super_admin' : 'member',
           is_active: true
-        }, {
-          onConflict: 'id'
+        }
+        
+        console.log('🔄 Direct table upsert data:', profileData)
+        
+        const { data, error: directError } = await supabase
+          .from('profiles')
+          .upsert(profileData, {
+            onConflict: 'id'
+          })
+          .select()
+          .single()
+
+        if (directError) {
+          console.error('❌ Direct table upsert error:', {
+            error: directError,
+            code: directError.code,
+            message: directError.message,
+            details: directError.details
+          })
+          throw new Error(`직접 프로필 생성/업데이트 실패: ${directError.message}`)
+        }
+
+        console.log('✅ Direct table upsert successful:', data)
+        return data
+      } catch (fallbackError) {
+        console.error('❌ Fallback upsert also failed:', {
+          error: fallbackError,
+          message: fallbackError instanceof Error ? fallbackError.message : fallbackError
         })
-        .select()
-        .single()
-
-      if (directError) {
-        throw new Error(`직접 프로필 생성/업데이트 실패: ${directError.message}`)
+        throw fallbackError
       }
-
-      return data
     }
   }
 
