@@ -6,7 +6,6 @@ import {
   Grid,
   Typography,
   Button,
-  Paper,
   List,
   ListItem,
   ListItemText,
@@ -61,7 +60,7 @@ export default function DashboardPage() {
       setStats(dashboardStats);
     } catch (err) {
       const errorMessage = handleError(err);
-      setError(errorMessage);
+      setError(errorMessage || '알 수 없는 오류가 발생했습니다.');
     } finally {
       setLoading(false);
     }
@@ -242,7 +241,7 @@ export default function DashboardPage() {
                           >
                             {quote.project_title}
                           </Typography>
-                          <QuoteStatusChip status={quote.status} />
+                          <QuoteStatusChip status={quote.status as any} />
                         </Box>
                       }
                       secondary={
