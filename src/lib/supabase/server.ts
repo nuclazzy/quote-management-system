@@ -1,8 +1,8 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { Database } from '@/types/database'
 
-export const createServerClient = () => {
+export const createClient = async () => {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
@@ -12,7 +12,7 @@ export const createServerClient = () => {
 
   const cookieStore = cookies()
 
-  return createClient<Database>(supabaseUrl, supabaseKey, {
+  return createSupabaseClient<Database>(supabaseUrl, supabaseKey, {
     auth: {
       storage: {
         getItem: (key: string) => {

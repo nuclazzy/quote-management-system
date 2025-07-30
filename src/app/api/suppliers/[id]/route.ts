@@ -1,175 +1,215 @@
-import { NextRequest } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
-import { withAuth } from '../../lib/middleware/auth'
-import { withErrorHandler } from '../../lib/middleware/error-handler'
-import { withValidation } from '../../lib/middleware/validation'
-import { withRateLimit, RateLimitPresets } from '../../lib/middleware/rate-limit'
-import { 
-  createSuccessResponse, 
-  createUpdatedResponse,
-  createDeletedResponse,
-  createNotFoundResponse,
-  createMethodNotAllowedResponse 
-} from '../../lib/utils/response'
-import { SupplierSchema } from '../../lib/schemas/common'
-import { extractIdFromPath } from '../../lib/utils/helpers'
-import { NotFoundError } from '../../lib/middleware/error-handler'
-import type { Database } from '@/types/database'
-import type { AuthenticatedRequest } from '../../lib/middleware/auth'
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+import { getUser } from '@/lib/auth/get-user'
 
-/**
- * GET /api/suppliers/[id] - 공급업체 상세 조회
- */
-async function handleGet(req: AuthenticatedRequest) {
-  const supabase = createRouteHandlerClient<Database>({ cookies })
-  const supplierId = extractIdFromPath(req)
-  
-  const { data, error } = await supabase
-    .from('suppliers')
-    .select('*')
-    .eq('id', supplierId)
-    .single()
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const supabase = await createClient()
+    const user = await getUser()
 
-  if (error) {
-    if (error.code === 'PGRST116') {
-      throw new NotFoundError('공급업체')
+    if (!user) {
+      return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 })
     }
-    throw new Error(`공급업체 조회 실패: ${error.message}`)
-  }
 
-  return createSuccessResponse(data, '공급업체 정보를 성공적으로 조회했습니다.')
-}
-
-/**
- * PUT /api/suppliers/[id] - 공급업체 수정
- */
-async function handlePut(req: AuthenticatedRequest, validatedData: any) {
-  const supabase = createRouteHandlerClient<Database>({ cookies })
-  const supplierId = extractIdFromPath(req)
-  
-  const { data, error } = await supabase
-    .from('suppliers')
-    .update({
-      ...validatedData,
-      updated_at: new Date().toISOString()
-    })
-    .eq('id', supplierId)
-    .select()
-    .single()
-
-  if (error) {
-    if (error.code === 'PGRST116') {
-      throw new NotFoundError('공급업체')
-    }
-    if (error.code === '23505') {
-      throw new Error('이미 존재하는 공급업체 정보입니다.')
-    }
-    throw new Error(`공급업체 수정 실패: ${error.message}`)
-  }
-
-  return createUpdatedResponse(data, '공급업체 정보가 성공적으로 수정되었습니다.')
-}
-
-/**
- * DELETE /api/suppliers/[id] - 공급업체 삭제 (논리 삭제)
- */
-async function handleDelete(req: AuthenticatedRequest) {
-  const supabase = createRouteHandlerClient<Database>({ cookies })
-  const supplierId = extractIdFromPath(req)
-  
-  // 해당 공급업체를 사용하는 견적서 세부내용이 있는지 확인
-  const { data: quoteDetails, error: detailsError } = await supabase
-    .from('quote_details')
-    .select('id')
-    .eq('supplier_id', supplierId)
-    .limit(1)
-
-  if (detailsError) {
-    throw new Error(`공급업체 사용 여부 확인 실패: ${detailsError.message}`)
-  }
-
-  if (quoteDetails && quoteDetails.length > 0) {
-    // 사용 중인 공급업체는 비활성화만 가능
-    const { data, error } = await supabase
+    const { data: supplier, error } = await supabase
       .from('suppliers')
-      .update({ 
-        is_active: false,
-        updated_at: new Date().toISOString()
+      .select(`
+        *,
+        created_by_profile:profiles!suppliers_created_by_fkey(id, full_name, email),
+        updated_by_profile:profiles!suppliers_updated_by_fkey(id, full_name, email)
+      `)
+      .eq('id', params.id)
+      .single()
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return NextResponse.json({ error: '공급업체를 찾을 수 없습니다.' }, { status: 404 })
+      }
+      console.error('Supplier fetch error:', error)
+      return NextResponse.json({ error: '공급업체 조회에 실패했습니다.' }, { status: 500 })
+    }
+
+    return NextResponse.json({ supplier })
+
+  } catch (error) {
+    console.error('Supplier GET API error:', error)
+    return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 })
+  }
+}
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const supabase = await createClient()
+    const user = await getUser()
+
+    if (!user) {
+      return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 })
+    }
+
+    const body = await request.json()
+    const {
+      name,
+      business_registration_number,
+      contact_person,
+      email,
+      phone,
+      address,
+      postal_code,
+      website,
+      payment_terms,
+      lead_time_days,
+      quality_rating,
+      notes,
+      is_active
+    } = body
+
+    // 필수 필드 검증
+    if (!name) {
+      return NextResponse.json({ error: '공급업체명은 필수입니다.' }, { status: 400 })
+    }
+
+    // 이메일 형식 검증
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return NextResponse.json({ error: '올바른 이메일 형식이 아닙니다.' }, { status: 400 })
+    }
+
+    // 품질 평가 검증
+    if (quality_rating && (quality_rating < 1 || quality_rating > 5)) {
+      return NextResponse.json({ error: '품질 평가는 1-5 사이의 값이어야 합니다.' }, { status: 400 })
+    }
+
+    // 납기일수 검증
+    if (lead_time_days && lead_time_days < 0) {
+      return NextResponse.json({ error: '납기일수는 0 이상이어야 합니다.' }, { status: 400 })
+    }
+
+    // 사업자번호 중복 체크 (자신 제외)
+    if (business_registration_number) {
+      const { data: existingSupplier } = await supabase
+        .from('suppliers')
+        .select('id')
+        .eq('business_registration_number', business_registration_number)
+        .neq('id', params.id)
+        .single()
+
+      if (existingSupplier) {
+        return NextResponse.json({ error: '이미 등록된 사업자번호입니다.' }, { status: 400 })
+      }
+    }
+
+    const { data: supplier, error } = await supabase
+      .from('suppliers')
+      .update({
+        name,
+        business_registration_number: business_registration_number || null,
+        contact_person: contact_person || null,
+        email: email || null,
+        phone: phone || null,
+        address: address || null,
+        postal_code: postal_code || null,
+        website: website || null,
+        payment_terms: payment_terms || null,
+        lead_time_days: lead_time_days || 0,
+        quality_rating: quality_rating || null,
+        notes: notes || null,
+        is_active: is_active !== undefined ? is_active : true,
+        updated_by: user.id
       })
-      .eq('id', supplierId)
+      .eq('id', params.id)
       .select()
       .single()
 
     if (error) {
       if (error.code === 'PGRST116') {
-        throw new NotFoundError('공급업체')
+        return NextResponse.json({ error: '공급업체를 찾을 수 없습니다.' }, { status: 404 })
       }
-      throw new Error(`공급업체 비활성화 실패: ${error.message}`)
+      console.error('Supplier update error:', error)
+      return NextResponse.json({ error: '공급업체 수정에 실패했습니다.' }, { status: 500 })
     }
 
-    return createUpdatedResponse(
-      data, 
-      '견적서에서 사용 중인 공급업체는 삭제할 수 없어 비활성화되었습니다.'
-    )
-  } else {
-    // 사용하지 않는 공급업체는 완전 삭제
-    const { error } = await supabase
-      .from('suppliers')
-      .delete()
-      .eq('id', supplierId)
+    return NextResponse.json({ supplier })
 
-    if (error) {
-      if (error.code === 'PGRST116') {
-        throw new NotFoundError('공급업체')
-      }
-      throw new Error(`공급업체 삭제 실패: ${error.message}`)
-    }
-
-    return createDeletedResponse('공급업체가 성공적으로 삭제되었습니다.')
+  } catch (error) {
+    console.error('Supplier PUT API error:', error)
+    return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 })
   }
 }
 
-/**
- * 메서드별 핸들러 래핑
- */
-const getHandler = withAuth(
-  withRateLimit(
-    RateLimitPresets.standard,
-    handleGet
-  )
-)
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const supabase = await createClient()
+    const user = await getUser()
 
-const putHandler = withAuth(
-  withRateLimit(
-    RateLimitPresets.standard,
-    withValidation(
-      SupplierSchema,
-      handlePut
-    )
-  )
-)
+    if (!user) {
+      return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 })
+    }
 
-const deleteHandler = withAuth(
-  withRateLimit(
-    RateLimitPresets.standard,
-    handleDelete
-  ),
-  { requireAdmin: true } // 공급업체 삭제는 관리자만 가능
-)
+    // 해당 공급업체를 사용하는 견적서 세부내용이 있는지 확인
+    const { data: quoteDetails, error: detailsError } = await supabase
+      .from('quote_details')
+      .select('id')
+      .eq('supplier_id', params.id)
+      .limit(1)
 
-/**
- * 라우트 핸들러
- */
-export const GET = withErrorHandler(getHandler)
-export const PUT = withErrorHandler(putHandler)
-export const DELETE = withErrorHandler(deleteHandler)
+    if (detailsError) {
+      console.error('Quote details check error:', detailsError)
+      return NextResponse.json({ error: '공급업체 사용 여부 확인에 실패했습니다.' }, { status: 500 })
+    }
 
-// 허용되지 않는 메서드에 대한 응답
-export async function POST() {
-  return createMethodNotAllowedResponse(['GET', 'PUT', 'DELETE'])
+    if (quoteDetails && quoteDetails.length > 0) {
+      // 사용 중인 공급업체는 비활성화만 가능
+      const { data: supplier, error } = await supabase
+        .from('suppliers')
+        .update({ 
+          is_active: false,
+          updated_by: user.id
+        })
+        .eq('id', params.id)
+        .select()
+        .single()
+
+      if (error) {
+        if (error.code === 'PGRST116') {
+          return NextResponse.json({ error: '공급업체를 찾을 수 없습니다.' }, { status: 404 })
+        }
+        console.error('Supplier deactivation error:', error)
+        return NextResponse.json({ error: '공급업체 비활성화에 실패했습니다.' }, { status: 500 })
+      }
+
+      return NextResponse.json({ 
+        supplier,
+        message: '견적서에서 사용 중인 공급업체는 삭제할 수 없어 비활성화되었습니다.'
+      })
+    } else {
+      // 사용하지 않는 공급업체는 완전 삭제
+      const { error } = await supabase
+        .from('suppliers')
+        .delete()
+        .eq('id', params.id)
+
+      if (error) {
+        if (error.code === 'PGRST116') {
+          return NextResponse.json({ error: '공급업체를 찾을 수 없습니다.' }, { status: 404 })
+        }
+        console.error('Supplier deletion error:', error)
+        return NextResponse.json({ error: '공급업체 삭제에 실패했습니다.' }, { status: 500 })
+      }
+
+      return NextResponse.json({ message: '공급업체가 성공적으로 삭제되었습니다.' })
+    }
+
+  } catch (error) {
+    console.error('Supplier DELETE API error:', error)
+    return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 })
+  }
 }
 
-export async function PATCH() {
-  return createMethodNotAllowedResponse(['GET', 'PUT', 'DELETE'])
-}

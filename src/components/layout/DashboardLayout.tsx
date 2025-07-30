@@ -53,6 +53,7 @@ const navItems: NavItem[] = [
   { text: '대시보드', icon: <Dashboard />, path: '/dashboard' },
   { text: '견적서', icon: <Description />, path: '/quotes' },
   { text: '고객사', icon: <People />, path: '/customers' },
+  { text: '고객사 (신규)', icon: <People />, path: '/clients' },
   { text: '공급처', icon: <Business />, path: '/suppliers' },
   { text: '품목 관리', icon: <Inventory />, path: '/items' },
   { text: '프로젝트', icon: <Analytics />, path: '/projects' },

@@ -16,7 +16,7 @@
     "analyze": "ANALYZE=true npm run build",
     "lighthouse": "lighthouse http://localhost:3000 --output=json --output-path=./lighthouse-report.json",
     "bundle-analyzer": "npx @next/bundle-analyzer",
-    "db:migrate": "echo 'Run Supabase migrations manually'",
+    "db:migrate": "node scripts/run-migration.js",
     "db:reset": "echo 'Reset database using Supabase dashboard'",
     "db:seed": "node scripts/seed.js",
     "test": "echo 'No tests specified yet'",

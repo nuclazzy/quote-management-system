@@ -1,0 +1,317 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Fixed Authentication and Authorization Issues",
+        "description": "Resolved the Google OAuth infinite loading bug and completed the feature for assigning permissions to newly added users, ensuring system stability.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "high",
+        "details": "The OAuth infinite redirect loop was fixed by modifying the `AuthService.upsertProfile` function to be compatible with migration #17. The user permission assignment feature was implemented using the `UserPermissionsDialog` component, allowing super_admins to assign roles (admin, member) to new users. The permission system is now fully functional and integrated with Supabase RLS policies.",
+        "testStrategy": "Manually tested the login flow with multiple @motionsense.co.kr accounts, confirming the infinite loop was resolved. As a super_admin, successfully added a new user, assigned the 'member' role via the new UI, and confirmed their restricted access by logging in as that user. All tests passed.",
+        "subtasks": []
+      },
+      {
+        "id": 2,
+        "title": "Design and Implement Core Database Schema in Supabase",
+        "description": "Successfully created a comprehensive core database schema via the `18_core_business_schema.sql` migration. This schema supports all core business entities and logic, including clients, suppliers, items, quotes, and projects.",
+        "status": "done",
+        "dependencies": [
+          1
+        ],
+        "priority": "high",
+        "details": "Implemented a comprehensive schema in the `18_core_business_schema.sql` migration file.\n\n**Tables Created:**\n- `clients`: Manages customer information (business number, contact, address).\n- `suppliers`: Manages supplier data (payment terms, lead time, quality score).\n- `item_categories`: Supports hierarchical category structures.\n- `items`: Master item list (SKU, price, stock, tech specs as JSON, image URLs).\n- `projects`: Tracks project status (progress, budget, priority).\n- `quotes`: Manages quotes with auto-numbering, versioning, and an approval workflow.\n- `quote_items`: Snapshot-based link table for quote details.\n- `quote_sequences`: Manages the auto-incrementing quote number.\n- `item_price_history`: Automatically logs price changes.\n- `stock_movements`: Automatically tracks inventory changes.\n\n**Key Features Implemented:**\n- Automated quote numbering (Q-YYYY-MM-NNNN format).\n- Automated calculation of quote totals, including taxes and discounts.\n- Triggers for tracking stock levels and item price history.\n- RLS policies integrated with the existing user role system (from migration 17).\n- Support for quote versioning and an approval workflow.",
+        "testStrategy": "The schema was reviewed against PRD requirements. The Supabase SQL editor was used to insert sample data, testing all joins, constraints, triggers, and RLS policies to ensure data integrity and the correctness of the automated business logic.",
+        "subtasks": []
+      },
+      {
+        "id": 3,
+        "title": "Implement Client Management (CRUD)",
+        "description": "Develop the UI and API endpoints for creating, reading, updating, and deleting client company information.",
+        "details": "Create a new page `/dashboard/clients`. Use Material-UI components like `Table` for the list view, `Modal` or a separate page for the create/edit form. Implement server actions or API routes in Next.js to interact with the Supabase `clients` table. Implement Row Level Security (RLS) to ensure only authorized users can manage clients.",
+        "testStrategy": "Perform CRUD operations: create a new client, verify it appears in the list, edit its details, and finally delete it. Check the database directly to confirm changes. Test access with different user roles ('admin' vs 'member').",
+        "priority": "high",
+        "dependencies": [
+          2
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Setup Supabase RLS and API for Reading Clients",
+            "description": "Configure Row Level Security (RLS) on the `clients` table in Supabase and create a Next.js server action or API route to securely fetch the list of clients.",
+            "dependencies": [],
+            "details": "Define RLS policies in Supabase to ensure users can only read clients associated with their user account or organization. Implement the server-side logic in a Next.js API route or Server Action to query the `clients` table via the Supabase client.",
+            "status": "done",
+            "testStrategy": "Query the endpoint using tokens for different user roles (admin vs. member) to verify that the RLS policies correctly filter the returned client data."
+          },
+          {
+            "id": 2,
+            "title": "Build Client List View UI",
+            "description": "Develop the user interface for the `/dashboard/clients` page to display a list of clients in a table, including action buttons for CRUD operations.",
+            "dependencies": [
+              "3.1"
+            ],
+            "details": "Create the Next.js page at `/dashboard/clients`. Use the Material-UI `Table` component to display client data (e.g., Company Name, Contact, Email). The table should fetch data from the API created in subtask 3.1. Include a 'Create New Client' button and placeholder action buttons for 'Edit' and 'Delete' on each row.",
+            "status": "done",
+            "testStrategy": "Navigate to the `/dashboard/clients` page and confirm that it correctly fetches and renders client data in the table. Verify the table layout is responsive."
+          },
+          {
+            "id": 3,
+            "title": "Implement Client Creation Functionality",
+            "description": "Create the UI form and the backend logic to add a new client to the database.",
+            "dependencies": [
+              "3.1"
+            ],
+            "details": "Develop a form, either in a Material-UI `Modal` or on a separate page (e.g., `/dashboard/clients/new`), with input fields for client details. Implement a Next.js server action or API route that validates the submitted data and inserts a new record into the Supabase `clients` table.",
+            "status": "done",
+            "testStrategy": "Use the UI to create a new client. Verify the form shows validation errors for invalid input. After successful submission, confirm the new client appears in the list view and the record exists in the Supabase database."
+          },
+          {
+            "id": 4,
+            "title": "Implement Client Update Functionality",
+            "description": "Develop the UI and API to allow users to edit the details of an existing client.",
+            "dependencies": [
+              "3.2",
+              "3.3"
+            ],
+            "details": "Wire up the 'Edit' button in the client list table to open the client form (reusing the component from subtask 3.3), pre-populated with the selected client's data. The form submission should trigger a server action or API route that performs an `UPDATE` operation on the corresponding record in the Supabase `clients` table.",
+            "status": "done",
+            "testStrategy": "Select a client from the list and click 'Edit'. Modify one or more fields and save the changes. Verify that the client list updates with the new information and the changes are reflected in the database."
+          },
+          {
+            "id": 5,
+            "title": "Implement Client Deletion Functionality",
+            "description": "Add the ability for users to delete a client, including a confirmation step to prevent accidental deletion.",
+            "dependencies": [
+              "3.2"
+            ],
+            "details": "Implement the 'Delete' button's functionality in the client list. On click, display a Material-UI `Dialog` or `Modal` to confirm the action. Upon confirmation, call a server action or API route that executes a `DELETE` command on the specified client record in Supabase.",
+            "status": "done",
+            "testStrategy": "Click the 'Delete' button for a client. First, cancel the action from the confirmation dialog and verify nothing happens. Second, confirm the deletion and verify the client is removed from the UI list and the database."
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Implement Supplier Management (CRUD)",
+        "description": "Develop the UI and API endpoints for creating, reading, updating, and deleting supplier information.",
+        "details": "Similar to Client Management, create a page at `/dashboard/suppliers`. Use Material-UI components for the UI. Implement Next.js server actions/API routes to handle data manipulation in the Supabase `suppliers` table. Apply appropriate RLS policies.",
+        "testStrategy": "Perform full CRUD testing on supplier records. Verify that data is correctly saved and deleted from the database. Test access permissions for different user roles.",
+        "priority": "high",
+        "dependencies": [
+          2
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Define `suppliers` Table Schema and RLS Policies",
+            "description": "Create the `suppliers` table in Supabase with all necessary columns (e.g., name, contact_person, email, phone, address). Implement Row Level Security (RLS) policies to ensure users can only access data they are permitted to see, mirroring the client management policies.",
+            "dependencies": [],
+            "details": "The table schema should include columns for `id` (UUID, primary key), `created_at`, `name`, `contact_person`, `email`, `phone`, and `address`. RLS policies should be established for `SELECT`, `INSERT`, `UPDATE`, and `DELETE` operations, likely scoped to the user's organization or tenancy.",
+            "status": "done",
+            "testStrategy": "Verify the table and its columns exist in Supabase. Manually run SQL queries with different user roles (e.g., `SET ROLE authenticated;`) to confirm that RLS policies correctly restrict or allow access."
+          },
+          {
+            "id": 2,
+            "title": "Implement Server Actions/API for Supplier CRUD",
+            "description": "Develop the backend logic using Next.js server actions or API routes to handle creating, reading, updating, and deleting supplier records in the Supabase `suppliers` table.",
+            "dependencies": [
+              "4.1"
+            ],
+            "details": "Create functions such as `createSupplier`, `getSuppliers`, `updateSupplier`, and `deleteSupplier`. These functions will use the Supabase JS client to interact with the database. Ensure proper data validation and error handling are implemented for each action.",
+            "status": "done",
+            "testStrategy": "Use a tool like Postman or write unit/integration tests to call each server action/API endpoint directly. Verify that each operation (Create, Read, Update, Delete) correctly manipulates the data in the Supabase table and returns the expected response or error."
+          },
+          {
+            "id": 3,
+            "title": "Develop the Supplier List View UI",
+            "description": "Create the main page at `/dashboard/suppliers` to display a list of all suppliers. The UI should use Material-UI components, primarily a `Table`, to present the data fetched from the backend.",
+            "dependencies": [
+              "4.2"
+            ],
+            "details": "Use the Material-UI `Table` component with `TableHead`, `TableBody`, and `TableRow` to structure the supplier list. The page should call the `getSuppliers` action to fetch data. Include a prominent 'Add New Supplier' button. Each row should have action buttons for 'Edit' and 'Delete'.",
+            "status": "done",
+            "testStrategy": "Navigate to `/dashboard/suppliers`. Verify that the page loads and displays a list of mock or existing suppliers correctly. Check that the table headers and data align. Ensure the 'Add New Supplier' button is visible."
+          },
+          {
+            "id": 4,
+            "title": "Create the UI Form for Adding and Editing Suppliers",
+            "description": "Implement a form, likely within a Material-UI `Dialog` (modal), for creating new suppliers and editing existing ones. The form should handle user input, validation, and submission.",
+            "dependencies": [
+              "4.2"
+            ],
+            "details": "The form should contain Material-UI `TextField` components for all editable supplier fields. Implement client-side validation for required fields like name and email format. On submission, the form should call the `createSupplier` or `updateSupplier` server action. When editing, the form must be pre-populated with the selected supplier's data.",
+            "status": "done",
+            "testStrategy": "Click the 'Add New Supplier' button and verify the form modal opens. Fill out and submit the form, then check if the new supplier appears in the list. Click an 'Edit' button, verify the form opens with the correct data, make a change, submit, and confirm the list view updates."
+          },
+          {
+            "id": 5,
+            "title": "Integrate Delete Functionality and Finalize UI",
+            "description": "Connect the 'Delete' button in the supplier list to the `deleteSupplier` server action, implementing a confirmation dialog to prevent accidental deletions. Perform end-to-end testing of the entire CRUD workflow.",
+            "dependencies": [
+              "4.3",
+              "4.4"
+            ],
+            "details": "The 'Delete' button on each table row will trigger a Material-UI `Dialog` asking for user confirmation. Upon confirmation, the `deleteSupplier` action is called. After a successful action, the UI should refresh to reflect the change. Ensure loading states and user feedback (e.g., toast notifications) are in place for all CRUD operations.",
+            "status": "done",
+            "testStrategy": "Click the 'Delete' button for a supplier. Verify a confirmation modal appears. Cancel the action and confirm the supplier remains. Click 'Delete' again and confirm the action. Verify the supplier is removed from the list and the database."
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Implement Item Management (CRUD) with Categories and SKU",
+        "description": "Build the interface for managing products/items, including categorization, pricing, stock levels, and SKU management.",
+        "details": "Create a page at `/dashboard/items`. The UI should allow creating items and assigning them to categories (which should also be manageable). The item form must include fields for name, category, SKU, price, and stock quantity. Implement the backend logic to manage the `items` and `item_categories` tables in Supabase.",
+        "testStrategy": "Create several item categories. Add items to each category. Test the ability to update an item's price and stock level. Verify that SKUs are unique. Attempt to create an item without a required field to test validation.",
+        "priority": "high",
+        "dependencies": [
+          2
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 6,
+        "title": "Develop Quote Creation Form",
+        "description": "Create a comprehensive form in Next.js for generating new quotes, allowing users to select clients and add multiple items.",
+        "details": "Build a new page at `/dashboard/quotes/new`. The form should have a selector for clients (fetching from the `clients` table) and a dynamic section to add/remove items (fetching from the `items` table). Use Material-UI's `Autocomplete` for client/item selection. The form should automatically calculate the total price as items are added.",
+        "testStrategy": "Test the form's functionality. Ensure the client dropdown populates correctly. Add multiple items to a quote, change quantities, and verify that the total amount updates in real-time. Check form validation for required fields.",
+        "priority": "high",
+        "dependencies": [
+          3,
+          5
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 7,
+        "title": "Implement Quote List and Detail View",
+        "description": "Create a page to list all existing quotes with search and filter capabilities, and a detail page to view a single quote.",
+        "details": "Develop the `/dashboard/quotes` page using a Material-UI `Table` to display quotes with key information (ID, client, date, total, status). Implement server-side search and filtering (by client, status). Clicking a quote should navigate to `/dashboard/quotes/[id]`, which displays all details of the selected quote.",
+        "testStrategy": "Create multiple quotes with different clients and statuses. Test the search functionality by typing a client's name. Test the filters by selecting a status (e.g., 'Approved'). Verify that the detail page shows the correct information for the selected quote.",
+        "priority": "high",
+        "dependencies": [
+          6
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 8,
+        "title": "Enable Quote Editing and Deletion",
+        "description": "Implement the functionality for users to edit and delete existing quotes, subject to permissions.",
+        "details": "On the quote detail page (`/dashboard/quotes/[id]`), add 'Edit' and 'Delete' buttons. The 'Edit' button should lead to a pre-filled version of the creation form. The 'Delete' button should prompt for confirmation before removing the quote. Implement RLS policies to ensure users can only edit/delete their own quotes (or all quotes if they are an admin).",
+        "testStrategy": "As a 'member', create a quote, edit it, and verify the changes. Try to edit another user's quote and confirm access is denied. As an 'admin', verify you can edit any quote. Test the delete functionality and confirm the record is removed from the database.",
+        "priority": "high",
+        "dependencies": [
+          7
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 9,
+        "title": "Implement Quote Approval Workflow",
+        "description": "Design and implement a status-based workflow for quote approval (e.g., Draft, Pending Approval, Approved, Rejected).",
+        "details": "Add a 'status' column to the `quotes` table with predefined states. When a 'member' creates a quote, it defaults to 'Draft' or 'Pending Approval'. On the quote detail page, 'admin' users should see buttons to 'Approve' or 'Reject' the quote, which updates its status in the database. The ability to edit a quote should be disabled once it's approved.",
+        "testStrategy": "1. A 'member' creates a quote. 2. Verify its status is 'Pending Approval'. 3. Log in as an 'admin', navigate to the quote, and approve it. 4. Verify the status changes to 'Approved'. 5. Log back in as the 'member' and confirm they can no longer edit the approved quote.",
+        "priority": "high",
+        "dependencies": [
+          8
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 10,
+        "title": "Implement PDF Export for Quotes",
+        "description": "Create a feature to generate and download a PDF version of any given quote. This is a key success criterion.",
+        "details": "On the quote detail page, add a 'Download as PDF' button. Use a library like `jspdf` and `jspdf-autotable` on the client-side, or set up a Vercel Serverless Function to generate the PDF on the server-side for better performance and consistency. The PDF should be professionally formatted with the company logo, client details, itemized list, and total price.",
+        "testStrategy": "Generate a PDF for a quote with multiple items. Open the downloaded file and verify that all information is correct and the layout is clean. Test with quotes that have long client names or many line items to check for formatting issues.",
+        "priority": "high",
+        "dependencies": [
+          7
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 11,
+        "title": "Implement Project Management Feature",
+        "description": "Allow users to create projects and group multiple quotes under a single project to track overall progress.",
+        "details": "Create a `projects` table in Supabase. Update the quote creation/editing form to include an optional 'Project' selection field. Create a new page `/dashboard/projects/[id]` that displays project details and a list of all associated quotes with their statuses.",
+        "testStrategy": "Create a new project. Create two new quotes and assign them to this project. Go to the project's detail page and verify that both quotes are listed. Check that the project's overall status can be tracked or updated.",
+        "priority": "medium",
+        "dependencies": [
+          8
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 12,
+        "title": "Develop Sales Status Report",
+        "description": "Create a report or dashboard page that shows 매출 현황 (sales status) based on approved quotes.",
+        "details": "Create a new page `/dashboard/reports/sales`. Use a library like `recharts` or `chart.js` to visualize data. The report should display key metrics like total value of approved quotes per month, number of quotes created vs. approved, and revenue by client. Data should be fetched from the `quotes` table, filtering for 'Approved' status.",
+        "testStrategy": "Approve several quotes with different amounts and dates. Visit the sales report page and verify that the charts and totals accurately reflect the approved quote data. Filter the report by a date range and confirm the data updates correctly.",
+        "priority": "medium",
+        "dependencies": [
+          9
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 13,
+        "title": "Implement Basic Notification System",
+        "description": "Set up a system to notify users about important events, starting with quote approvals and rejections.",
+        "details": "Use Supabase Realtime Subscriptions or database webhooks/triggers. When a quote's status is changed to 'Approved' or 'Rejected' by an admin, create a notification record for the user who created the quote. Display a notification bell icon in the main navigation that shows a count of unread notifications.",
+        "testStrategy": "As a 'member', create a quote. As an 'admin', approve it. Log back in as the 'member' and verify that a notification appears, indicating the quote was approved.",
+        "priority": "low",
+        "dependencies": [
+          9
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 14,
+        "title": "Implement System Settings and Configuration",
+        "description": "Create a settings page for admins to manage system-wide configurations.",
+        "details": "Create a page `/dashboard/settings` accessible only to admins. Initial settings could include company information (for PDF headers), default currency, or tax rates. Store these settings in a dedicated `system_settings` table in Supabase.",
+        "testStrategy": "As an admin, navigate to the settings page and update the company address. Generate a new PDF quote and verify that the updated address appears in the header.",
+        "priority": "low",
+        "dependencies": [
+          10
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 15,
+        "title": "Ensure Responsive Design for Mobile Use",
+        "description": "Review and polish all implemented features to ensure they are fully responsive and usable on mobile devices.",
+        "details": "Use Material-UI's grid system (`<Grid>`), responsive helpers (`sx` prop with breakpoints), and mobile-first components (`Drawer` for navigation). Test all major user flows: logging in, viewing the dashboard, creating a client, and creating/viewing a quote on a small screen.",
+        "testStrategy": "Use browser developer tools to simulate different device sizes (e.g., iPhone, iPad). Perform key user journeys on each simulated device. Check for layout issues, text overflow, and difficult-to-tap buttons. Ensure tables are horizontally scrollable or adapt to a card layout on small screens.",
+        "priority": "high",
+        "dependencies": [
+          10,
+          11,
+          12
+        ],
+        "status": "pending",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2025-07-29T05:22:49.131Z",
+      "updated": "2025-07-29T10:02:30.704Z",
+      "description": "Tasks for master context"
+    }
+  }
+}

@@ -18,9 +18,6 @@ import {
   MenuItem,
   Alert,
   Snackbar,
-  FormControl,
-  InputLabel,
-  Select,
 } from '@mui/material'
 import {
   Add,
@@ -30,12 +27,14 @@ import {
   FileUpload,
   FileDownload,
   Search,
+  Business,
+  Language,
 } from '@mui/icons-material'
 import { DataGrid, GridColDef, GridActionsCellItem } from '@mui/x-data-grid'
 import { useForm, Controller } from 'react-hook-form'
 import { useAuth } from '@/contexts/AuthContext'
 
-interface Supplier {
+interface Client {
   id: string
   name: string
   business_registration_number?: string
@@ -45,9 +44,6 @@ interface Supplier {
   address?: string
   postal_code?: string
   website?: string
-  payment_terms?: string
-  lead_time_days?: number
-  quality_rating?: number
   notes?: string
   is_active: boolean
   created_at: string
@@ -66,7 +62,7 @@ interface Supplier {
   }
 }
 
-interface SupplierFormData {
+interface ClientFormData {
   name: string
   business_registration_number?: string
   contact_person?: string
@@ -75,31 +71,18 @@ interface SupplierFormData {
   address?: string
   postal_code?: string
   website?: string
-  payment_terms?: string
-  lead_time_days?: number
-  quality_rating?: number
   notes?: string
   is_active?: boolean
 }
 
-
-const paymentTermsOptions = [
-  '현금',
-  '월말결제',
-  '30일 후 결제',
-  '60일 후 결제',
-  '90일 후 결제',
-  '기타'
-]
-
-export default function SuppliersPage() {
+export default function ClientsPage() {
   const { user } = useAuth()
-  const [suppliers, setSuppliers] = useState<Supplier[]>([])
+  const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null)
+  const [editingClient, setEditingClient] = useState<Client | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [supplierToDelete, setSupplierToDelete] = useState<Supplier | null>(null)
+  const [clientToDelete, setClientToDelete] = useState<Client | null>(null)
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' })
@@ -109,42 +92,39 @@ export default function SuppliersPage() {
     handleSubmit,
     reset,
     formState: { errors },
-  } = useForm<SupplierFormData>({
+  } = useForm<ClientFormData>({
     defaultValues: {
       name: '',
       business_registration_number: '',
       contact_person: '',
-      phone: '',
       email: '',
+      phone: '',
       address: '',
       postal_code: '',
       website: '',
-      payment_terms: '',
-      lead_time_days: 0,
-      quality_rating: undefined,
       notes: '',
       is_active: true,
     },
   })
 
   useEffect(() => {
-    fetchSuppliers()
+    fetchClients()
   }, [])
 
-  const fetchSuppliers = async () => {
+  const fetchClients = async () => {
     try {
-      const response = await fetch('/api/suppliers')
+      const response = await fetch('/api/clients')
       if (response.ok) {
         const data = await response.json()
-        setSuppliers(data.suppliers || [])
+        setClients(data.clients || [])
       } else {
-        throw new Error('공급업체 정보를 불러오는데 실패했습니다.')
+        throw new Error('고객사 정보를 불러오는데 실패했습니다.')
       }
     } catch (error) {
-      console.error('Error fetching suppliers:', error)
+      console.error('Error fetching clients:', error)
       setSnackbar({
         open: true,
-        message: '공급업체 정보를 불러오는데 실패했습니다.',
+        message: '고객사 정보를 불러오는데 실패했습니다.',
         severity: 'error'
       })
     } finally {
@@ -152,55 +132,49 @@ export default function SuppliersPage() {
     }
   }
 
-  const handleCreateSupplier = () => {
-    setEditingSupplier(null)
+  const handleCreateClient = () => {
+    setEditingClient(null)
     reset({
       name: '',
       business_registration_number: '',
       contact_person: '',
-      phone: '',
       email: '',
+      phone: '',
       address: '',
       postal_code: '',
       website: '',
-      payment_terms: '',
-      lead_time_days: 0,
-      quality_rating: undefined,
       notes: '',
       is_active: true,
     })
     setDialogOpen(true)
   }
 
-  const handleEditSupplier = (supplier: Supplier) => {
-    setEditingSupplier(supplier)
+  const handleEditClient = (client: Client) => {
+    setEditingClient(client)
     reset({
-      name: supplier.name,
-      business_registration_number: supplier.business_registration_number || '',
-      contact_person: supplier.contact_person || '',
-      phone: supplier.phone || '',
-      email: supplier.email || '',
-      address: supplier.address || '',
-      postal_code: supplier.postal_code || '',
-      website: supplier.website || '',
-      payment_terms: supplier.payment_terms || '',
-      lead_time_days: supplier.lead_time_days || 0,
-      quality_rating: supplier.quality_rating || undefined,
-      notes: supplier.notes || '',
-      is_active: supplier.is_active,
+      name: client.name,
+      business_registration_number: client.business_registration_number || '',
+      contact_person: client.contact_person || '',
+      email: client.email || '',
+      phone: client.phone || '',
+      address: client.address || '',
+      postal_code: client.postal_code || '',
+      website: client.website || '',
+      notes: client.notes || '',
+      is_active: client.is_active,
     })
     setDialogOpen(true)
   }
 
-  const handleDeleteSupplier = (supplier: Supplier) => {
-    setSupplierToDelete(supplier)
+  const handleDeleteClient = (client: Client) => {
+    setClientToDelete(client)
     setDeleteDialogOpen(true)
   }
 
-  const onSubmit = async (data: SupplierFormData) => {
+  const onSubmit = async (data: ClientFormData) => {
     try {
-      const url = editingSupplier ? `/api/suppliers/${editingSupplier.id}` : '/api/suppliers'
-      const method = editingSupplier ? 'PUT' : 'POST'
+      const url = editingClient ? `/api/clients/${editingClient.id}` : '/api/clients'
+      const method = editingClient ? 'PUT' : 'POST'
 
       const response = await fetch(url, {
         method,
@@ -213,30 +187,30 @@ export default function SuppliersPage() {
       if (response.ok) {
         setSnackbar({
           open: true,
-          message: editingSupplier ? '공급업체가 수정되었습니다.' : '공급업체가 생성되었습니다.',
+          message: editingClient ? '고객사가 수정되었습니다.' : '고객사가 생성되었습니다.',
           severity: 'success'
         })
         setDialogOpen(false)
-        fetchSuppliers()
+        fetchClients()
       } else {
         const errorData = await response.json()
-        throw new Error(errorData.error || '공급업체 저장에 실패했습니다.')
+        throw new Error(errorData.error || '고객사 저장에 실패했습니다.')
       }
     } catch (error) {
-      console.error('Error saving supplier:', error)
+      console.error('Error saving client:', error)
       setSnackbar({
         open: true,
-        message: error instanceof Error ? error.message : '공급업체 저장에 실패했습니다.',
+        message: error instanceof Error ? error.message : '고객사 저장에 실패했습니다.',
         severity: 'error'
       })
     }
   }
 
   const confirmDelete = async () => {
-    if (!supplierToDelete) return
+    if (!clientToDelete) return
 
     try {
-      const response = await fetch(`/api/suppliers/${supplierToDelete.id}`, {
+      const response = await fetch(`/api/clients/${clientToDelete.id}`, {
         method: 'DELETE',
       })
 
@@ -244,41 +218,38 @@ export default function SuppliersPage() {
         const data = await response.json()
         setSnackbar({
           open: true,
-          message: data.message || '공급업체가 삭제되었습니다.',
+          message: data.message || '고객사가 삭제되었습니다.',
           severity: 'success'
         })
         setDeleteDialogOpen(false)
-        setSupplierToDelete(null)
-        fetchSuppliers()
+        setClientToDelete(null)
+        fetchClients()
       } else {
         const errorData = await response.json()
-        throw new Error(errorData.error || '공급업체 삭제에 실패했습니다.')
+        throw new Error(errorData.error || '고객사 삭제에 실패했습니다.')
       }
     } catch (error) {
-      console.error('Error deleting supplier:', error)
+      console.error('Error deleting client:', error)
       setSnackbar({
         open: true,
-        message: error instanceof Error ? error.message : '공급업체 삭제에 실패했습니다.',
+        message: error instanceof Error ? error.message : '고객사 삭제에 실패했습니다.',
         severity: 'error'
       })
     }
   }
 
   const handleExportCSV = () => {
-    const csvData = suppliers.map(supplier => ({
-      회사명: supplier.name,
-      사업자번호: supplier.business_registration_number || '',
-      담당자: supplier.contact_person || '',
-      전화번호: supplier.phone || '',
-      이메일: supplier.email || '',
-      주소: supplier.address || '',
-      우편번호: supplier.postal_code || '',
-      웹사이트: supplier.website || '',
-      결제조건: supplier.payment_terms || '',
-      납기일수: supplier.lead_time_days || 0,
-      품질평가: supplier.quality_rating || '',
-      상태: supplier.is_active ? '활성' : '비활성',
-      생성일: new Date(supplier.created_at).toLocaleDateString('ko-KR'),
+    const csvData = clients.map(client => ({
+      회사명: client.name,
+      사업자번호: client.business_registration_number || '',
+      담당자: client.contact_person || '',
+      전화번호: client.phone || '',
+      이메일: client.email || '',
+      주소: client.address || '',
+      우편번호: client.postal_code || '',
+      웹사이트: client.website || '',
+      상태: client.is_active ? '활성' : '비활성',
+      생성일: new Date(client.created_at).toLocaleDateString('ko-KR'),
     }))
 
     const csvContent = [
@@ -289,15 +260,15 @@ export default function SuppliersPage() {
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
     const link = document.createElement('a')
     link.href = URL.createObjectURL(blob)
-    link.download = `공급업체_목록_${new Date().toISOString().split('T')[0]}.csv`
+    link.download = `고객사_목록_${new Date().toISOString().split('T')[0]}.csv`
     link.click()
   }
 
-  const filteredSuppliers = suppliers.filter(supplier =>
-    supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (supplier.contact_person && supplier.contact_person.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (supplier.email && supplier.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (supplier.business_registration_number && supplier.business_registration_number.toLowerCase().includes(searchTerm.toLowerCase()))
+  const filteredClients = clients.filter(client =>
+    client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (client.contact_person && client.contact_person.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (client.email && client.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (client.business_registration_number && client.business_registration_number.toLowerCase().includes(searchTerm.toLowerCase()))
   )
 
   const columns: GridColDef[] = [
@@ -308,6 +279,7 @@ export default function SuppliersPage() {
       flex: 1,
       renderCell: (params) => (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Business fontSize="small" color="primary" />
           <Typography variant="body2" fontWeight="medium">
             {params.value}
           </Typography>
@@ -318,55 +290,46 @@ export default function SuppliersPage() {
       field: 'business_registration_number', 
       headerName: '사업자번호', 
       width: 150,
-      valueFormatter: (params) => params || '-'
+      valueFormatter: (params) => params.value || '-'
     },
     { 
       field: 'contact_person', 
       headerName: '담당자', 
       width: 120,
-      valueFormatter: (params) => params || '-'
+      valueFormatter: (params) => params.value || '-'
     },
     { 
       field: 'phone', 
       headerName: '전화번호', 
       width: 130,
-      valueFormatter: (params) => params || '-'
+      valueFormatter: (params) => params.value || '-'
     },
     { 
       field: 'email', 
       headerName: '이메일', 
       width: 200, 
       flex: 1,
-      valueFormatter: (params) => params || '-'
-    },
-    { 
-      field: 'payment_terms', 
-      headerName: '결제조건', 
-      width: 120,
-      valueFormatter: (params) => params || '-'
+      valueFormatter: (params) => params.value || '-'
     },
     {
-      field: 'lead_time_days',
-      headerName: '납기(일)',
-      width: 80,
-      valueFormatter: (params) => params ? `${params}일` : '-'
-    },
-    {
-      field: 'quality_rating',
-      headerName: '품질평가',
-      width: 90,
+      field: 'website',
+      headerName: '웹사이트',
+      width: 150,
       renderCell: (params) => params.value ? (
-        <Chip
-          label={`${params.value}★`}
-          color={params.value >= 4 ? 'success' : params.value >= 3 ? 'warning' : 'error'}
-          size="small"
-        />
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          <Language fontSize="small" color="action" />
+          <Typography variant="body2" color="primary" sx={{ cursor: 'pointer' }}
+            onClick={() => window.open(params.value.startsWith('http') ? params.value : `https://${params.value}`, '_blank')}
+          >
+            {params.value}
+          </Typography>
+        </Box>
       ) : '-'
     },
     {
       field: 'is_active',
       headerName: '상태',
-      width: 80,
+      width: 100,
       renderCell: (params) => (
         <Chip
           label={params.value ? '활성' : '비활성'}
@@ -378,8 +341,8 @@ export default function SuppliersPage() {
     {
       field: 'created_at',
       headerName: '등록일',
-      width: 100,
-      valueFormatter: (params) => new Date(params).toLocaleDateString('ko-KR'),
+      width: 120,
+      valueFormatter: (params) => new Date(params.value).toLocaleDateString('ko-KR'),
     },
     {
       field: 'actions',
@@ -391,13 +354,13 @@ export default function SuppliersPage() {
           key="edit"
           icon={<Edit />}
           label="수정"
-          onClick={() => handleEditSupplier(params.row)}
+          onClick={() => handleEditClient(params.row)}
         />,
         <GridActionsCellItem
           key="delete"
           icon={<Delete />}
           label="삭제"
-          onClick={() => handleDeleteSupplier(params.row)}
+          onClick={() => handleDeleteClient(params.row)}
         />,
       ],
     },
@@ -407,7 +370,7 @@ export default function SuppliersPage() {
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4" component="h1">
-          공급업체 관리
+          고객사 관리
         </Typography>
         <Box sx={{ display: 'flex', gap: 1 }}>
           <Button
@@ -420,9 +383,9 @@ export default function SuppliersPage() {
           <Button
             variant="contained"
             startIcon={<Add />}
-            onClick={handleCreateSupplier}
+            onClick={handleCreateClient}
           >
-            공급업체 추가
+            고객사 추가
           </Button>
         </Box>
       </Box>
@@ -430,7 +393,7 @@ export default function SuppliersPage() {
       <Paper sx={{ mb: 3, p: 2 }}>
         <TextField
           fullWidth
-          placeholder="공급업체명, 담당자, 이메일, 사업자번호로 검색..."
+          placeholder="고객사명, 담당자, 이메일, 사업자번호로 검색..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           InputProps={{
@@ -441,7 +404,7 @@ export default function SuppliersPage() {
 
       <Paper sx={{ height: 600, width: '100%' }}>
         <DataGrid
-          rows={filteredSuppliers}
+          rows={filteredClients}
           columns={columns}
           loading={loading}
           checkboxSelection
@@ -455,7 +418,7 @@ export default function SuppliersPage() {
         />
       </Paper>
 
-      {/* 공급업체 생성/수정 다이얼로그 */}
+      {/* 고객사 생성/수정 다이얼로그 */}
       <Dialog
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
@@ -463,7 +426,7 @@ export default function SuppliersPage() {
         fullWidth
       >
         <DialogTitle>
-          {editingSupplier ? '공급업체 수정' : '공급업체 추가'}
+          {editingClient ? '고객사 수정' : '고객사 추가'}
         </DialogTitle>
         <form onSubmit={handleSubmit(onSubmit)}>
           <DialogContent>
@@ -505,6 +468,7 @@ export default function SuppliersPage() {
                 <Controller
                   name="contact_person"
                   control={control}
+                  rules={{ required: '담당자명은 필수입니다.' }}
                   render={({ field }) => (
                     <TextField
                       {...field}
@@ -569,65 +533,6 @@ export default function SuppliersPage() {
                   )}
                 />
               </Grid>
-              <Grid item xs={12} sm={6}>
-                <Controller
-                  name="payment_terms"
-                  control={control}
-                  render={({ field }) => (
-                    <FormControl fullWidth margin="normal">
-                      <InputLabel>결제조건</InputLabel>
-                      <Select
-                        {...field}
-                        label="결제조건"
-                      >
-                        {paymentTermsOptions.map((terms) => (
-                          <MenuItem key={terms} value={terms}>
-                            {terms}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  )}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <Controller
-                  name="lead_time_days"
-                  control={control}
-                  render={({ field }) => (
-                    <TextField
-                      {...field}
-                      fullWidth
-                      label="납기일수"
-                      type="number"
-                      inputProps={{ min: 0 }}
-                      margin="normal"
-                    />
-                  )}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <Controller
-                  name="quality_rating"
-                  control={control}
-                  render={({ field }) => (
-                    <FormControl fullWidth margin="normal">
-                      <InputLabel>품질평가</InputLabel>
-                      <Select
-                        {...field}
-                        label="품질평가"
-                      >
-                        <MenuItem value="">선택 안함</MenuItem>
-                        <MenuItem value={1}>1★ - 매우 낮음</MenuItem>
-                        <MenuItem value={2}>2★ - 낮음</MenuItem>
-                        <MenuItem value={3}>3★ - 보통</MenuItem>
-                        <MenuItem value={4}>4★ - 좋음</MenuItem>
-                        <MenuItem value={5}>5★ - 매우 좋음</MenuItem>
-                      </Select>
-                    </FormControl>
-                  )}
-                />
-              </Grid>
               <Grid item xs={12} sm={8}>
                 <Controller
                   name="address"
@@ -669,7 +574,7 @@ export default function SuppliersPage() {
                       label="메모"
                       multiline
                       rows={3}
-                      placeholder="공급업체 관련 메모를 입력하세요..."
+                      placeholder="고객사 관련 메모를 입력하세요..."
                       margin="normal"
                     />
                   )}
@@ -680,7 +585,7 @@ export default function SuppliersPage() {
           <DialogActions>
             <Button onClick={() => setDialogOpen(false)}>취소</Button>
             <Button type="submit" variant="contained">
-              {editingSupplier ? '수정' : '생성'}
+              {editingClient ? '수정' : '생성'}
             </Button>
           </DialogActions>
         </form>
@@ -691,13 +596,13 @@ export default function SuppliersPage() {
         open={deleteDialogOpen}
         onClose={() => setDeleteDialogOpen(false)}
       >
-        <DialogTitle>공급업체 삭제</DialogTitle>
+        <DialogTitle>고객사 삭제</DialogTitle>
         <DialogContent>
           <Typography>
-            '{supplierToDelete?.name}' 공급업체를 정말 삭제하시겠습니까?
+            '{clientToDelete?.name}' 고객사를 정말 삭제하시겠습니까?
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-            견적서에서 사용 중인 공급업체는 비활성화되며, 사용하지 않는 공급업체는 완전히 삭제됩니다.
+            견적서에서 사용 중인 고객사는 비활성화되며, 사용하지 않는 고객사는 완전히 삭제됩니다.
           </Typography>
         </DialogContent>
         <DialogActions>

@@ -1,112 +1,108 @@
 import { Database } from './database'
 
-// Database types
+// Database types - 새로운 스키마에 맞게 업데이트
 export type Quote = Database['public']['Tables']['quotes']['Row']
 export type QuoteInsert = Database['public']['Tables']['quotes']['Insert']
 export type QuoteUpdate = Database['public']['Tables']['quotes']['Update']
-
-export type QuoteGroup = Database['public']['Tables']['quote_groups']['Row']
-export type QuoteGroupInsert = Database['public']['Tables']['quote_groups']['Insert']
-export type QuoteGroupUpdate = Database['public']['Tables']['quote_groups']['Update']
 
 export type QuoteItem = Database['public']['Tables']['quote_items']['Row']
 export type QuoteItemInsert = Database['public']['Tables']['quote_items']['Insert']
 export type QuoteItemUpdate = Database['public']['Tables']['quote_items']['Update']
 
-export type QuoteDetail = Database['public']['Tables']['quote_details']['Row']
-export type QuoteDetailInsert = Database['public']['Tables']['quote_details']['Insert']
-export type QuoteDetailUpdate = Database['public']['Tables']['quote_details']['Update']
+export type Client = Database['public']['Tables']['clients']['Row']
+export type ClientInsert = Database['public']['Tables']['clients']['Insert']
+export type ClientUpdate = Database['public']['Tables']['clients']['Update']
 
-export type Customer = Database['public']['Tables']['customers']['Row']
 export type Supplier = Database['public']['Tables']['suppliers']['Row']
-export type MasterItem = Database['public']['Tables']['master_items']['Row']
+export type SupplierInsert = Database['public']['Tables']['suppliers']['Insert']
+export type SupplierUpdate = Database['public']['Tables']['suppliers']['Update']
 
-export type QuoteTotal = Database['public']['Views']['quote_totals']['Row']
+export type Item = Database['public']['Tables']['items']['Row']
+export type ItemInsert = Database['public']['Tables']['items']['Insert']
+export type ItemUpdate = Database['public']['Tables']['items']['Update']
 
-// Business logic types
+export type Project = Database['public']['Tables']['projects']['Row']
+export type ProjectInsert = Database['public']['Tables']['projects']['Insert']
+export type ProjectUpdate = Database['public']['Tables']['projects']['Update']
+
+export type QuoteSummary = Database['public']['Views']['quote_summary']['Row']
+export type ProjectStatusSummary = Database['public']['Views']['project_status_summary']['Row']
+
+// Business logic types - 단순화된 구조
 export interface QuoteFormData {
-  quote_number: string
-  project_title: string
-  customer_id?: string
-  customer_name_snapshot: string
-  issue_date: string
-  status: Quote['status']
-  vat_type: Quote['vat_type']
-  discount_amount: number
-  agency_fee_rate: number
-  notes?: string
-  groups: QuoteGroupFormData[]
-}
-
-export interface QuoteGroupFormData {
-  id?: string
-  name: string
-  sort_order: number
-  include_in_fee: boolean
+  quote_number?: string
+  title: string
+  description?: string
+  client_id: string
+  quote_date?: string
+  valid_until?: string
+  status?: Quote['status']
+  quote_type?: Quote['quote_type']
+  payment_terms?: string
+  delivery_terms?: string
+  special_terms?: string
+  internal_notes?: string
+  expected_order_date?: string
+  delivery_location?: string
+  warranty_period?: number
   items: QuoteItemFormData[]
 }
 
 export interface QuoteItemFormData {
   id?: string
-  name: string
-  sort_order: number
-  include_in_fee: boolean
-  details: QuoteDetailFormData[]
-}
-
-export interface QuoteDetailFormData {
-  id?: string
-  name: string
-  description?: string
+  item_id?: string
+  item_name: string
+  item_description?: string
+  item_sku?: string
+  specifications?: any
   quantity: number
-  days: number
-  unit: string
+  unit?: string
   unit_price: number
-  is_service: boolean
-  cost_price: number
+  cost_price?: number
   supplier_id?: string
-  supplier_name_snapshot?: string
+  supplier_name?: string
+  discount_rate?: number
+  discount_amount?: number
+  category?: string
+  sort_order?: number
+  is_optional?: boolean
+  lead_time_days?: number
+  delivery_terms?: string
+  notes?: string
 }
 
-// Complete quote with all relations
+// Complete quote with all relations - 단순화된 구조
 export interface QuoteWithDetails extends Quote {
-  groups: QuoteGroupWithDetails[]
-  customer?: Customer
-}
-
-export interface QuoteGroupWithDetails extends QuoteGroup {
   items: QuoteItemWithDetails[]
+  client?: Client
+  project?: Project
 }
 
 export interface QuoteItemWithDetails extends QuoteItem {
-  details: QuoteDetailWithDetails[]
-}
-
-export interface QuoteDetailWithDetails extends QuoteDetail {
+  item?: Item
   supplier?: Supplier
 }
 
 // Filter and search types
 export interface QuoteFilter {
   status?: Quote['status'][]
-  customer_id?: string[]
+  client_id?: string[]
+  quote_type?: Quote['quote_type'][]
   date_from?: string
   date_to?: string
   amount_min?: number
   amount_max?: number
   search?: string
   created_by?: string[]
+  assigned_to?: string[]
 }
 
 // Calculation types
 export interface QuoteCalculation {
   subtotal: number
-  feeApplicableAmount: number
-  agencyFee: number
-  totalBeforeVat: number
-  vatAmount: number
-  totalAfterVat: number
-  finalTotal: number
+  taxAmount: number
+  discountAmount: number
+  totalAmount: number
   totalCostPrice: number
   profitAmount: number
   profitMargin: number
@@ -123,6 +119,7 @@ export interface QuoteRevision {
 // Export/Import types
 export interface QuoteExportData {
   quote: Quote
-  groups: QuoteGroupWithDetails[]
+  items: QuoteItemWithDetails[]
   totals: QuoteCalculation
+  client?: Client
 }

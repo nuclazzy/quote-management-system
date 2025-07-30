@@ -19,6 +19,30 @@
 				"AZURE_OPENAI_API_KEY": "YOUR_AZURE_KEY_HERE",
 				"OLLAMA_API_KEY": "YOUR_OLLAMA_API_KEY_HERE"
 			}
+		},
+		"serena": {
+			"type": "stdio",
+			"command": "/Users/lewis/.local/bin/uv",
+			"args": [
+				"run",
+				"--directory",
+				"/Users/lewis/Desktop/견적서 프로그램/serena",
+				"serena-mcp-server",
+				"--context",
+				"ide-assistant",
+				"--project",
+				"/Users/lewis/Desktop/견적서 프로그램"
+			],
+			"env": {}
+		},
+		"gemini-cli": {
+			"type": "stdio",
+			"command": "npx",
+			"args": [
+				"-y",
+				"mcp-gemini-cli"
+			],
+			"env": {}
 		}
 	}
 }
