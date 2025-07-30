@@ -35,14 +35,31 @@ export async function GET(request: Request) {
       query = query.eq('is_read', false);
     }
 
+    // Only apply type filter if the column exists and type is provided
     if (type) {
-      query = query.eq('type', type);
+      try {
+        query = query.eq('type', type);
+      } catch (e) {
+        // Ignore type filter if column doesn't exist
+        console.warn('Type column may not exist in notifications table');
+      }
     }
 
     const { data: notifications, error } = await query;
 
     if (error) {
       console.error('Error fetching notifications:', error);
+      
+      // If notifications table doesn't exist, return empty results instead of error
+      if (error.message?.includes('relation "notifications" does not exist')) {
+        console.warn('Notifications table does not exist, returning empty results');
+        return NextResponse.json({
+          notifications: [],
+          unreadCount: 0,
+          hasMore: false,
+        });
+      }
+      
       return NextResponse.json(
         { error: 'Failed to fetch notifications' },
         { status: 500 }
@@ -50,16 +67,22 @@ export async function GET(request: Request) {
     }
 
     // Get unread count
-    const { count: unreadCount } = await supabase
-      .from('notifications')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', session.user.id)
-      .eq('is_read', false);
+    let unreadCount = 0;
+    try {
+      const { count } = await supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', session.user.id)
+        .eq('is_read', false);
+      unreadCount = count || 0;
+    } catch (e) {
+      console.warn('Could not fetch unread count:', e);
+    }
 
     return NextResponse.json({
-      notifications,
-      unreadCount: unreadCount || 0,
-      hasMore: notifications?.length === limit,
+      notifications: notifications || [],
+      unreadCount,
+      hasMore: (notifications?.length || 0) === limit,
     });
   } catch (error) {
     console.error('Error in notifications GET:', error);
