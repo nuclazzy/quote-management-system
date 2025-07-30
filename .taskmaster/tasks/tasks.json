@@ -306,11 +306,59 @@
         ],
         "status": "pending",
         "subtasks": []
+      },
+      {
+        "id": 16,
+        "title": "Fix Google OAuth Infinite Loading in AuthCallback",
+        "description": "Resolved the infinite loading issue for Google OAuth by fixing Supabase RLS policies, enhancing the AuthCallback component with a timeout and robust error handling, and creating an automated migration script.",
+        "status": "in-progress",
+        "dependencies": [],
+        "priority": "medium",
+        "details": "The fix involved a multi-faceted approach to ensure a robust authentication flow:\n\n1. **`AuthCallback` Component Enhancement**: The component was significantly improved with a 30-second timeout to prevent indefinite loading, multiple fallback methods for user profile creation, better error handling with clear user feedback, and logic to prevent duplicate processing of the authentication callback.\n\n2. **Database Migration and RLS Fix**: A new migration (`19_fix_auth_permissions.sql`) was created to address the root cause of the issue. It fixes broken RLS policies by creating a missing `check_user_permission` function, simplifies existing policies for profile creation, and establishes a more robust permission system for future features.\n\n3. **Automated Fix Script**: To streamline deployment and recovery, an automated Node.js script (`fix-auth-issue.js`) was developed. This script verifies the database connection, applies the necessary migration, creates/verifies admin accounts, and provides manual fallback instructions if needed.",
+        "testStrategy": "1. **Successful Login**: Log out, then sign in with an existing Google account. Verify that the loading state is brief and you are successfully redirected to the dashboard.\n\n2. **New User Registration**: Use a brand new Google account. Verify that the user is created in Supabase (`auth.users` and `public.profiles`), successfully logged in, and redirected to the dashboard.\n\n3. **RLS Failure Simulation**: In the Supabase dashboard, temporarily change the `SELECT` RLS policy on the `profiles` table to `false`. Attempt to log in. Verify that you are not stuck in an infinite loop but instead see a clear error message and are returned to the login page. Remember to revert the policy change after the test.\n\n4. **Network Timeout Test**: Use browser developer tools to throttle the network to 'Slow 3G'. Attempt to log in. Verify that after the specified timeout period (e.g., 30 seconds), the loading indicator disappears and a timeout-specific error message is displayed.",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Enhance AuthCallback component with timeout and improved error handling",
+            "description": "",
+            "status": "done",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Create database migration to fix RLS policies and permissions",
+            "description": "",
+            "status": "done",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Develop automated script to apply database migration and verify setup",
+            "description": "",
+            "status": "done",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Run fix script and test the complete login flow",
+            "description": "",
+            "status": "done",
+            "dependencies": [],
+            "details": "",
+            "testStrategy": ""
+          }
+        ]
       }
     ],
     "metadata": {
       "created": "2025-07-29T05:22:49.131Z",
-      "updated": "2025-07-29T10:02:30.704Z",
+      "updated": "2025-07-30T09:39:50.757Z",
       "description": "Tasks for master context"
     }
   }
