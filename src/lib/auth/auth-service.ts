@@ -6,8 +6,9 @@ export class AuthService {
    * Google OAuth 로그인
    */
   static async signInWithGoogle() {
-    // 환경 변수에서 사이트 URL 가져오기
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
+    // 환경 변수에서 사이트 URL 가져오기 - 프로덕션에서는 Vercel URL 사용
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 
+                   (typeof window !== 'undefined' ? window.location.origin : 'https://motionsense-quote-system.vercel.app')
     const redirectTo = `${siteUrl}/auth/callback`
 
     const { data, error } = await supabase.auth.signInWithOAuth({
@@ -93,20 +94,28 @@ export class AuthService {
     
     try {
       // 기존 프로필 확인
-      const { data: existingProfile } = await supabase
+      console.log('🔍 Checking for existing profile...')
+      const { data: existingProfile, error: fetchError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single()
+      
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        console.error('❌ Error fetching existing profile:', fetchError)
+        throw new Error(`프로필 조회 실패: ${fetchError.message}`)
+      }
 
       const profileData = {
         id: userId,
         email,
         full_name: fullName || email.split('@')[0],
-        role: email === 'lewis@motionsense.co.kr' ? 'super_admin' : 'member',
+        role: email === 'lewis@motionsense.co.kr' ? 'super_admin' : 'user',
         is_active: true,
         updated_at: new Date().toISOString()
       }
+
+      console.log('📝 Profile data to upsert:', profileData)
 
       if (existingProfile) {
         // 업데이트
