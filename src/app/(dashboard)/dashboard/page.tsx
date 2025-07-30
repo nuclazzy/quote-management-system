@@ -4,8 +4,6 @@ import { useState, useEffect } from 'react'
 import {
   Box,
   Grid,
-  Card,
-  CardContent,
   Typography,
   Button,
   Paper,
@@ -13,7 +11,6 @@ import {
   ListItem,
   ListItemText,
   Divider,
-  Chip,
   Stack,
 } from '@mui/material'
 import {
@@ -30,15 +27,17 @@ import { DashboardService, type DashboardStats } from '@/lib/services/dashboard-
 import { QuoteStatusChip } from '@/components/quotes/QuoteStatusChip'
 import { LoadingState } from '@/components/common/LoadingState'
 import { ErrorAlert } from '@/components/common/ErrorAlert'
+import { StatCard } from '@/components/common/StatCard'
+import { GlassCard } from '@/components/common/GlassCard'
+import { ModernBackground } from '@/components/layout/ModernBackground'
 import { useErrorHandler } from '@/hooks/useErrorHandler'
 import { formatCurrency, formatDate } from '@/utils/format'
 
-interface StatCard {
+interface StatCardData {
   title: string
   value: string | number
   icon: React.ReactNode
-  color: 'primary' | 'success' | 'warning' | 'secondary'
-  bgColor: string
+  color: 'primary' | 'success' | 'warning' | 'error' | 'info'
 }
 
 export default function DashboardPage() {
@@ -101,34 +100,30 @@ export default function DashboardPage() {
   }
 
   // 통계 카드 데이터
-  const statCards: StatCard[] = [
+  const statCards: StatCardData[] = [
     {
       title: '이번 달 견적서',
-      value: `${stats?.totalQuotes || 0}건`,
-      icon: <Description fontSize="large" />,
+      value: `${stats?.totalQuotes || 0}개`,
+      icon: <Description />,
       color: 'primary',
-      bgColor: '#e3f2fd'
     },
     {
       title: '총 견적 금액',
       value: formatCurrency(stats?.totalAmount || 0),
-      icon: <TrendingUp fontSize="large" />,
+      icon: <TrendingUp />,
       color: 'success',
-      bgColor: '#e8f5e8'
     },
     {
       title: '수주확정',
-      value: `${stats?.acceptedQuotes || 0}건`,
-      icon: <CheckCircle fontSize="large" />,
+      value: `${stats?.acceptedQuotes || 0}개`,
+      icon: <CheckCircle />,
       color: 'warning',
-      bgColor: '#fff3e0'
     },
     {
       title: '활성 고객사',
       value: `${stats?.activeCustomers || 0}개`,
-      icon: <Business fontSize="large" />,
-      color: 'secondary',
-      bgColor: '#f3e5f5'
+      icon: <Business />,
+      color: 'info',
     }
   ]
 
@@ -155,72 +150,86 @@ export default function DashboardPage() {
   ]
 
   return (
-    <Box sx={{ p: 3 }}>
-      {/* 헤더 */}
-      <Typography variant="h4" component="h1" gutterBottom>
-        견적서 관리 시스템 대시보드
-      </Typography>
+    <ModernBackground>
+      <Box sx={{ p: 3 }}>
+        {/* 헤더 */}
+        <Typography 
+          variant="h3" 
+          component="h1" 
+          sx={{ 
+            mb: 4,
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            backgroundClip: 'text',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            fontWeight: 700,
+            textAlign: 'center'
+          }}
+        >
+          견적서 관리 시스템 대시보드
+        </Typography>
 
-      {/* 주요 통계 */}
-      <Typography variant="h5" component="h2" sx={{ mb: 3, mt: 4 }}>
-        📊 주요 통계
-      </Typography>
-      
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        {statCards.map((card, index) => (
-          <Grid item xs={12} sm={6} md={3} key={index}>
-            <Card sx={{ 
-              height: '100%',
-              backgroundColor: card.bgColor,
-              '&:hover': { boxShadow: 4 }
-            }}>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <Box sx={{ color: `${card.color}.main`, mr: 2 }}>
-                    {card.icon}
-                  </Box>
-                  <Typography variant="h6" component="h3">
-                    {card.title}
-                  </Typography>
-                </Box>
-                <Typography 
-                  variant="h4" 
-                  component="p" 
-                  sx={{ 
-                    fontWeight: 'bold',
-                    color: `${card.color}.main`
-                  }}
-                >
-                  {card.value}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
+        {/* 주요 통계 - 애니메이션 */}
+        <Typography 
+          variant="h5" 
+          component="h2" 
+          sx={{ 
+            mb: 3, 
+            mt: 4,
+            fontWeight: 600,
+            color: 'text.primary'
+          }}
+        >
+          📊 주요 통계
+        </Typography>
+        
+        <Grid container spacing={3} sx={{ mb: 5 }}>
+          {statCards.map((card, index) => (
+            <Grid item xs={12} sm={6} md={3} key={index}>
+              <StatCard
+                title={card.title}
+                value={card.value}
+                icon={card.icon}
+                color={card.color}
+                delay={index * 100}
+              />
+            </Grid>
+          ))}
+        </Grid>
 
-      {/* 최근 견적서 */}
-      <Typography variant="h5" component="h2" sx={{ mb: 3 }}>
-        📋 최근 견적서
-      </Typography>
-      
-      <Paper sx={{ mb: 4 }}>
-        <CardContent>
+        {/* 최근 견적서 */}
+        <Typography 
+          variant="h5" 
+          component="h2" 
+          sx={{ 
+            mb: 3,
+            fontWeight: 600,
+            color: 'text.primary'
+          }}
+        >
+          📋 최근 견적서
+        </Typography>
+        
+        <GlassCard variant="default" sx={{ mb: 4, p: 0 }}>
           {stats?.recentQuotes && stats.recentQuotes.length > 0 ? (
-            <List>
+            <List sx={{ p: 0 }}>
               {stats.recentQuotes.map((quote, index) => (
                 <div key={quote.id}>
                   <ListItem
                     sx={{ 
                       cursor: 'pointer',
-                      '&:hover': { backgroundColor: 'action.hover' }
+                      transition: 'all 0.3s ease',
+                      '&:hover': { 
+                        backgroundColor: 'action.hover',
+                        transform: 'translateX(8px)'
+                      }
                     }}
                     onClick={() => handleNavigation(`/quotes/${quote.id}`)}
                   >
                     <ListItemText
                       primary={
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <Typography variant="h6" component="h4">
+                          <Typography variant="h6" component="h4" sx={{ fontWeight: 600 }}>
                             {quote.project_title}
                           </Typography>
                           <QuoteStatusChip status={quote.status} />
@@ -240,39 +249,59 @@ export default function DashboardPage() {
               ))}
             </List>
           ) : (
-            <Box sx={{ textAlign: 'center', py: 4 }}>
-              <Typography variant="body1" color="text.secondary">
+            <Box sx={{ textAlign: 'center', py: 8 }}>
+              <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 500 }}>
                 최근 작성된 견적서가 없습니다
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                새로운 견적서를 작성해보세요
               </Typography>
             </Box>
           )}
-        </CardContent>
-      </Paper>
+        </GlassCard>
 
-      {/* 빠른 작업 */}
-      <Typography variant="h5" component="h2" sx={{ mb: 3 }}>
-        ⚡ 빠른 작업
-      </Typography>
-      
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ flexWrap: 'wrap' }}>
-        {quickActions.map((action, index) => (
-          <Button
-            key={index}
-            variant="contained"
-            color={action.color}
-            size="large"
-            startIcon={action.icon}
-            onClick={() => handleNavigation(action.path)}
-            sx={{ 
-              minWidth: { xs: '100%', sm: 'auto' },
-              px: 3,
-              py: 1.5
-            }}
-          >
-            {action.label}
-          </Button>
-        ))}
-      </Stack>
-    </Box>
+        {/* 빠른 작업 */}
+        <Typography 
+          variant="h5" 
+          component="h2" 
+          sx={{ 
+            mb: 3,
+            fontWeight: 600,
+            color: 'text.primary'
+          }}
+        >
+          ⚡ 빠른 작업
+        </Typography>
+        
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3} sx={{ flexWrap: 'wrap' }}>
+          {quickActions.map((action, index) => (
+            <Button
+              key={index}
+              variant="contained"
+              color={action.color}
+              size="large"
+              startIcon={action.icon}
+              onClick={() => handleNavigation(action.path)}
+              sx={{ 
+                minWidth: { xs: '100%', sm: 'auto' },
+                px: 4,
+                py: 2,
+                borderRadius: 3,
+                fontWeight: 600,
+                textTransform: 'none',
+                boxShadow: '0 8px 24px rgba(0, 0, 0, 0.1)',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                '&:hover': {
+                  transform: 'translateY(-2px)',
+                  boxShadow: '0 12px 32px rgba(0, 0, 0, 0.15)',
+                }
+              }}
+            >
+              {action.label}
+            </Button>
+          ))}
+        </Stack>
+      </Box>
+    </ModernBackground>
   )
 }

@@ -171,7 +171,7 @@
         "dependencies": [
           2
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -190,7 +190,7 @@
               "5.1"
             ],
             "details": "On the `/dashboard/items` page, add a component (e.g., a separate card or modal) to list, create, edit, and delete categories. The backend logic will interact with the `item_categories` table. Deletion should be prevented if a category is currently associated with any items.",
-            "status": "in-progress",
+            "status": "done",
             "testStrategy": "Create several new categories. Edit the name of one category and verify the change. Attempt to delete a category that has items assigned to it (this should fail) and one that does not (this should succeed)."
           },
           {
@@ -201,7 +201,7 @@
               "5.1"
             ],
             "details": "Implement a table on the `/dashboard/items` page to display item data. The table should include columns for Name, Category Name (requiring a join with `item_categories`), SKU, Price, and Stock Quantity. Also, include action buttons for 'Edit' and 'Delete' in each row. Fetch the data using a Next.js Server Component or API route.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Manually add sample data to the `items` and `item_categories` tables. Navigate to `/dashboard/items` and verify that the table correctly displays all items and their associated category names."
           },
           {
@@ -213,7 +213,7 @@
               "5.3"
             ],
             "details": "Add a 'Create New Item' button to the item list page that opens a form in a modal or on a new page. The form must have input fields for name, SKU, price, and stock quantity, plus a dropdown select for the category, populated from the `item_categories` table. Implement both client-side and server-side validation.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Fill out and submit the form to create a new item. Verify it appears in the item list. Test validation by attempting to submit the form with missing required fields or with a SKU that already exists."
           },
           {
@@ -225,7 +225,7 @@
               "5.4"
             ],
             "details": "The 'Edit' button in the item list table should trigger a form, pre-populated with the selected item's data. The form should allow updating the name, category, price, and stock quantity. The SKU field should be read-only. On submission, the backend logic should update the corresponding record in the `items` table.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Click the 'Edit' button for an item. Change its price and stock quantity. Save the changes and confirm that the updated values are reflected in the item list view."
           },
           {
@@ -236,7 +236,7 @@
               "5.3"
             ],
             "details": "The 'Delete' button in the item list table should open a confirmation dialog (e.g., 'Are you sure you want to delete this item?'). Upon user confirmation, a server action or API call should be made to remove the item's record from the `items` table in Supabase.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Create a temporary item for testing. Click its 'Delete' button, cancel the action in the confirmation dialog, and verify the item remains. Then, click 'Delete' again, confirm the action, and verify the item is removed from the list and the database."
           }
         ]
@@ -425,7 +425,7 @@
     ],
     "metadata": {
       "created": "2025-07-29T05:22:49.131Z",
-      "updated": "2025-07-30T10:23:14.364Z",
+      "updated": "2025-07-30T10:27:02.192Z",
       "description": "Tasks for master context"
     }
   }
