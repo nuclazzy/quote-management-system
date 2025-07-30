@@ -65,9 +65,19 @@ export default function DashboardPage() {
     }
   }
 
-  // 초기 로드
+  // 초기 로드 - 임시로 비활성화
   useEffect(() => {
-    fetchDashboardData()
+    // fetchDashboardData() // 임시 비활성화
+    
+    // 테스트용 더미 데이터 설정
+    setStats({
+      totalQuotes: 0,
+      totalAmount: 0,
+      acceptedQuotes: 0,
+      activeCustomers: 0,
+      recentQuotes: []
+    })
+    setLoading(false)
   }, [])
 
   // 네비게이션 핸들러
