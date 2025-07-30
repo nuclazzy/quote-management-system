@@ -215,6 +215,9 @@ export function useNotificationContext() {
   return context
 }
 
+// Alias for backward compatibility
+export const useNotification = useNotificationContext
+
 // Browser notification utility
 export function showBrowserNotification(title: string, message: string, icon?: string) {
   if ('Notification' in window && Notification.permission === 'granted') {
