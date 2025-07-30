@@ -100,6 +100,7 @@ export default function NewMotionsenseQuotePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [selectedClient, setSelectedClient] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
   
   // 다이얼로그 상태
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
@@ -107,6 +108,10 @@ export default function NewMotionsenseQuotePage() {
   const [selectedGroupIndex, setSelectedGroupIndex] = useState(0);
   const [selectedItemIndex, setSelectedItemIndex] = useState(0);
 
+  // 안전한 훅 사용
+  const quoteHook = useMotionsenseQuote();
+  
+  // 안전한 구조 분해
   const {
     formData,
     calculation,
@@ -125,51 +130,64 @@ export default function NewMotionsenseQuotePage() {
     removeDetail,
     applyTemplate,
     setMasterItems,
-  } = useMotionsenseQuote();
+  } = quoteHook || {};
 
   // 초기 데이터 로드
   useEffect(() => {
     const loadData = async () => {
       try {
         setLoading(true);
+        setError(null);
+        
+        // 훅이 제대로 로드되었는지 확인
+        if (!quoteHook || !setMasterItems) {
+          throw new Error('Quote hook이 제대로 초기화되지 않았습니다.');
+        }
         
         // 마스터 데이터 설정
         setMasterItems(mockMasterItems);
         
         // 기본 구조 추가
-        if (formData.groups.length === 0) {
+        if (formData && formData.groups && formData.groups.length === 0 && addGroup) {
           addGroup('행사 진행');
         }
         
       } catch (error) {
         console.error('데이터 로드 실패:', error);
+        setError(error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.');
       } finally {
         setLoading(false);
       }
     };
 
     loadData();
-  }, []);
+  }, [quoteHook, formData, addGroup, setMasterItems]);
 
   // 고객 선택 핸들러
   const handleClientChange = (client: any) => {
     setSelectedClient(client);
-    updateFormData({
-      customer_id: client?.id || '',
-      customer_name_snapshot: client?.name || '',
-    });
+    if (updateFormData) {
+      updateFormData({
+        customer_id: client?.id || '',
+        customer_name_snapshot: client?.name || '',
+      });
+    }
   };
 
   // 템플릿 적용
   const handleApplyTemplate = (template: QuoteTemplate) => {
-    applyTemplate(template);
-    setTemplateDialogOpen(false);
+    if (applyTemplate) {
+      applyTemplate(template);
+      setTemplateDialogOpen(false);
+    }
   };
 
   // 마스터 품목 추가
   const handleAddMasterItem = (masterItem: MasterItem) => {
-    addDetailFromMaster(selectedGroupIndex, selectedItemIndex, masterItem);
-    setMasterItemDialogOpen(false);
+    if (addDetailFromMaster) {
+      addDetailFromMaster(selectedGroupIndex, selectedItemIndex, masterItem);
+      setMasterItemDialogOpen(false);
+    }
   };
 
   // 저장
@@ -194,8 +212,58 @@ export default function NewMotionsenseQuotePage() {
     }
   };
 
+  // 로딩 상태
   if (loading) {
     return <LoadingState />;
+  }
+
+  // 에러 상태
+  if (error) {
+    return (
+      <ModernBackground>
+        <Container maxWidth="md" sx={{ py: 8, textAlign: 'center' }}>
+          <Alert severity="error" sx={{ mb: 4 }}>
+            <Typography variant="h6" gutterBottom>
+              견적서 페이지 로드 중 오류가 발생했습니다
+            </Typography>
+            <Typography variant="body2" sx={{ mb: 2 }}>
+              {error}
+            </Typography>
+            <Button 
+              variant="contained" 
+              onClick={() => window.location.reload()}
+              sx={{ mr: 2 }}
+            >
+              페이지 새로고침
+            </Button>
+            <Button 
+              variant="outlined" 
+              onClick={() => router.push('/quotes')}
+            >
+              견적서 목록으로
+            </Button>
+          </Alert>
+        </Container>
+      </ModernBackground>
+    );
+  }
+
+  // 훅이 제대로 로드되지 않은 경우
+  if (!formData || calculation === undefined) {
+    return (
+      <ModernBackground>
+        <Container maxWidth="md" sx={{ py: 8, textAlign: 'center' }}>
+          <Alert severity="warning">
+            <Typography variant="h6" gutterBottom>
+              견적서 시스템을 초기화하는 중...
+            </Typography>
+            <Typography variant="body2">
+              잠시만 기다려주세요.
+            </Typography>
+          </Alert>
+        </Container>
+      </ModernBackground>
+    );
   }
 
   return (
