@@ -3,9 +3,6 @@ const nextConfig = {
   // React 18의 Strict Mode 활성화
   reactStrictMode: true,
   
-  // 성능 최적화
-  swcMinify: true,
-  
   // 이미지 최적화 설정
   images: {
     domains: ['lh3.googleusercontent.com'],
@@ -114,11 +111,8 @@ const nextConfig = {
     removeConsole: process.env.NODE_ENV === 'production',
   },
   
-  // 실험적 기능
-  experimental: {
-    // 서버 컴포넌트 최적화
-    serverComponentsExternalPackages: ['@mui/material'],
-  },
+  // 패키지 transpile 설정
+  transpilePackages: ['@mui/material', '@mui/system', '@mui/icons-material'],
   
   // TypeScript 설정
   typescript: {
@@ -135,9 +129,8 @@ const nextConfig = {
   // 출력 설정
   output: 'standalone',
   
-  // 전체 페이지를 동적 렌더링으로 설정 (static 생성 문제 회피)
+  // 실험적 기능
   experimental: {
-    serverComponentsExternalPackages: ['@mui/material'],
     forceSwcTransforms: true,
   },
   
