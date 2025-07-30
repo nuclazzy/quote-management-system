@@ -39,11 +39,24 @@ export default function AuthCallbackPage() {
       setStatus('success')
       forceLog('상태를 success로 변경')
       
-      // 즉시 대시보드로 리디렉트
-      setTimeout(() => {
-        forceLog('대시보드로 리디렉트 실행')
+      // 즉시 대시보드로 리디렉트 (setTimeout 제거)
+      forceLog('대시보드로 리디렉트 실행')
+      
+      try {
+        forceLog('router.push 시도')
         router.push('/dashboard')
-      }, 500)
+        forceLog('router.push 완료')
+        
+        // fallback: window.location도 시도
+        setTimeout(() => {
+          forceLog('window.location fallback 실행')
+          window.location.href = '/dashboard'
+        }, 1000)
+      } catch (routerError) {
+        forceLog(`router.push 에러: ${routerError}`)
+        // 강제 리디렉트
+        window.location.href = '/dashboard'
+      }
       
     } catch (error) {
       forceLog(`processUser 에러: ${error}`)
