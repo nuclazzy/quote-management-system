@@ -1,6 +1,6 @@
-'use client'
+'use client';
 
-import React, { memo } from 'react'
+import React, { memo } from 'react';
 import {
   IconButton,
   Menu,
@@ -9,22 +9,22 @@ import {
   ListItemText,
   Tooltip,
   useTheme as useMuiTheme,
-} from '@mui/material'
+} from '@mui/material';
 import {
   LightMode as LightModeIcon,
   DarkMode as DarkModeIcon,
   SettingsBrightness as AutoModeIcon,
   Palette as PaletteIcon,
-} from '@mui/icons-material'
-import { useCustomTheme } from '@/contexts/ThemeContext'
+} from '@mui/icons-material';
+import { useCustomTheme } from '@/contexts/ThemeContext';
 
-type ThemeMode = 'light' | 'dark' | 'system'
+type ThemeMode = 'light' | 'dark' | 'system';
 
 interface ThemeModeOption {
-  mode: ThemeMode
-  label: string
-  icon: React.ReactNode
-  description: string
+  mode: ThemeMode;
+  label: string;
+  icon: React.ReactNode;
+  description: string;
 }
 
 const themeModeOptions: ThemeModeOption[] = [
@@ -46,47 +46,49 @@ const themeModeOptions: ThemeModeOption[] = [
     icon: <AutoModeIcon />,
     description: '시스템 설정을 따릅니다',
   },
-]
+];
 
 const ThemeToggle = memo(function ThemeToggle() {
-  const { mode, setMode, effectiveMode } = useCustomTheme()
-  const muiTheme = useMuiTheme()
-  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null)
-  const open = Boolean(anchorEl)
+  const { mode, setMode, effectiveMode } = useCustomTheme();
+  const muiTheme = useMuiTheme();
+  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
+  const open = Boolean(anchorEl);
 
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget)
-  }
+    setAnchorEl(event.currentTarget);
+  };
 
   const handleClose = () => {
-    setAnchorEl(null)
-  }
+    setAnchorEl(null);
+  };
 
   const handleModeSelect = (selectedMode: ThemeMode) => {
-    setMode(selectedMode)
-    handleClose()
-  }
+    setMode(selectedMode);
+    handleClose();
+  };
 
   const getCurrentIcon = () => {
     if (mode === 'system') {
-      return effectiveMode === 'dark' ? <DarkModeIcon /> : <LightModeIcon />
+      return effectiveMode === 'dark' ? <DarkModeIcon /> : <LightModeIcon />;
     }
-    return mode === 'dark' ? <DarkModeIcon /> : <LightModeIcon />
-  }
+    return mode === 'dark' ? <DarkModeIcon /> : <LightModeIcon />;
+  };
 
   const getCurrentTooltip = () => {
-    const currentOption = themeModeOptions.find(option => option.mode === mode)
-    return currentOption ? `테마: ${currentOption.label}` : '테마 변경'
-  }
+    const currentOption = themeModeOptions.find(
+      (option) => option.mode === mode
+    );
+    return currentOption ? `테마: ${currentOption.label}` : '테마 변경';
+  };
 
   return (
     <>
       <Tooltip title={getCurrentTooltip()} arrow>
         <IconButton
           onClick={handleClick}
-          aria-label="테마 모드 변경"
+          aria-label='테마 모드 변경'
           aria-controls={open ? 'theme-menu' : undefined}
-          aria-haspopup="true"
+          aria-haspopup='true'
           aria-expanded={open ? 'true' : undefined}
           sx={{
             color: 'inherit',
@@ -102,7 +104,7 @@ const ThemeToggle = memo(function ThemeToggle() {
       </Tooltip>
 
       <Menu
-        id="theme-menu"
+        id='theme-menu'
         anchorEl={anchorEl}
         open={open}
         onClose={handleClose}
@@ -150,13 +152,13 @@ const ThemeToggle = memo(function ThemeToggle() {
               py: 1.5,
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-              <ListItemIcon sx={{ minWidth: 36 }}>
-                {option.icon}
-              </ListItemIcon>
-              <ListItemText 
+            <div
+              style={{ display: 'flex', alignItems: 'center', width: '100%' }}
+            >
+              <ListItemIcon sx={{ minWidth: 36 }}>{option.icon}</ListItemIcon>
+              <ListItemText
                 primary={option.label}
-                sx={{ 
+                sx={{
                   '& .MuiListItemText-primary': {
                     fontSize: '0.875rem',
                     fontWeight: mode === option.mode ? 600 : 400,
@@ -164,19 +166,21 @@ const ThemeToggle = memo(function ThemeToggle() {
                 }}
               />
             </div>
-            <div style={{ 
-              fontSize: '0.75rem', 
-              opacity: 0.7, 
-              marginLeft: 36,
-              marginTop: 2,
-            }}>
+            <div
+              style={{
+                fontSize: '0.75rem',
+                opacity: 0.7,
+                marginLeft: 36,
+                marginTop: 2,
+              }}
+            >
               {option.description}
             </div>
           </MenuItem>
         ))}
       </Menu>
     </>
-  )
-})
+  );
+});
 
-export default ThemeToggle
+export default ThemeToggle;

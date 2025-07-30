@@ -1,6 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { withAuth, createApiError } from '@/lib/api/base'
-import { BrowserPDFGenerator, type QuoteData, type CompanyInfo } from '@/lib/pdf/browser-generator'
+import { NextRequest, NextResponse } from 'next/server';
+import { withAuth, createApiError } from '@/lib/api/base';
+import {
+  BrowserPDFGenerator,
+  type QuoteData,
+  type CompanyInfo,
+} from '@/lib/pdf/browser-generator';
 
 // GET /api/quotes/[id]/pdf - 견적서 PDF 생성 및 다운로드
 export async function GET(
@@ -12,7 +16,8 @@ export async function GET(
       // 견적서 데이터 조회
       const { data: quote, error } = await supabase
         .from('quotes')
-        .select(`
+        .select(
+          `
           *,
           customers(id, name, email, phone, address, contact_person),
           projects(id, name, description),
@@ -41,14 +46,15 @@ export async function GET(
               )
             )
           )
-        `)
+        `
+        )
         .eq('id', params.id)
         .eq('company_id', user.profile.company_id)
-        .single()
+        .single();
 
       if (error || !quote) {
-        console.error('Error fetching quote for PDF:', error)
-        return createApiError('Quote not found', 404)
+        console.error('Error fetching quote for PDF:', error);
+        return createApiError('Quote not found', 404);
       }
 
       // 회사 정보 조회
@@ -56,11 +62,11 @@ export async function GET(
         .from('companies')
         .select('*')
         .eq('id', user.profile.company_id)
-        .single()
+        .single();
 
       if (companyError || !company) {
-        console.error('Error fetching company info:', companyError)
-        return createApiError('Company information not found', 404)
+        console.error('Error fetching company info:', companyError);
+        return createApiError('Company information not found', 404);
       }
 
       // HTML 생성 (클라이언트에서 PDF로 변환)
@@ -73,31 +79,30 @@ export async function GET(
           email: company.email,
           website: company.website,
           tax_number: company.tax_number,
-          bank_info: company.bank_info
-        }
+          bank_info: company.bank_info,
+        };
 
-        const generator = new BrowserPDFGenerator(companyInfo)
-        const htmlContent = generator.generatePreview(quote as QuoteData)
+        const generator = new BrowserPDFGenerator(companyInfo);
+        const htmlContent = generator.generatePreview(quote as QuoteData);
 
         // HTML 응답 반환 (클라이언트에서 PDF로 변환)
         return new NextResponse(htmlContent, {
           headers: {
             'Content-Type': 'text/html; charset=utf-8',
             'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-            'Expires': '0'
-          }
-        })
+            Pragma: 'no-cache',
+            Expires: '0',
+          },
+        });
       } catch (pdfError) {
-        console.error('PDF generation error:', pdfError)
-        return createApiError('Failed to generate PDF', 500)
+        console.error('PDF generation error:', pdfError);
+        return createApiError('Failed to generate PDF', 500);
       }
-
     } catch (error) {
-      console.error('PDF generation error:', error)
-      return createApiError('Failed to generate PDF', 500)
+      console.error('PDF generation error:', error);
+      return createApiError('Failed to generate PDF', 500);
     }
-  })
+  });
 }
 
 // POST /api/quotes/[id]/pdf - PDF 미리보기 (Base64 반환)
@@ -107,12 +112,13 @@ export async function POST(
 ) {
   return withAuth(request, async ({ user, supabase }) => {
     try {
-      const { preview = false } = await request.json()
+      const { preview = false } = await request.json();
 
       // 견적서 데이터 조회 (위와 동일)
       const { data: quote, error } = await supabase
         .from('quotes')
-        .select(`
+        .select(
+          `
           *,
           customers(id, name, email, phone, address, contact_person),
           projects(id, name, description),
@@ -141,13 +147,14 @@ export async function POST(
               )
             )
           )
-        `)
+        `
+        )
         .eq('id', params.id)
         .eq('company_id', user.profile.company_id)
-        .single()
+        .single();
 
       if (error || !quote) {
-        return createApiError('Quote not found', 404)
+        return createApiError('Quote not found', 404);
       }
 
       // 회사 정보 조회
@@ -155,10 +162,10 @@ export async function POST(
         .from('companies')
         .select('*')
         .eq('id', user.profile.company_id)
-        .single()
+        .single();
 
       if (companyError || !company) {
-        return createApiError('Company information not found', 404)
+        return createApiError('Company information not found', 404);
       }
 
       // HTML 생성 (미리보기용)
@@ -171,27 +178,26 @@ export async function POST(
           email: company.email,
           website: company.website,
           tax_number: company.tax_number,
-          bank_info: company.bank_info
-        }
+          bank_info: company.bank_info,
+        };
 
-        const generator = new BrowserPDFGenerator(companyInfo)
-        const htmlContent = generator.generatePreview(quote as QuoteData)
-        
+        const generator = new BrowserPDFGenerator(companyInfo);
+        const htmlContent = generator.generatePreview(quote as QuoteData);
+
         return NextResponse.json({
           success: true,
           data: {
             html: htmlContent,
-            filename: `견적서_${quote.quote_number}.pdf`
-          }
-        })
+            filename: `견적서_${quote.quote_number}.pdf`,
+          },
+        });
       } catch (pdfError) {
-        console.error('PDF preview generation error:', pdfError)
-        return createApiError('Failed to generate PDF preview', 500)
+        console.error('PDF preview generation error:', pdfError);
+        return createApiError('Failed to generate PDF preview', 500);
       }
-
     } catch (error) {
-      console.error('PDF preview generation error:', error)
-      return createApiError('Failed to generate PDF preview', 500)
+      console.error('PDF preview generation error:', error);
+      return createApiError('Failed to generate PDF preview', 500);
     }
-  })
+  });
 }

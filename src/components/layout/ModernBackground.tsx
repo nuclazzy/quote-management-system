@@ -1,6 +1,6 @@
-'use client'
+'use client';
 
-import { Box } from '@mui/material'
+import { Box } from '@mui/material';
 
 export function ModernBackground({ children }: { children: React.ReactNode }) {
   return (
@@ -13,5 +13,5 @@ export function ModernBackground({ children }: { children: React.ReactNode }) {
     >
       {children}
     </Box>
-  )
+  );
 }

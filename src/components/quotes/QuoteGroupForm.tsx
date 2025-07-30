@@ -1,6 +1,6 @@
-'use client'
+'use client';
 
-import React, { useState, memo } from 'react'
+import React, { useState, memo } from 'react';
 import {
   Box,
   Card,
@@ -18,23 +18,23 @@ import {
   Tooltip,
   useTheme,
   useMediaQuery,
-} from '@mui/material'
+} from '@mui/material';
 import {
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
   Delete as DeleteIcon,
   Add as AddIcon,
   DragIndicator as DragIcon,
-} from '@mui/icons-material'
-import { QuoteGroupFormData } from '@/types'
-import QuoteItemForm from './QuoteItemForm'
+} from '@mui/icons-material';
+import { QuoteGroupFormData } from '@/types';
+import QuoteItemForm from './QuoteItemForm';
 
 interface QuoteGroupFormProps {
-  group: QuoteGroupFormData
-  groupIndex: number
-  showCostPrice: boolean
-  onUpdate: (groupIndex: number, updates: Partial<QuoteGroupFormData>) => void
-  onRemove: (groupIndex: number) => void
+  group: QuoteGroupFormData;
+  groupIndex: number;
+  showCostPrice: boolean;
+  onUpdate: (groupIndex: number, updates: Partial<QuoteGroupFormData>) => void;
+  onRemove: (groupIndex: number) => void;
 }
 
 const QuoteGroupForm = memo(function QuoteGroupForm({
@@ -44,13 +44,13 @@ const QuoteGroupForm = memo(function QuoteGroupForm({
   onUpdate,
   onRemove,
 }: QuoteGroupFormProps) {
-  const theme = useTheme()
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
-  const [expanded, setExpanded] = useState(true)
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const [expanded, setExpanded] = useState(true);
 
   const handleUpdate = (updates: Partial<QuoteGroupFormData>) => {
-    onUpdate(groupIndex, updates)
-  }
+    onUpdate(groupIndex, updates);
+  };
 
   const addItem = () => {
     const newItem = {
@@ -58,27 +58,27 @@ const QuoteGroupForm = memo(function QuoteGroupForm({
       name: '새 품목',
       sort_order: group.items.length,
       include_in_fee: true,
-      details: []
-    }
+      details: [],
+    };
     handleUpdate({
-      items: [...group.items, newItem]
-    })
-  }
+      items: [...group.items, newItem],
+    });
+  };
 
   const updateItem = (itemIndex: number, updates: any) => {
-    const newItems = [...group.items]
-    newItems[itemIndex] = { ...newItems[itemIndex], ...updates }
-    handleUpdate({ items: newItems })
-  }
+    const newItems = [...group.items];
+    newItems[itemIndex] = { ...newItems[itemIndex], ...updates };
+    handleUpdate({ items: newItems });
+  };
 
   const removeItem = (itemIndex: number) => {
-    const newItems = group.items.filter((_, index) => index !== itemIndex)
-    handleUpdate({ items: newItems })
-  }
+    const newItems = group.items.filter((_, index) => index !== itemIndex);
+    handleUpdate({ items: newItems });
+  };
 
   return (
-    <Card 
-      sx={{ 
+    <Card
+      sx={{
         mb: 3,
         border: '1px solid',
         borderColor: 'divider',
@@ -94,20 +94,20 @@ const QuoteGroupForm = memo(function QuoteGroupForm({
         avatar={
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <IconButton
-              size="small"
-              sx={{ 
+              size='small'
+              sx={{
                 color: 'text.secondary',
                 cursor: 'grab',
                 minHeight: 32,
                 minWidth: 32,
               }}
-              aria-label="그룹 순서 변경"
+              aria-label='그룹 순서 변경'
             >
               <DragIcon />
             </IconButton>
-            <Typography 
-              variant="body2" 
-              color="text.secondary"
+            <Typography
+              variant='body2'
+              color='text.secondary'
               sx={{ fontWeight: 500 }}
             >
               그룹 {groupIndex + 1}
@@ -115,11 +115,11 @@ const QuoteGroupForm = memo(function QuoteGroupForm({
           </Box>
         }
         action={
-          <Stack direction="row" spacing={1} alignItems="center">
+          <Stack direction='row' spacing={1} alignItems='center'>
             <Tooltip title={expanded ? '그룹 접기' : '그룹 펼치기'}>
               <IconButton
                 onClick={() => setExpanded(!expanded)}
-                size="small"
+                size='small'
                 sx={{ minHeight: 44, minWidth: 44 }}
                 aria-label={expanded ? '그룹 접기' : '그룹 펼치기'}
                 aria-expanded={expanded}
@@ -127,12 +127,12 @@ const QuoteGroupForm = memo(function QuoteGroupForm({
                 {expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
               </IconButton>
             </Tooltip>
-            
-            <Tooltip title="그룹 삭제">
+
+            <Tooltip title='그룹 삭제'>
               <IconButton
                 onClick={() => onRemove(groupIndex)}
-                color="error"
-                size="small"
+                color='error'
+                size='small'
                 sx={{ minHeight: 44, minWidth: 44 }}
                 aria-label={`그룹 ${groupIndex + 1} 삭제`}
               >
@@ -141,7 +141,7 @@ const QuoteGroupForm = memo(function QuoteGroupForm({
             </Tooltip>
           </Stack>
         }
-        sx={{ 
+        sx={{
           pb: 1,
           '& .MuiCardHeader-content': {
             flex: 1,
@@ -155,7 +155,7 @@ const QuoteGroupForm = memo(function QuoteGroupForm({
           <TextField
             fullWidth
             size={isMobile ? 'medium' : 'small'}
-            label="그룹명"
+            label='그룹명'
             value={group.name}
             onChange={(e) => handleUpdate({ name: e.target.value })}
             required
@@ -168,12 +168,14 @@ const QuoteGroupForm = memo(function QuoteGroupForm({
               },
             }}
           />
-          
+
           <FormControlLabel
             control={
               <Switch
                 checked={group.include_in_fee}
-                onChange={(e) => handleUpdate({ include_in_fee: e.target.checked })}
+                onChange={(e) =>
+                  handleUpdate({ include_in_fee: e.target.checked })
+                }
                 inputProps={{
                   'aria-label': `그룹 ${groupIndex + 1} 수수료 포함 여부`,
                 }}
@@ -181,15 +183,15 @@ const QuoteGroupForm = memo(function QuoteGroupForm({
             }
             label={
               <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                <Typography variant='body2' sx={{ fontWeight: 500 }}>
                   수수료 포함
                 </Typography>
-                <Typography variant="caption" color="text.secondary">
+                <Typography variant='caption' color='text.secondary'>
                   이 그룹의 품목들을 대행수수료 계산에 포함합니다
                 </Typography>
               </Box>
             }
-            sx={{ 
+            sx={{
               alignItems: 'flex-start',
               '& .MuiFormControlLabel-label': {
                 ml: 1,
@@ -201,12 +203,12 @@ const QuoteGroupForm = memo(function QuoteGroupForm({
         <Divider sx={{ my: 2 }} />
 
         {/* 그룹 내용 */}
-        <Collapse in={expanded} timeout="auto" unmountOnExit>
+        <Collapse in={expanded} timeout='auto' unmountOnExit>
           <Box>
             {/* 품목 추가 버튼 */}
             <Box sx={{ mb: 3 }}>
               <Button
-                variant="outlined"
+                variant='outlined'
                 startIcon={<AddIcon />}
                 onClick={addItem}
                 fullWidth={isMobile}
@@ -227,8 +229,8 @@ const QuoteGroupForm = memo(function QuoteGroupForm({
 
             {/* 품목 목록 */}
             {group.items.length === 0 ? (
-              <Card 
-                sx={{ 
+              <Card
+                sx={{
                   p: 4,
                   textAlign: 'center',
                   backgroundColor: 'grey.50',
@@ -236,17 +238,14 @@ const QuoteGroupForm = memo(function QuoteGroupForm({
                   borderColor: 'grey.300',
                 }}
               >
-                <Typography 
-                  variant="body2" 
-                  color="text.secondary"
+                <Typography
+                  variant='body2'
+                  color='text.secondary'
                   sx={{ mb: 1 }}
                 >
                   품목이 없습니다
                 </Typography>
-                <Typography 
-                  variant="caption" 
-                  color="text.secondary"
-                >
+                <Typography variant='caption' color='text.secondary'>
                   '품목 추가' 버튼을 클릭하여 견적 항목을 추가해보세요
                 </Typography>
               </Card>
@@ -269,7 +268,7 @@ const QuoteGroupForm = memo(function QuoteGroupForm({
         </Collapse>
       </CardContent>
     </Card>
-  )
-})
+  );
+});
 
-export default QuoteGroupForm
+export default QuoteGroupForm;

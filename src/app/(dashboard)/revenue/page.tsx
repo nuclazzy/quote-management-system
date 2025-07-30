@@ -23,7 +23,7 @@ import {
   Paper,
   Chip,
   Alert,
-  Divider
+  Divider,
 } from '@mui/material';
 // import {
 //   BarChart,
@@ -84,10 +84,14 @@ const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 export default function RevenuePage() {
   const router = useRouter();
   const [revenueData, setRevenueData] = useState<RevenueData | null>(null);
-  const [upcomingTransactions, setUpcomingTransactions] = useState<Transaction[]>([]);
+  const [upcomingTransactions, setUpcomingTransactions] = useState<
+    Transaction[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [yearFilter, setYearFilter] = useState<string>(new Date().getFullYear().toString());
+  const [yearFilter, setYearFilter] = useState<string>(
+    new Date().getFullYear().toString()
+  );
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
   const supabase = createBrowserClient();
@@ -98,9 +102,9 @@ export default function RevenuePage() {
       setError(null);
 
       // 프로젝트 기본 데이터 조회
-      const { data: projects, error: projectsError } = await supabase
-        .from('projects')
-        .select(`
+      const { data: projects, error: projectsError } = await supabase.from(
+        'projects'
+      ).select(`
           id,
           name,
           status,
@@ -120,12 +124,19 @@ export default function RevenuePage() {
       // 거래 내역 조회 (예정된 정산)
       const { data: transactions, error: transactionsError } = await supabase
         .from('transactions')
-        .select(`
+        .select(
+          `
           *,
           projects!inner(name)
-        `)
+        `
+        )
         .gte('due_date', new Date().toISOString().split('T')[0])
-        .lte('due_date', new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+        .lte(
+          'due_date',
+          new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+            .toISOString()
+            .split('T')[0]
+        )
         .order('due_date', { ascending: true });
 
       if (transactionsError) throw transactionsError;
@@ -134,11 +145,11 @@ export default function RevenuePage() {
       const monthlyData = Array.from({ length: 12 }, (_, i) => {
         const month = new Date(parseInt(yearFilter), i, 1);
         const monthStr = month.toLocaleDateString('ko-KR', { month: 'short' });
-        
+
         let income = 0;
         let expense = 0;
 
-        projects?.forEach(project => {
+        projects?.forEach((project) => {
           project.transactions?.forEach((transaction: any) => {
             const transactionDate = new Date(transaction.created_at);
             if (
@@ -159,7 +170,7 @@ export default function RevenuePage() {
           month: monthStr,
           income,
           expense,
-          profit: income - expense
+          profit: income - expense,
         };
       });
 
@@ -173,41 +184,61 @@ export default function RevenuePage() {
         return acc;
       }, {});
 
-      const projectStatusData = Object.entries(statusStats || {}).map(([status, stats]: [string, any]) => ({
-        status: getStatusText(status),
-        count: stats.count,
-        revenue: stats.revenue
-      }));
+      const projectStatusData = Object.entries(statusStats || {}).map(
+        ([status, stats]: [string, any]) => ({
+          status: getStatusText(status),
+          count: stats.count,
+          revenue: stats.revenue,
+        })
+      );
 
       // 전체 통계 계산
       const totalStats = {
-        totalIncome: projects?.reduce((sum, project) => 
-          sum + (project.transactions?.filter((t: any) => t.type === 'income' && t.status === 'completed')
-            .reduce((acc: number, t: any) => acc + t.amount, 0) || 0), 0) || 0,
-        totalExpense: projects?.reduce((sum, project) => 
-          sum + (project.transactions?.filter((t: any) => t.type === 'expense' && t.status === 'completed')
-            .reduce((acc: number, t: any) => acc + t.amount, 0) || 0), 0) || 0,
+        totalIncome:
+          projects?.reduce(
+            (sum, project) =>
+              sum +
+              (project.transactions
+                ?.filter(
+                  (t: any) => t.type === 'income' && t.status === 'completed'
+                )
+                .reduce((acc: number, t: any) => acc + t.amount, 0) || 0),
+            0
+          ) || 0,
+        totalExpense:
+          projects?.reduce(
+            (sum, project) =>
+              sum +
+              (project.transactions
+                ?.filter(
+                  (t: any) => t.type === 'expense' && t.status === 'completed'
+                )
+                .reduce((acc: number, t: any) => acc + t.amount, 0) || 0),
+            0
+          ) || 0,
         totalProfit: 0,
         totalProjects: projects?.length || 0,
-        completedProjects: projects?.filter(p => p.status === 'completed').length || 0,
-        activeProjects: projects?.filter(p => p.status === 'active').length || 0
+        completedProjects:
+          projects?.filter((p) => p.status === 'completed').length || 0,
+        activeProjects:
+          projects?.filter((p) => p.status === 'active').length || 0,
       };
       totalStats.totalProfit = totalStats.totalIncome - totalStats.totalExpense;
 
       setRevenueData({
         monthly: monthlyData,
         projectStatus: projectStatusData,
-        totalStats
+        totalStats,
       });
 
       // 예정된 정산 내역 처리
-      const formattedTransactions = transactions?.map(transaction => ({
-        ...transaction,
-        project_name: transaction.projects?.name || '알 수 없음'
-      })) || [];
+      const formattedTransactions =
+        transactions?.map((transaction) => ({
+          ...transaction,
+          project_name: transaction.projects?.name || '알 수 없음',
+        })) || [];
 
       setUpcomingTransactions(formattedTransactions);
-
     } catch (err: any) {
       console.error('Error fetching revenue data:', err);
       setError(err.message);
@@ -222,45 +253,59 @@ export default function RevenuePage() {
 
   const getStatusText = (status: string) => {
     const statusMap: { [key: string]: string } = {
-      'active': '진행중',
-      'completed': '완료',
-      'on_hold': '보류',
-      'canceled': '취소',
-      'pending': '대기',
-      'processing': '진행중',
-      'issue': '문제'
+      active: '진행중',
+      completed: '완료',
+      on_hold: '보류',
+      canceled: '취소',
+      pending: '대기',
+      processing: '진행중',
+      issue: '문제',
     };
     return statusMap[status] || status;
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'active': case 'completed': return 'success';
-      case 'pending': case 'processing': return 'warning';
-      case 'on_hold': case 'issue': return 'error';
-      case 'canceled': return 'default';
-      default: return 'primary';
+      case 'active':
+      case 'completed':
+        return 'success';
+      case 'pending':
+      case 'processing':
+        return 'warning';
+      case 'on_hold':
+      case 'issue':
+        return 'error';
+      case 'canceled':
+        return 'default';
+      default:
+        return 'primary';
     }
   };
 
-  const filteredTransactions = upcomingTransactions.filter(transaction => 
-    statusFilter === 'all' || transaction.status === statusFilter
+  const filteredTransactions = upcomingTransactions.filter(
+    (transaction) =>
+      statusFilter === 'all' || transaction.status === statusFilter
   );
 
   if (loading) return <LoadingState />;
 
   return (
     <Box>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4" component="h1">
+      <Box
+        display='flex'
+        justifyContent='space-between'
+        alignItems='center'
+        mb={3}
+      >
+        <Typography variant='h4' component='h1'>
           매출 관리
         </Typography>
-        <Box display="flex" gap={2} alignItems="center">
-          <FormControl size="small" sx={{ minWidth: 120 }}>
+        <Box display='flex' gap={2} alignItems='center'>
+          <FormControl size='small' sx={{ minWidth: 120 }}>
             <InputLabel>연도</InputLabel>
             <Select
               value={yearFilter}
-              label="연도"
+              label='연도'
               onChange={(e: SelectChangeEvent) => setYearFilter(e.target.value)}
             >
               {Array.from({ length: 5 }, (_, i) => {
@@ -273,10 +318,7 @@ export default function RevenuePage() {
               })}
             </Select>
           </FormControl>
-          <Button
-            variant="outlined"
-            onClick={() => router.push('/projects')}
-          >
+          <Button variant='outlined' onClick={() => router.push('/projects')}>
             프로젝트 관리
           </Button>
         </Box>
@@ -291,10 +333,10 @@ export default function RevenuePage() {
             <Grid item xs={12} sm={6} md={3}>
               <Card>
                 <CardContent>
-                  <Typography color="textSecondary" gutterBottom>
+                  <Typography color='textSecondary' gutterBottom>
                     총 수입
                   </Typography>
-                  <Typography variant="h5" color="primary.main">
+                  <Typography variant='h5' color='primary.main'>
                     {revenueData.totalStats.totalIncome.toLocaleString()}원
                   </Typography>
                 </CardContent>
@@ -303,10 +345,10 @@ export default function RevenuePage() {
             <Grid item xs={12} sm={6} md={3}>
               <Card>
                 <CardContent>
-                  <Typography color="textSecondary" gutterBottom>
+                  <Typography color='textSecondary' gutterBottom>
                     총 지출
                   </Typography>
-                  <Typography variant="h5" color="error.main">
+                  <Typography variant='h5' color='error.main'>
                     {revenueData.totalStats.totalExpense.toLocaleString()}원
                   </Typography>
                 </CardContent>
@@ -315,12 +357,16 @@ export default function RevenuePage() {
             <Grid item xs={12} sm={6} md={3}>
               <Card>
                 <CardContent>
-                  <Typography color="textSecondary" gutterBottom>
+                  <Typography color='textSecondary' gutterBottom>
                     순이익
                   </Typography>
-                  <Typography 
-                    variant="h5" 
-                    color={revenueData.totalStats.totalProfit >= 0 ? 'success.main' : 'error.main'}
+                  <Typography
+                    variant='h5'
+                    color={
+                      revenueData.totalStats.totalProfit >= 0
+                        ? 'success.main'
+                        : 'error.main'
+                    }
                   >
                     {revenueData.totalStats.totalProfit.toLocaleString()}원
                   </Typography>
@@ -330,13 +376,13 @@ export default function RevenuePage() {
             <Grid item xs={12} sm={6} md={3}>
               <Card>
                 <CardContent>
-                  <Typography color="textSecondary" gutterBottom>
+                  <Typography color='textSecondary' gutterBottom>
                     프로젝트 현황
                   </Typography>
-                  <Typography variant="h6">
+                  <Typography variant='h6'>
                     {revenueData.totalStats.activeProjects}개 진행중
                   </Typography>
-                  <Typography variant="body2" color="textSecondary">
+                  <Typography variant='body2' color='textSecondary'>
                     완료: {revenueData.totalStats.completedProjects}개
                   </Typography>
                 </CardContent>
@@ -349,7 +395,7 @@ export default function RevenuePage() {
             <Grid item xs={12} md={8}>
               <Card>
                 <CardContent>
-                  <Typography variant="h6" gutterBottom>
+                  <Typography variant='h6' gutterBottom>
                     월별 매출 현황 ({yearFilter}년)
                   </Typography>
                   <TableContainer>
@@ -357,39 +403,53 @@ export default function RevenuePage() {
                       <TableHead>
                         <TableRow>
                           <TableCell>월</TableCell>
-                          <TableCell align="right">수입</TableCell>
-                          <TableCell align="right">지출</TableCell>
-                          <TableCell align="right">순이익</TableCell>
-                          <TableCell align="right">수익률</TableCell>
+                          <TableCell align='right'>수입</TableCell>
+                          <TableCell align='right'>지출</TableCell>
+                          <TableCell align='right'>순이익</TableCell>
+                          <TableCell align='right'>수익률</TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
                         {revenueData.monthly.map((monthData) => (
                           <TableRow key={monthData.month}>
                             <TableCell>{monthData.month}</TableCell>
-                            <TableCell align="right">
-                              <Typography color="primary.main">
+                            <TableCell align='right'>
+                              <Typography color='primary.main'>
                                 {monthData.income.toLocaleString()}원
                               </Typography>
                             </TableCell>
-                            <TableCell align="right">
-                              <Typography color="error.main">
+                            <TableCell align='right'>
+                              <Typography color='error.main'>
                                 {monthData.expense.toLocaleString()}원
                               </Typography>
                             </TableCell>
-                            <TableCell align="right">
-                              <Typography 
-                                color={monthData.profit >= 0 ? 'success.main' : 'error.main'}
-                                fontWeight="bold"
+                            <TableCell align='right'>
+                              <Typography
+                                color={
+                                  monthData.profit >= 0
+                                    ? 'success.main'
+                                    : 'error.main'
+                                }
+                                fontWeight='bold'
                               >
                                 {monthData.profit.toLocaleString()}원
                               </Typography>
                             </TableCell>
-                            <TableCell align="right">
-                              <Typography 
-                                color={monthData.income > 0 && monthData.profit >= 0 ? 'success.main' : 'error.main'}
+                            <TableCell align='right'>
+                              <Typography
+                                color={
+                                  monthData.income > 0 && monthData.profit >= 0
+                                    ? 'success.main'
+                                    : 'error.main'
+                                }
                               >
-                                {monthData.income > 0 ? ((monthData.profit / monthData.income) * 100).toFixed(1) : 0}%
+                                {monthData.income > 0
+                                  ? (
+                                      (monthData.profit / monthData.income) *
+                                      100
+                                    ).toFixed(1)
+                                  : 0}
+                                %
                               </Typography>
                             </TableCell>
                           </TableRow>
@@ -403,26 +463,33 @@ export default function RevenuePage() {
             <Grid item xs={12} md={4}>
               <Card>
                 <CardContent>
-                  <Typography variant="h6" gutterBottom>
+                  <Typography variant='h6' gutterBottom>
                     프로젝트 상태별 분포
                   </Typography>
                   <Box>
                     {revenueData.projectStatus.map((statusData, index) => (
-                      <Box key={statusData.status} display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-                        <Box display="flex" alignItems="center">
+                      <Box
+                        key={statusData.status}
+                        display='flex'
+                        justifyContent='space-between'
+                        alignItems='center'
+                        mb={1}
+                      >
+                        <Box display='flex' alignItems='center'>
                           <Box
                             width={12}
                             height={12}
-                            borderRadius="50%"
+                            borderRadius='50%'
                             bgcolor={COLORS[index % COLORS.length]}
                             mr={1}
                           />
-                          <Typography variant="body2">
+                          <Typography variant='body2'>
                             {statusData.status}
                           </Typography>
                         </Box>
-                        <Typography variant="body2" fontWeight="bold">
-                          {statusData.count}개 ({statusData.revenue.toLocaleString()}원)
+                        <Typography variant='body2' fontWeight='bold'>
+                          {statusData.count}개 (
+                          {statusData.revenue.toLocaleString()}원)
                         </Typography>
                       </Box>
                     ))}
@@ -437,26 +504,31 @@ export default function RevenuePage() {
       {/* 예정된 정산 */}
       <Card>
         <CardContent>
-          <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-            <Typography variant="h6">
-              예정된 정산 (30일 이내)
-            </Typography>
-            <FormControl size="small" sx={{ minWidth: 120 }}>
+          <Box
+            display='flex'
+            justifyContent='space-between'
+            alignItems='center'
+            mb={2}
+          >
+            <Typography variant='h6'>예정된 정산 (30일 이내)</Typography>
+            <FormControl size='small' sx={{ minWidth: 120 }}>
               <InputLabel>상태 필터</InputLabel>
               <Select
                 value={statusFilter}
-                label="상태 필터"
-                onChange={(e: SelectChangeEvent) => setStatusFilter(e.target.value)}
+                label='상태 필터'
+                onChange={(e: SelectChangeEvent) =>
+                  setStatusFilter(e.target.value)
+                }
               >
-                <MenuItem value="all">전체</MenuItem>
-                <MenuItem value="pending">대기</MenuItem>
-                <MenuItem value="processing">진행중</MenuItem>
-                <MenuItem value="completed">완료</MenuItem>
-                <MenuItem value="issue">문제</MenuItem>
+                <MenuItem value='all'>전체</MenuItem>
+                <MenuItem value='pending'>대기</MenuItem>
+                <MenuItem value='processing'>진행중</MenuItem>
+                <MenuItem value='completed'>완료</MenuItem>
+                <MenuItem value='issue'>문제</MenuItem>
               </Select>
             </FormControl>
           </Box>
-          
+
           <TableContainer>
             <Table>
               <TableHead>
@@ -465,7 +537,7 @@ export default function RevenuePage() {
                   <TableCell>구분</TableCell>
                   <TableCell>거래처</TableCell>
                   <TableCell>항목</TableCell>
-                  <TableCell align="right">금액</TableCell>
+                  <TableCell align='right'>금액</TableCell>
                   <TableCell>마감일</TableCell>
                   <TableCell>상태</TableCell>
                   <TableCell>세금계산서</TableCell>
@@ -476,44 +548,57 @@ export default function RevenuePage() {
                   <TableRow key={transaction.id}>
                     <TableCell>
                       <Button
-                        variant="text"
-                        onClick={() => router.push(`/projects/${transaction.project_name}`)}
+                        variant='text'
+                        onClick={() =>
+                          router.push(`/projects/${transaction.project_name}`)
+                        }
                       >
                         {transaction.project_name}
                       </Button>
                     </TableCell>
                     <TableCell>
-                      <Chip 
-                        size="small" 
-                        label={transaction.type === 'income' ? '수입' : '지출'} 
-                        color={transaction.type === 'income' ? 'primary' : 'secondary'}
+                      <Chip
+                        size='small'
+                        label={transaction.type === 'income' ? '수입' : '지출'}
+                        color={
+                          transaction.type === 'income'
+                            ? 'primary'
+                            : 'secondary'
+                        }
                       />
                     </TableCell>
                     <TableCell>{transaction.partner_name}</TableCell>
                     <TableCell>{transaction.item_name}</TableCell>
-                    <TableCell align="right">
-                      <Typography 
-                        color={transaction.type === 'income' ? 'primary.main' : 'error.main'}
-                        fontWeight="bold"
+                    <TableCell align='right'>
+                      <Typography
+                        color={
+                          transaction.type === 'income'
+                            ? 'primary.main'
+                            : 'error.main'
+                        }
+                        fontWeight='bold'
                       >
-                        {transaction.type === 'income' ? '+' : '-'}{transaction.amount.toLocaleString()}원
+                        {transaction.type === 'income' ? '+' : '-'}
+                        {transaction.amount.toLocaleString()}원
                       </Typography>
                     </TableCell>
                     <TableCell>
-                      {transaction.due_date ? new Date(transaction.due_date).toLocaleDateString() : '-'}
+                      {transaction.due_date
+                        ? new Date(transaction.due_date).toLocaleDateString()
+                        : '-'}
                     </TableCell>
                     <TableCell>
-                      <Chip 
-                        size="small" 
-                        label={getStatusText(transaction.status)} 
+                      <Chip
+                        size='small'
+                        label={getStatusText(transaction.status)}
                         color={getStatusColor(transaction.status)}
                       />
                     </TableCell>
                     <TableCell>
-                      <Chip 
-                        size="small" 
-                        label={getStatusText(transaction.tax_invoice_status)} 
-                        variant="outlined"
+                      <Chip
+                        size='small'
+                        label={getStatusText(transaction.tax_invoice_status)}
+                        variant='outlined'
                       />
                     </TableCell>
                   </TableRow>
@@ -523,8 +608,8 @@ export default function RevenuePage() {
           </TableContainer>
 
           {filteredTransactions.length === 0 && (
-            <Box textAlign="center" py={4}>
-              <Typography variant="body1" color="text.secondary">
+            <Box textAlign='center' py={4}>
+              <Typography variant='body1' color='text.secondary'>
                 예정된 정산이 없습니다
               </Typography>
             </Box>

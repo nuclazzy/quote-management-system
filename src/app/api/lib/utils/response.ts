@@ -1,34 +1,34 @@
-import { NextResponse } from 'next/server'
+import { NextResponse } from 'next/server';
 
 export interface ApiResponse<T = any> {
-  success: boolean
-  data?: T
-  message?: string
+  success: boolean;
+  data?: T;
+  message?: string;
   error?: {
-    code: string
-    message: string
-    details?: any
-  }
-  timestamp: string
-  request_id?: string
+    code: string;
+    message: string;
+    details?: any;
+  };
+  timestamp: string;
+  request_id?: string;
 }
 
 export interface PaginatedApiResponse<T = any> extends ApiResponse<T[]> {
   pagination: {
-    page: number
-    per_page: number
-    total_count: number
-    total_pages: number
-    has_next_page: boolean
-    has_prev_page: boolean
-  }
+    page: number;
+    per_page: number;
+    total_count: number;
+    total_pages: number;
+    has_next_page: boolean;
+    has_prev_page: boolean;
+  };
 }
 
 /**
  * 고유한 요청 ID 생성
  */
 function generateRequestId(): string {
-  return `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  return `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 
 /**
@@ -45,10 +45,10 @@ export function createSuccessResponse<T>(
     data,
     message,
     timestamp: new Date().toISOString(),
-    request_id: requestId || generateRequestId()
-  }
+    request_id: requestId || generateRequestId(),
+  };
 
-  return NextResponse.json(response, { status })
+  return NextResponse.json(response, { status });
 }
 
 /**
@@ -57,14 +57,14 @@ export function createSuccessResponse<T>(
 export function createPaginatedResponse<T>(
   data: T[],
   pagination: {
-    page: number
-    per_page: number
-    total_count: number
+    page: number;
+    per_page: number;
+    total_count: number;
   },
   message?: string
 ): NextResponse {
-  const total_pages = Math.ceil(pagination.total_count / pagination.per_page)
-  
+  const total_pages = Math.ceil(pagination.total_count / pagination.per_page);
+
   const response: PaginatedApiResponse<T> = {
     success: true,
     data,
@@ -73,12 +73,12 @@ export function createPaginatedResponse<T>(
       ...pagination,
       total_pages,
       has_next_page: pagination.page < total_pages,
-      has_prev_page: pagination.page > 1
+      has_prev_page: pagination.page > 1,
     },
-    timestamp: new Date().toISOString()
-  }
+    timestamp: new Date().toISOString(),
+  };
 
-  return NextResponse.json(response, { status: 200 })
+  return NextResponse.json(response, { status: 200 });
 }
 
 /**
@@ -96,11 +96,11 @@ export function createErrorResponse(
     error: {
       code,
       message,
-      details
+      details,
     },
     timestamp: new Date().toISOString(),
-    request_id: requestId || generateRequestId()
-  }
+    request_id: requestId || generateRequestId(),
+  };
 
   // 에러 로깅 (운영 환경에서는 외부 로깅 서비스로 전송)
   if (status >= 500) {
@@ -108,11 +108,11 @@ export function createErrorResponse(
       code,
       message,
       details,
-      timestamp: response.timestamp
-    })
+      timestamp: response.timestamp,
+    });
   }
 
-  return NextResponse.json(response, { status })
+  return NextResponse.json(response, { status });
 }
 
 /**
@@ -122,7 +122,7 @@ export function createCreatedResponse<T>(
   data: T,
   message = '성공적으로 생성되었습니다.'
 ): NextResponse {
-  return createSuccessResponse(data, message, 201)
+  return createSuccessResponse(data, message, 201);
 }
 
 /**
@@ -132,7 +132,7 @@ export function createUpdatedResponse<T>(
   data: T,
   message = '성공적으로 업데이트되었습니다.'
 ): NextResponse {
-  return createSuccessResponse(data, message, 200)
+  return createSuccessResponse(data, message, 200);
 }
 
 /**
@@ -141,7 +141,7 @@ export function createUpdatedResponse<T>(
 export function createDeletedResponse(
   message = '성공적으로 삭제되었습니다.'
 ): NextResponse {
-  return createSuccessResponse(null, message, 200)
+  return createSuccessResponse(null, message, 200);
 }
 
 /**
@@ -151,7 +151,7 @@ export function createBadRequestResponse(
   message: string,
   details?: any
 ): NextResponse {
-  return createErrorResponse('BAD_REQUEST', message, details, 400)
+  return createErrorResponse('BAD_REQUEST', message, details, 400);
 }
 
 /**
@@ -160,7 +160,7 @@ export function createBadRequestResponse(
 export function createUnauthorizedResponse(
   message = '인증이 필요합니다.'
 ): NextResponse {
-  return createErrorResponse('UNAUTHORIZED', message, null, 401)
+  return createErrorResponse('UNAUTHORIZED', message, null, 401);
 }
 
 /**
@@ -169,21 +169,19 @@ export function createUnauthorizedResponse(
 export function createForbiddenResponse(
   message = '권한이 없습니다.'
 ): NextResponse {
-  return createErrorResponse('FORBIDDEN', message, null, 403)
+  return createErrorResponse('FORBIDDEN', message, null, 403);
 }
 
 /**
  * 찾을 수 없음 응답
  */
-export function createNotFoundResponse(
-  resource: string
-): NextResponse {
+export function createNotFoundResponse(resource: string): NextResponse {
   return createErrorResponse(
     'NOT_FOUND',
     `${resource}을(를) 찾을 수 없습니다.`,
     null,
     404
-  )
+  );
 }
 
 /**
@@ -193,7 +191,7 @@ export function createConflictResponse(
   message: string,
   details?: any
 ): NextResponse {
-  return createErrorResponse('CONFLICT', message, details, 409)
+  return createErrorResponse('CONFLICT', message, details, 409);
 }
 
 /**
@@ -203,7 +201,7 @@ export function createInternalErrorResponse(
   message = '서버 내부 오류가 발생했습니다.',
   details?: any
 ): NextResponse {
-  return createErrorResponse('INTERNAL_SERVER_ERROR', message, details, 500)
+  return createErrorResponse('INTERNAL_SERVER_ERROR', message, details, 500);
 }
 
 /**
@@ -217,22 +215,28 @@ export function createMethodNotAllowedResponse(
     `허용되지 않는 메서드입니다. 허용된 메서드: ${allowedMethods.join(', ')}`,
     { allowedMethods },
     405
-  )
-  
-  response.headers.set('Allow', allowedMethods.join(', '))
-  return response
+  );
+
+  response.headers.set('Allow', allowedMethods.join(', '));
+  return response;
 }
 
 /**
  * CORS 헤더 추가
  */
 export function addCorsHeaders(response: NextResponse): NextResponse {
-  response.headers.set('Access-Control-Allow-Origin', '*')
-  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
-  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-API-Key')
-  response.headers.set('Access-Control-Max-Age', '86400')
-  
-  return response
+  response.headers.set('Access-Control-Allow-Origin', '*');
+  response.headers.set(
+    'Access-Control-Allow-Methods',
+    'GET, POST, PUT, PATCH, DELETE, OPTIONS'
+  );
+  response.headers.set(
+    'Access-Control-Allow-Headers',
+    'Content-Type, Authorization, X-API-Key'
+  );
+  response.headers.set('Access-Control-Max-Age', '86400');
+
+  return response;
 }
 
 /**
@@ -244,14 +248,18 @@ export function addCacheHeaders(
   staleWhileRevalidate: number = 0
 ): NextResponse {
   if (maxAge > 0) {
-    const cacheControl = staleWhileRevalidate > 0 
-      ? `public, max-age=${maxAge}, stale-while-revalidate=${staleWhileRevalidate}`
-      : `public, max-age=${maxAge}`
-    
-    response.headers.set('Cache-Control', cacheControl)
+    const cacheControl =
+      staleWhileRevalidate > 0
+        ? `public, max-age=${maxAge}, stale-while-revalidate=${staleWhileRevalidate}`
+        : `public, max-age=${maxAge}`;
+
+    response.headers.set('Cache-Control', cacheControl);
   } else {
-    response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate')
+    response.headers.set(
+      'Cache-Control',
+      'no-cache, no-store, must-revalidate'
+    );
   }
-  
-  return response
+
+  return response;
 }

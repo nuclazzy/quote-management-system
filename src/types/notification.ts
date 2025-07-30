@@ -1,15 +1,15 @@
 export interface Notification {
-  id: string
-  user_id: string
-  title: string
-  message: string
-  type: NotificationType
-  link_url?: string
-  is_read: boolean
-  entity_type?: string
-  entity_id?: string
-  priority: NotificationPriority
-  created_at: string
+  id: string;
+  user_id: string;
+  title: string;
+  message: string;
+  type: NotificationType;
+  link_url?: string;
+  is_read: boolean;
+  entity_type?: string;
+  entity_id?: string;
+  priority: NotificationPriority;
+  created_at: string;
 }
 
 export type NotificationType =
@@ -25,35 +25,35 @@ export type NotificationType =
   | 'settlement_overdue'
   | 'system_user_joined'
   | 'system_permission_changed'
-  | 'general'
+  | 'general';
 
-export type NotificationPriority = 'low' | 'normal' | 'high' | 'urgent'
+export type NotificationPriority = 'low' | 'normal' | 'high' | 'urgent';
 
 export interface NotificationSettings {
-  id: string
-  user_id: string
-  quote_created: boolean
-  quote_approved: boolean
-  quote_rejected: boolean
-  quote_expiring: boolean
-  project_created: boolean
-  project_status_changed: boolean
-  project_deadline_approaching: boolean
-  settlement_due: boolean
-  settlement_completed: boolean
-  settlement_overdue: boolean
-  system_user_joined: boolean
-  system_permission_changed: boolean
-  email_notifications: boolean
-  browser_notifications: boolean
-  created_at: string
-  updated_at: string
+  id: string;
+  user_id: string;
+  quote_created: boolean;
+  quote_approved: boolean;
+  quote_rejected: boolean;
+  quote_expiring: boolean;
+  project_created: boolean;
+  project_status_changed: boolean;
+  project_deadline_approaching: boolean;
+  settlement_due: boolean;
+  settlement_completed: boolean;
+  settlement_overdue: boolean;
+  system_user_joined: boolean;
+  system_permission_changed: boolean;
+  email_notifications: boolean;
+  browser_notifications: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface NotificationResponse {
-  notifications: Notification[]
-  unreadCount: number
-  hasMore: boolean
+  notifications: Notification[];
+  unreadCount: number;
+  hasMore: boolean;
 }
 
 export const NotificationTypeLabels: Record<NotificationType, string> = {
@@ -69,8 +69,8 @@ export const NotificationTypeLabels: Record<NotificationType, string> = {
   settlement_overdue: '정산 연체',
   system_user_joined: '사용자 가입',
   system_permission_changed: '권한 변경',
-  general: '일반 알림'
-}
+  general: '일반 알림',
+};
 
 export const NotificationTypeColors: Record<NotificationType, string> = {
   quote_created: '#2196F3',
@@ -85,12 +85,13 @@ export const NotificationTypeColors: Record<NotificationType, string> = {
   settlement_overdue: '#F44336',
   system_user_joined: '#00BCD4',
   system_permission_changed: '#795548',
-  general: '#607D8B'
-}
+  general: '#607D8B',
+};
 
-export const NotificationPriorityColors: Record<NotificationPriority, string> = {
-  low: '#9E9E9E',
-  normal: '#2196F3',
-  high: '#FF9800',
-  urgent: '#F44336'
-}
+export const NotificationPriorityColors: Record<NotificationPriority, string> =
+  {
+    low: '#9E9E9E',
+    normal: '#2196F3',
+    high: '#FF9800',
+    urgent: '#F44336',
+  };

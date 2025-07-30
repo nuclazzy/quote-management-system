@@ -1,37 +1,37 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@/lib/supabase/server'
-import { cookies } from 'next/headers'
+import { NextRequest, NextResponse } from 'next/server';
+import { createServerClient } from '@/lib/supabase/server';
+import { cookies } from 'next/headers';
 
 export interface ApiResponse<T = any> {
-  success: boolean
-  data?: T
-  error?: string
-  message?: string
+  success: boolean;
+  data?: T;
+  error?: string;
+  message?: string;
 }
 
 export interface PaginationParams {
-  page?: number
-  limit?: number
-  sortBy?: string
-  sortOrder?: 'asc' | 'desc'
+  page?: number;
+  limit?: number;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
 }
 
 export interface PaginatedResponse<T> extends ApiResponse<T[]> {
   pagination?: {
-    page: number
-    limit: number
-    total: number
-    totalPages: number
-  }
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
 }
 
 export class ApiError extends Error {
-  statusCode: number
-  
+  statusCode: number;
+
   constructor(message: string, statusCode: number = 500) {
-    super(message)
-    this.statusCode = statusCode
-    this.name = 'ApiError'
+    super(message);
+    this.statusCode = statusCode;
+    this.name = 'ApiError';
   }
 }
 
@@ -47,7 +47,7 @@ export function createApiResponse<T>(
       message,
     },
     { status: statusCode }
-  )
+  );
 }
 
 export function createApiError(
@@ -60,28 +60,31 @@ export function createApiError(
       error,
     },
     { status: statusCode }
-  )
+  );
 }
 
 export async function withAuth<T = any>(
   request: NextRequest,
   handler: (params: {
-    request: NextRequest
-    user: any
-    supabase: any
+    request: NextRequest;
+    user: any;
+    supabase: any;
   }) => Promise<NextResponse<ApiResponse<T>>>,
   options: {
-    requireAdmin?: boolean
+    requireAdmin?: boolean;
   } = {}
 ): Promise<NextResponse<ApiResponse<T>>> {
   try {
-    const cookieStore = cookies()
-    const supabase = createServerClient()
-    
-    const { data: { session }, error } = await supabase.auth.getSession()
-    
+    const cookieStore = cookies();
+    const supabase = createServerClient();
+
+    const {
+      data: { session },
+      error,
+    } = await supabase.auth.getSession();
+
     if (error || !session?.user) {
-      return createApiError('Unauthorized', 401)
+      return createApiError('Unauthorized', 401);
     }
 
     // Get user profile for role check
@@ -89,37 +92,37 @@ export async function withAuth<T = any>(
       .from('users')
       .select('*')
       .eq('id', session.user.id)
-      .single()
+      .single();
 
     if (profileError || !profile) {
-      return createApiError('User profile not found', 404)
+      return createApiError('User profile not found', 404);
     }
 
     // Check admin requirement
     if (options.requireAdmin && profile.role !== 'admin') {
-      return createApiError('Admin access required', 403)
+      return createApiError('Admin access required', 403);
     }
 
     return await handler({
       request,
       user: { ...session.user, profile },
-      supabase
-    })
+      supabase,
+    });
   } catch (error) {
-    console.error('Auth handler error:', error)
-    return createApiError('Internal server error', 500)
+    console.error('Auth handler error:', error);
+    return createApiError('Internal server error', 500);
   }
 }
 
 export function parseSearchParams(request: NextRequest): PaginationParams {
-  const searchParams = request.nextUrl.searchParams
-  
+  const searchParams = request.nextUrl.searchParams;
+
   return {
     page: parseInt(searchParams.get('page') || '1'),
     limit: Math.min(parseInt(searchParams.get('limit') || '10'), 100),
     sortBy: searchParams.get('sortBy') || 'created_at',
     sortOrder: (searchParams.get('sortOrder') as 'asc' | 'desc') || 'desc',
-  }
+  };
 }
 
 export async function validateRequestBody<T>(
@@ -127,9 +130,9 @@ export async function validateRequestBody<T>(
   validator: (data: any) => T | Promise<T>
 ): Promise<T> {
   try {
-    const body = await request.json()
-    return await validator(body)
+    const body = await request.json();
+    return await validator(body);
   } catch (error) {
-    throw new ApiError('Invalid request body', 400)
+    throw new ApiError('Invalid request body', 400);
   }
 }

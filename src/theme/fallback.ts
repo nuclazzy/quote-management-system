@@ -176,6 +176,6 @@ export const fallbackTheme = {
   shape: {
     borderRadius: 8,
   },
-}
+};
 
-export default fallbackTheme
+export default fallbackTheme;

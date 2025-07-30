@@ -1,72 +1,87 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@/lib/supabase/server'
+import { NextRequest, NextResponse } from 'next/server';
+import { createServerClient } from '@/lib/supabase/server';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createServerClient()
-    
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const supabase = createServerClient();
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { searchParams } = new URL(request.url)
-    const category = searchParams.get('category')
-    const status = searchParams.get('status')
-    const supplier_id = searchParams.get('supplier_id')
+    const { searchParams } = new URL(request.url);
+    const category = searchParams.get('category');
+    const status = searchParams.get('status');
+    const supplier_id = searchParams.get('supplier_id');
 
     let query = supabase
       .from('items')
-      .select(`
+      .select(
+        `
         *,
         suppliers (
           name
         )
-      `)
-      .order('name')
+      `
+      )
+      .order('name');
 
     if (category) {
-      query = query.eq('category', category)
+      query = query.eq('category', category);
     }
 
     if (status) {
-      query = query.eq('status', status)
+      query = query.eq('status', status);
     }
 
     if (supplier_id) {
-      query = query.eq('supplier_id', supplier_id)
+      query = query.eq('supplier_id', supplier_id);
     }
 
-    const { data: items, error } = await query
+    const { data: items, error } = await query;
 
     if (error) {
-      console.error('Error fetching items:', error)
-      return NextResponse.json({ error: 'Failed to fetch items' }, { status: 500 })
+      console.error('Error fetching items:', error);
+      return NextResponse.json(
+        { error: 'Failed to fetch items' },
+        { status: 500 }
+      );
     }
 
     // Flatten supplier data
-    const formattedItems = items?.map(item => ({
-      ...item,
-      supplier_name: item.suppliers?.name || null
-    })) || []
+    const formattedItems =
+      items?.map((item) => ({
+        ...item,
+        supplier_name: item.suppliers?.name || null,
+      })) || [];
 
-    return NextResponse.json(formattedItems)
+    return NextResponse.json(formattedItems);
   } catch (error) {
-    console.error('Error in items GET:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('Error in items GET:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createServerClient()
-    
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const supabase = createServerClient();
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await request.json()
+    const body = await request.json();
     const {
       name,
       description,
@@ -80,15 +95,18 @@ export async function POST(request: NextRequest) {
       stock_quantity,
       barcode,
       sku,
-      status
-    } = body
+      status,
+    } = body;
 
     // Validate required fields
     if (!name || !category || !unit || unit_price === undefined || !sku) {
       return NextResponse.json(
-        { error: 'Missing required fields: name, category, unit, unit_price, sku' },
+        {
+          error:
+            'Missing required fields: name, category, unit, unit_price, sku',
+        },
         { status: 400 }
-      )
+      );
     }
 
     // Check if SKU already exists
@@ -96,13 +114,13 @@ export async function POST(request: NextRequest) {
       .from('items')
       .select('id')
       .eq('sku', sku)
-      .single()
+      .single();
 
     if (existingSku) {
       return NextResponse.json(
         { error: 'SKU already exists' },
         { status: 400 }
-      )
+      );
     }
 
     const { data: item, error } = await supabase
@@ -122,19 +140,25 @@ export async function POST(request: NextRequest) {
         sku,
         status: status || 'active',
         created_by: user.id,
-        updated_by: user.id
+        updated_by: user.id,
       })
       .select()
-      .single()
+      .single();
 
     if (error) {
-      console.error('Error creating item:', error)
-      return NextResponse.json({ error: 'Failed to create item' }, { status: 500 })
+      console.error('Error creating item:', error);
+      return NextResponse.json(
+        { error: 'Failed to create item' },
+        { status: 500 }
+      );
     }
 
-    return NextResponse.json(item, { status: 201 })
+    return NextResponse.json(item, { status: 201 });
   } catch (error) {
-    console.error('Error in items POST:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('Error in items POST:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }

@@ -1,6 +1,6 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -21,7 +21,7 @@ import {
   FormControl,
   InputLabel,
   Select,
-} from '@mui/material'
+} from '@mui/material';
 import {
   Add,
   Edit,
@@ -30,58 +30,57 @@ import {
   FileUpload,
   FileDownload,
   Search,
-} from '@mui/icons-material'
-import { DataGrid, GridColDef, GridActionsCellItem } from '@mui/x-data-grid'
-import { useForm, Controller } from 'react-hook-form'
-import { useAuth } from '@/contexts/AuthContext'
+} from '@mui/icons-material';
+import { DataGrid, GridColDef, GridActionsCellItem } from '@mui/x-data-grid';
+import { useForm, Controller } from 'react-hook-form';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Supplier {
-  id: string
-  name: string
-  business_registration_number?: string
-  contact_person?: string
-  email?: string
-  phone?: string
-  address?: string
-  postal_code?: string
-  website?: string
-  payment_terms?: string
-  lead_time_days?: number
-  quality_rating?: number
-  notes?: string
-  is_active: boolean
-  created_at: string
-  updated_at: string
-  created_by: string
-  updated_by?: string
+  id: string;
+  name: string;
+  business_registration_number?: string;
+  contact_person?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  postal_code?: string;
+  website?: string;
+  payment_terms?: string;
+  lead_time_days?: number;
+  quality_rating?: number;
+  notes?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  created_by: string;
+  updated_by?: string;
   created_by_profile?: {
-    id: string
-    full_name: string
-    email: string
-  }
+    id: string;
+    full_name: string;
+    email: string;
+  };
   updated_by_profile?: {
-    id: string
-    full_name: string
-    email: string
-  }
+    id: string;
+    full_name: string;
+    email: string;
+  };
 }
 
 interface SupplierFormData {
-  name: string
-  business_registration_number?: string
-  contact_person?: string
-  email?: string
-  phone?: string
-  address?: string
-  postal_code?: string
-  website?: string
-  payment_terms?: string
-  lead_time_days?: number
-  quality_rating?: number
-  notes?: string
-  is_active?: boolean
+  name: string;
+  business_registration_number?: string;
+  contact_person?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  postal_code?: string;
+  website?: string;
+  payment_terms?: string;
+  lead_time_days?: number;
+  quality_rating?: number;
+  notes?: string;
+  is_active?: boolean;
 }
-
 
 const paymentTermsOptions = [
   '현금',
@@ -89,20 +88,26 @@ const paymentTermsOptions = [
   '30일 후 결제',
   '60일 후 결제',
   '90일 후 결제',
-  '기타'
-]
+  '기타',
+];
 
 export default function SuppliersPage() {
-  const { user } = useAuth()
-  const [suppliers, setSuppliers] = useState<Supplier[]>([])
-  const [loading, setLoading] = useState(true)
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null)
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [supplierToDelete, setSupplierToDelete] = useState<Supplier | null>(null)
-  const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' })
+  const { user } = useAuth();
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [supplierToDelete, setSupplierToDelete] = useState<Supplier | null>(
+    null
+  );
+  const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: '',
+    severity: 'success' as 'success' | 'error',
+  });
 
   const {
     control,
@@ -125,35 +130,35 @@ export default function SuppliersPage() {
       notes: '',
       is_active: true,
     },
-  })
+  });
 
   useEffect(() => {
-    fetchSuppliers()
-  }, [])
+    fetchSuppliers();
+  }, []);
 
   const fetchSuppliers = async () => {
     try {
-      const response = await fetch('/api/suppliers')
+      const response = await fetch('/api/suppliers');
       if (response.ok) {
-        const data = await response.json()
-        setSuppliers(data.suppliers || [])
+        const data = await response.json();
+        setSuppliers(data.suppliers || []);
       } else {
-        throw new Error('공급업체 정보를 불러오는데 실패했습니다.')
+        throw new Error('공급업체 정보를 불러오는데 실패했습니다.');
       }
     } catch (error) {
-      console.error('Error fetching suppliers:', error)
+      console.error('Error fetching suppliers:', error);
       setSnackbar({
         open: true,
         message: '공급업체 정보를 불러오는데 실패했습니다.',
-        severity: 'error'
-      })
+        severity: 'error',
+      });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleCreateSupplier = () => {
-    setEditingSupplier(null)
+    setEditingSupplier(null);
     reset({
       name: '',
       business_registration_number: '',
@@ -168,12 +173,12 @@ export default function SuppliersPage() {
       quality_rating: undefined,
       notes: '',
       is_active: true,
-    })
-    setDialogOpen(true)
-  }
+    });
+    setDialogOpen(true);
+  };
 
   const handleEditSupplier = (supplier: Supplier) => {
-    setEditingSupplier(supplier)
+    setEditingSupplier(supplier);
     reset({
       name: supplier.name,
       business_registration_number: supplier.business_registration_number || '',
@@ -188,19 +193,21 @@ export default function SuppliersPage() {
       quality_rating: supplier.quality_rating || undefined,
       notes: supplier.notes || '',
       is_active: supplier.is_active,
-    })
-    setDialogOpen(true)
-  }
+    });
+    setDialogOpen(true);
+  };
 
   const handleDeleteSupplier = (supplier: Supplier) => {
-    setSupplierToDelete(supplier)
-    setDeleteDialogOpen(true)
-  }
+    setSupplierToDelete(supplier);
+    setDeleteDialogOpen(true);
+  };
 
   const onSubmit = async (data: SupplierFormData) => {
     try {
-      const url = editingSupplier ? `/api/suppliers/${editingSupplier.id}` : '/api/suppliers'
-      const method = editingSupplier ? 'PUT' : 'POST'
+      const url = editingSupplier
+        ? `/api/suppliers/${editingSupplier.id}`
+        : '/api/suppliers';
+      const method = editingSupplier ? 'PUT' : 'POST';
 
       const response = await fetch(url, {
         method,
@@ -208,64 +215,72 @@ export default function SuppliersPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(data),
-      })
+      });
 
       if (response.ok) {
         setSnackbar({
           open: true,
-          message: editingSupplier ? '공급업체가 수정되었습니다.' : '공급업체가 생성되었습니다.',
-          severity: 'success'
-        })
-        setDialogOpen(false)
-        fetchSuppliers()
+          message: editingSupplier
+            ? '공급업체가 수정되었습니다.'
+            : '공급업체가 생성되었습니다.',
+          severity: 'success',
+        });
+        setDialogOpen(false);
+        fetchSuppliers();
       } else {
-        const errorData = await response.json()
-        throw new Error(errorData.error || '공급업체 저장에 실패했습니다.')
+        const errorData = await response.json();
+        throw new Error(errorData.error || '공급업체 저장에 실패했습니다.');
       }
     } catch (error) {
-      console.error('Error saving supplier:', error)
+      console.error('Error saving supplier:', error);
       setSnackbar({
         open: true,
-        message: error instanceof Error ? error.message : '공급업체 저장에 실패했습니다.',
-        severity: 'error'
-      })
+        message:
+          error instanceof Error
+            ? error.message
+            : '공급업체 저장에 실패했습니다.',
+        severity: 'error',
+      });
     }
-  }
+  };
 
   const confirmDelete = async () => {
-    if (!supplierToDelete) return
+    if (!supplierToDelete) return;
 
     try {
       const response = await fetch(`/api/suppliers/${supplierToDelete.id}`, {
         method: 'DELETE',
-      })
+      });
 
       if (response.ok) {
-        const data = await response.json()
+        const data = await response.json();
         setSnackbar({
           open: true,
           message: data.message || '공급업체가 삭제되었습니다.',
-          severity: 'success'
-        })
-        setDeleteDialogOpen(false)
-        setSupplierToDelete(null)
-        fetchSuppliers()
+          severity: 'success',
+        });
+        setDeleteDialogOpen(false);
+        setSupplierToDelete(null);
+        fetchSuppliers();
       } else {
-        const errorData = await response.json()
-        throw new Error(errorData.error || '공급업체 삭제에 실패했습니다.')
+        const errorData = await response.json();
+        throw new Error(errorData.error || '공급업체 삭제에 실패했습니다.');
       }
     } catch (error) {
-      console.error('Error deleting supplier:', error)
+      console.error('Error deleting supplier:', error);
       setSnackbar({
         open: true,
-        message: error instanceof Error ? error.message : '공급업체 삭제에 실패했습니다.',
-        severity: 'error'
-      })
+        message:
+          error instanceof Error
+            ? error.message
+            : '공급업체 삭제에 실패했습니다.',
+        severity: 'error',
+      });
     }
-  }
+  };
 
   const handleExportCSV = () => {
-    const csvData = suppliers.map(supplier => ({
+    const csvData = suppliers.map((supplier) => ({
       회사명: supplier.name,
       사업자번호: supplier.business_registration_number || '',
       담당자: supplier.contact_person || '',
@@ -279,89 +294,106 @@ export default function SuppliersPage() {
       품질평가: supplier.quality_rating || '',
       상태: supplier.is_active ? '활성' : '비활성',
       생성일: new Date(supplier.created_at).toLocaleDateString('ko-KR'),
-    }))
+    }));
 
     const csvContent = [
       Object.keys(csvData[0] || {}).join(','),
-      ...csvData.map(row => Object.values(row || {}).join(','))
-    ].join('\n')
+      ...csvData.map((row) => Object.values(row || {}).join(',')),
+    ].join('\n');
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const link = document.createElement('a')
-    link.href = URL.createObjectURL(blob)
-    link.download = `공급업체_목록_${new Date().toISOString().split('T')[0]}.csv`
-    link.click()
-  }
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `공급업체_목록_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+  };
 
-  const filteredSuppliers = suppliers.filter(supplier =>
-    supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (supplier.contact_person && supplier.contact_person.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (supplier.email && supplier.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (supplier.business_registration_number && supplier.business_registration_number.toLowerCase().includes(searchTerm.toLowerCase()))
-  )
+  const filteredSuppliers = suppliers.filter(
+    (supplier) =>
+      supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (supplier.contact_person &&
+        supplier.contact_person
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase())) ||
+      (supplier.email &&
+        supplier.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (supplier.business_registration_number &&
+        supplier.business_registration_number
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase()))
+  );
 
   const columns: GridColDef[] = [
-    { 
-      field: 'name', 
-      headerName: '회사명', 
-      width: 200, 
+    {
+      field: 'name',
+      headerName: '회사명',
+      width: 200,
       flex: 1,
       renderCell: (params) => (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Typography variant="body2" fontWeight="medium">
+          <Typography variant='body2' fontWeight='medium'>
             {params.value}
           </Typography>
         </Box>
-      )
+      ),
     },
-    { 
-      field: 'business_registration_number', 
-      headerName: '사업자번호', 
+    {
+      field: 'business_registration_number',
+      headerName: '사업자번호',
       width: 150,
-      valueFormatter: (params) => params || '-'
+      valueFormatter: (params) => params || '-',
     },
-    { 
-      field: 'contact_person', 
-      headerName: '담당자', 
+    {
+      field: 'contact_person',
+      headerName: '담당자',
       width: 120,
-      valueFormatter: (params) => params || '-'
+      valueFormatter: (params) => params || '-',
     },
-    { 
-      field: 'phone', 
-      headerName: '전화번호', 
+    {
+      field: 'phone',
+      headerName: '전화번호',
       width: 130,
-      valueFormatter: (params) => params || '-'
+      valueFormatter: (params) => params || '-',
     },
-    { 
-      field: 'email', 
-      headerName: '이메일', 
-      width: 200, 
+    {
+      field: 'email',
+      headerName: '이메일',
+      width: 200,
       flex: 1,
-      valueFormatter: (params) => params || '-'
+      valueFormatter: (params) => params || '-',
     },
-    { 
-      field: 'payment_terms', 
-      headerName: '결제조건', 
+    {
+      field: 'payment_terms',
+      headerName: '결제조건',
       width: 120,
-      valueFormatter: (params) => params || '-'
+      valueFormatter: (params) => params || '-',
     },
     {
       field: 'lead_time_days',
       headerName: '납기(일)',
       width: 80,
-      valueFormatter: (params) => params ? `${params}일` : '-'
+      valueFormatter: (params) => (params ? `${params}일` : '-'),
     },
     {
       field: 'quality_rating',
       headerName: '품질평가',
       width: 90,
-      renderCell: (params) => params.value ? (
-        <Chip
-          label={`${params.value}★`}
-          color={params.value >= 4 ? 'success' : params.value >= 3 ? 'warning' : 'error'}
-          size="small"
-        />
-      ) : '-'
+      renderCell: (params) =>
+        params.value ? (
+          <Chip
+            label={`${params.value}★`}
+            color={
+              params.value >= 4
+                ? 'success'
+                : params.value >= 3
+                  ? 'warning'
+                  : 'error'
+            }
+            size='small'
+          />
+        ) : (
+          '-'
+        ),
     },
     {
       field: 'is_active',
@@ -371,7 +403,7 @@ export default function SuppliersPage() {
         <Chip
           label={params.value ? '활성' : '비활성'}
           color={params.value ? 'success' : 'default'}
-          size="small"
+          size='small'
         />
       ),
     },
@@ -388,37 +420,44 @@ export default function SuppliersPage() {
       width: 100,
       getActions: (params) => [
         <GridActionsCellItem
-          key="edit"
+          key='edit'
           icon={<Edit />}
-          label="수정"
+          label='수정'
           onClick={() => handleEditSupplier(params.row)}
         />,
         <GridActionsCellItem
-          key="delete"
+          key='delete'
           icon={<Delete />}
-          label="삭제"
+          label='삭제'
           onClick={() => handleDeleteSupplier(params.row)}
         />,
       ],
     },
-  ]
+  ];
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" component="h1">
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          mb: 3,
+        }}
+      >
+        <Typography variant='h4' component='h1'>
           공급업체 관리
         </Typography>
         <Box sx={{ display: 'flex', gap: 1 }}>
           <Button
-            variant="outlined"
+            variant='outlined'
             startIcon={<FileUpload />}
             onClick={(e) => setMenuAnchorEl(e.currentTarget)}
           >
             일괄 작업
           </Button>
           <Button
-            variant="contained"
+            variant='contained'
             startIcon={<Add />}
             onClick={handleCreateSupplier}
           >
@@ -430,7 +469,7 @@ export default function SuppliersPage() {
       <Paper sx={{ mb: 3, p: 2 }}>
         <TextField
           fullWidth
-          placeholder="공급업체명, 담당자, 이메일, 사업자번호로 검색..."
+          placeholder='공급업체명, 담당자, 이메일, 사업자번호로 검색...'
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           InputProps={{
@@ -459,7 +498,7 @@ export default function SuppliersPage() {
       <Dialog
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
-        maxWidth="md"
+        maxWidth='md'
         fullWidth
       >
         <DialogTitle>
@@ -470,116 +509,113 @@ export default function SuppliersPage() {
             <Grid container spacing={2}>
               <Grid item xs={12} sm={6}>
                 <Controller
-                  name="name"
+                  name='name'
                   control={control}
                   rules={{ required: '회사명은 필수입니다.' }}
                   render={({ field }) => (
                     <TextField
                       {...field}
                       fullWidth
-                      label="회사명"
+                      label='회사명'
                       error={!!errors.name}
                       helperText={errors.name?.message}
-                      margin="normal"
+                      margin='normal'
                     />
                   )}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
                 <Controller
-                  name="business_registration_number"
+                  name='business_registration_number'
                   control={control}
                   render={({ field }) => (
                     <TextField
                       {...field}
                       fullWidth
-                      label="사업자번호"
+                      label='사업자번호'
                       error={!!errors.business_registration_number}
                       helperText={errors.business_registration_number?.message}
-                      margin="normal"
+                      margin='normal'
                     />
                   )}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
                 <Controller
-                  name="contact_person"
+                  name='contact_person'
                   control={control}
                   render={({ field }) => (
                     <TextField
                       {...field}
                       fullWidth
-                      label="담당자"
+                      label='담당자'
                       error={!!errors.contact_person}
                       helperText={errors.contact_person?.message}
-                      margin="normal"
+                      margin='normal'
                     />
                   )}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
                 <Controller
-                  name="phone"
+                  name='phone'
                   control={control}
                   render={({ field }) => (
                     <TextField
                       {...field}
                       fullWidth
-                      label="전화번호"
-                      margin="normal"
+                      label='전화번호'
+                      margin='normal'
                     />
                   )}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
                 <Controller
-                  name="email"
+                  name='email'
                   control={control}
-                  rules={{ 
+                  rules={{
                     pattern: {
                       value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                      message: '올바른 이메일 형식이 아닙니다.'
-                    }
+                      message: '올바른 이메일 형식이 아닙니다.',
+                    },
                   }}
                   render={({ field }) => (
                     <TextField
                       {...field}
                       fullWidth
-                      label="이메일"
-                      type="email"
+                      label='이메일'
+                      type='email'
                       error={!!errors.email}
                       helperText={errors.email?.message}
-                      margin="normal"
+                      margin='normal'
                     />
                   )}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
                 <Controller
-                  name="website"
+                  name='website'
                   control={control}
                   render={({ field }) => (
                     <TextField
                       {...field}
                       fullWidth
-                      label="웹사이트"
-                      placeholder="예: company.com 또는 https://company.com"
-                      margin="normal"
+                      label='웹사이트'
+                      placeholder='예: company.com 또는 https://company.com'
+                      margin='normal'
                     />
                   )}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
                 <Controller
-                  name="payment_terms"
+                  name='payment_terms'
                   control={control}
                   render={({ field }) => (
-                    <FormControl fullWidth margin="normal">
+                    <FormControl fullWidth margin='normal'>
                       <InputLabel>결제조건</InputLabel>
-                      <Select
-                        {...field}
-                        label="결제조건"
-                      >
+                      <Select {...field} label='결제조건'>
                         {paymentTermsOptions.map((terms) => (
                           <MenuItem key={terms} value={terms}>
                             {terms}
@@ -592,32 +628,29 @@ export default function SuppliersPage() {
               </Grid>
               <Grid item xs={12} sm={6}>
                 <Controller
-                  name="lead_time_days"
+                  name='lead_time_days'
                   control={control}
                   render={({ field }) => (
                     <TextField
                       {...field}
                       fullWidth
-                      label="납기일수"
-                      type="number"
+                      label='납기일수'
+                      type='number'
                       inputProps={{ min: 0 }}
-                      margin="normal"
+                      margin='normal'
                     />
                   )}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
                 <Controller
-                  name="quality_rating"
+                  name='quality_rating'
                   control={control}
                   render={({ field }) => (
-                    <FormControl fullWidth margin="normal">
+                    <FormControl fullWidth margin='normal'>
                       <InputLabel>품질평가</InputLabel>
-                      <Select
-                        {...field}
-                        label="품질평가"
-                      >
-                        <MenuItem value="">선택 안함</MenuItem>
+                      <Select {...field} label='품질평가'>
+                        <MenuItem value=''>선택 안함</MenuItem>
                         <MenuItem value={1}>1★ - 매우 낮음</MenuItem>
                         <MenuItem value={2}>2★ - 낮음</MenuItem>
                         <MenuItem value={3}>3★ - 보통</MenuItem>
@@ -630,47 +663,47 @@ export default function SuppliersPage() {
               </Grid>
               <Grid item xs={12} sm={8}>
                 <Controller
-                  name="address"
+                  name='address'
                   control={control}
                   render={({ field }) => (
                     <TextField
                       {...field}
                       fullWidth
-                      label="주소"
+                      label='주소'
                       multiline
                       rows={2}
-                      margin="normal"
+                      margin='normal'
                     />
                   )}
                 />
               </Grid>
               <Grid item xs={12} sm={4}>
                 <Controller
-                  name="postal_code"
+                  name='postal_code'
                   control={control}
                   render={({ field }) => (
                     <TextField
                       {...field}
                       fullWidth
-                      label="우편번호"
-                      margin="normal"
+                      label='우편번호'
+                      margin='normal'
                     />
                   )}
                 />
               </Grid>
               <Grid item xs={12}>
                 <Controller
-                  name="notes"
+                  name='notes'
                   control={control}
                   render={({ field }) => (
                     <TextField
                       {...field}
                       fullWidth
-                      label="메모"
+                      label='메모'
                       multiline
                       rows={3}
-                      placeholder="공급업체 관련 메모를 입력하세요..."
-                      margin="normal"
+                      placeholder='공급업체 관련 메모를 입력하세요...'
+                      margin='normal'
                     />
                   )}
                 />
@@ -679,7 +712,7 @@ export default function SuppliersPage() {
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setDialogOpen(false)}>취소</Button>
-            <Button type="submit" variant="contained">
+            <Button type='submit' variant='contained'>
               {editingSupplier ? '수정' : '생성'}
             </Button>
           </DialogActions>
@@ -696,13 +729,14 @@ export default function SuppliersPage() {
           <Typography>
             '{supplierToDelete?.name}' 공급업체를 정말 삭제하시겠습니까?
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-            견적서에서 사용 중인 공급업체는 비활성화되며, 사용하지 않는 공급업체는 완전히 삭제됩니다.
+          <Typography variant='body2' color='text.secondary' sx={{ mt: 1 }}>
+            견적서에서 사용 중인 공급업체는 비활성화되며, 사용하지 않는
+            공급업체는 완전히 삭제됩니다.
           </Typography>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDeleteDialogOpen(false)}>취소</Button>
-          <Button onClick={confirmDelete} color="error" variant="contained">
+          <Button onClick={confirmDelete} color='error' variant='contained'>
             삭제
           </Button>
         </DialogActions>
@@ -714,17 +748,21 @@ export default function SuppliersPage() {
         open={Boolean(menuAnchorEl)}
         onClose={() => setMenuAnchorEl(null)}
       >
-        <MenuItem onClick={() => {
-          setMenuAnchorEl(null)
-          // TODO: CSV 업로드 기능 구현
-        }}>
+        <MenuItem
+          onClick={() => {
+            setMenuAnchorEl(null);
+            // TODO: CSV 업로드 기능 구현
+          }}
+        >
           <FileUpload sx={{ mr: 1 }} />
           CSV 파일 업로드
         </MenuItem>
-        <MenuItem onClick={() => {
-          setMenuAnchorEl(null)
-          handleExportCSV()
-        }}>
+        <MenuItem
+          onClick={() => {
+            setMenuAnchorEl(null);
+            handleExportCSV();
+          }}
+        >
           <FileDownload sx={{ mr: 1 }} />
           CSV 내보내기
         </MenuItem>
@@ -744,5 +782,5 @@ export default function SuppliersPage() {
         </Alert>
       </Snackbar>
     </Box>
-  )
+  );
 }

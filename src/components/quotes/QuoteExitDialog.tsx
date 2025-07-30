@@ -1,6 +1,6 @@
-'use client'
+'use client';
 
-import React, { memo } from 'react'
+import React, { memo } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -11,18 +11,18 @@ import {
   Box,
   useMediaQuery,
   useTheme,
-} from '@mui/material'
+} from '@mui/material';
 import {
   Warning as WarningIcon,
   Cancel as CancelIcon,
   ExitToApp as ExitIcon,
-} from '@mui/icons-material'
+} from '@mui/icons-material';
 
 interface QuoteExitDialogProps {
-  open: boolean
-  onClose: () => void
-  onConfirm: () => void
-  isEdit?: boolean
+  open: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  isEdit?: boolean;
 }
 
 const QuoteExitDialog = memo(function QuoteExitDialog({
@@ -31,14 +31,14 @@ const QuoteExitDialog = memo(function QuoteExitDialog({
   onConfirm,
   isEdit = false,
 }: QuoteExitDialogProps) {
-  const theme = useTheme()
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   return (
-    <Dialog 
-      open={open} 
+    <Dialog
+      open={open}
       onClose={onClose}
-      maxWidth="sm"
+      maxWidth='sm'
       fullWidth
       fullScreen={isMobile}
       PaperProps={{
@@ -48,65 +48,56 @@ const QuoteExitDialog = memo(function QuoteExitDialog({
           my: { xs: 0, sm: 2 },
         },
       }}
-      aria-labelledby="exit-dialog-title"
-      aria-describedby="exit-dialog-description"
+      aria-labelledby='exit-dialog-title'
+      aria-describedby='exit-dialog-description'
     >
-      <DialogTitle 
-        id="exit-dialog-title"
-        sx={{ 
+      <DialogTitle
+        id='exit-dialog-title'
+        sx={{
           pb: 2,
           display: 'flex',
           alignItems: 'center',
           gap: 2,
         }}
       >
-        <WarningIcon 
-          color="warning" 
-          sx={{ fontSize: 28 }}
-          aria-hidden="true"
-        />
-        <Typography 
-          variant="h6" 
-          component="span"
-          sx={{ fontWeight: 600 }}
-        >
+        <WarningIcon color='warning' sx={{ fontSize: 28 }} aria-hidden='true' />
+        <Typography variant='h6' component='span' sx={{ fontWeight: 600 }}>
           변경사항이 있습니다
         </Typography>
       </DialogTitle>
 
       <DialogContent sx={{ pb: 3 }}>
-        <Box id="exit-dialog-description">
-          <Typography 
-            variant="body1" 
-            color="text.primary"
+        <Box id='exit-dialog-description'>
+          <Typography
+            variant='body1'
+            color='text.primary'
             sx={{ mb: 2, lineHeight: 1.6 }}
           >
             저장하지 않은 변경사항이 있습니다.
           </Typography>
-          <Typography 
-            variant="body2" 
-            color="text.secondary"
+          <Typography
+            variant='body2'
+            color='text.secondary'
             sx={{ lineHeight: 1.5 }}
           >
-            {isEdit 
+            {isEdit
               ? '수정된 내용이 손실됩니다. 정말 나가시겠습니까?'
-              : '작성된 내용이 손실됩니다. 정말 나가시겠습니까?'
-            }
+              : '작성된 내용이 손실됩니다. 정말 나가시겠습니까?'}
           </Typography>
         </Box>
       </DialogContent>
 
-      <DialogActions 
-        sx={{ 
-          p: 3, 
+      <DialogActions
+        sx={{
+          p: 3,
           pt: 0,
           gap: 2,
           flexDirection: { xs: 'column-reverse', sm: 'row' },
         }}
       >
-        <Button 
+        <Button
           onClick={onClose}
-          variant="outlined"
+          variant='outlined'
           startIcon={<CancelIcon />}
           fullWidth={isMobile}
           sx={{
@@ -118,15 +109,15 @@ const QuoteExitDialog = memo(function QuoteExitDialog({
               backgroundColor: 'primary.50',
             },
           }}
-          aria-label="계속 작성하기"
+          aria-label='계속 작성하기'
         >
           계속 작성
         </Button>
-        
-        <Button 
-          onClick={onConfirm} 
-          color="error"
-          variant="contained"
+
+        <Button
+          onClick={onConfirm}
+          color='error'
+          variant='contained'
           startIcon={<ExitIcon />}
           fullWidth={isMobile}
           sx={{
@@ -138,13 +129,13 @@ const QuoteExitDialog = memo(function QuoteExitDialog({
               backgroundColor: 'error.dark',
             },
           }}
-          aria-label="변경사항 무시하고 나가기"
+          aria-label='변경사항 무시하고 나가기'
         >
           나가기
         </Button>
       </DialogActions>
     </Dialog>
-  )
-})
+  );
+});
 
-export default QuoteExitDialog
+export default QuoteExitDialog;

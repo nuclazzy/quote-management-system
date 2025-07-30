@@ -1,6 +1,6 @@
-'use client'
+'use client';
 
-import React, { memo } from 'react'
+import React, { memo } from 'react';
 import {
   Box,
   Button,
@@ -8,20 +8,20 @@ import {
   useMediaQuery,
   useTheme,
   Stack,
-} from '@mui/material'
+} from '@mui/material';
 import {
   Save as SaveIcon,
   Send as SendIcon,
   Cancel as CancelIcon,
-} from '@mui/icons-material'
+} from '@mui/icons-material';
 
 interface QuoteFormActionsProps {
-  saving: boolean
-  onCancel: () => void
-  onSave: (status: 'draft') => void
-  onSaveAndSend: (status: 'sent') => void
-  disabled?: boolean
-  isEdit?: boolean
+  saving: boolean;
+  onCancel: () => void;
+  onSave: (status: 'draft') => void;
+  onSaveAndSend: (status: 'sent') => void;
+  disabled?: boolean;
+  isEdit?: boolean;
 }
 
 const QuoteFormActions = memo(function QuoteFormActions({
@@ -32,16 +32,16 @@ const QuoteFormActions = memo(function QuoteFormActions({
   disabled = false,
   isEdit = false,
 }: QuoteFormActionsProps) {
-  const theme = useTheme()
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-  const handleSaveDraft = () => onSave('draft')
-  const handleSaveAndSend = () => onSaveAndSend('sent')
+  const handleSaveDraft = () => onSave('draft');
+  const handleSaveAndSend = () => onSaveAndSend('sent');
 
   return (
-    <Box 
-      sx={{ 
-        display: 'flex', 
+    <Box
+      sx={{
+        display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
         mt: 4,
@@ -55,7 +55,7 @@ const QuoteFormActions = memo(function QuoteFormActions({
       }}
     >
       <Button
-        variant="outlined"
+        variant='outlined'
         startIcon={<CancelIcon />}
         onClick={onCancel}
         disabled={saving || disabled}
@@ -75,18 +75,18 @@ const QuoteFormActions = memo(function QuoteFormActions({
             opacity: 0.6,
           },
         }}
-        aria-label="견적서 작성 취소"
+        aria-label='견적서 작성 취소'
       >
         취소
       </Button>
 
-      <Stack 
-        direction={{ xs: 'column', sm: 'row' }} 
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
         spacing={2}
         sx={{ width: { xs: '100%', sm: 'auto' } }}
       >
         <Button
-          variant="outlined"
+          variant='outlined'
           startIcon={saving ? <CircularProgress size={16} /> : <SaveIcon />}
           onClick={handleSaveDraft}
           disabled={saving || disabled}
@@ -110,10 +110,16 @@ const QuoteFormActions = memo(function QuoteFormActions({
         >
           {saving ? '저장 중...' : '임시저장'}
         </Button>
-        
+
         <Button
-          variant="contained"
-          startIcon={saving ? <CircularProgress size={16} color="inherit" /> : <SendIcon />}
+          variant='contained'
+          startIcon={
+            saving ? (
+              <CircularProgress size={16} color='inherit' />
+            ) : (
+              <SendIcon />
+            )
+          }
           onClick={handleSaveAndSend}
           disabled={saving || disabled}
           size={isMobile ? 'large' : 'medium'}
@@ -140,7 +146,7 @@ const QuoteFormActions = memo(function QuoteFormActions({
         </Button>
       </Stack>
     </Box>
-  )
-})
+  );
+});
 
-export default QuoteFormActions
+export default QuoteFormActions;

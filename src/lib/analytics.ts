@@ -1,11 +1,11 @@
-'use client'
+'use client';
 
 // Web Vitals types
 interface Metric {
-  name: string
-  value: number
-  id: string
-  delta?: number
+  name: string;
+  value: number;
+  id: string;
+  delta?: number;
 }
 
 // Web Vitals 모듈이 없는 경우를 대비한 스텁 함수들
@@ -15,11 +15,15 @@ const stubWebVitals = {
   getFCP: (callback: (metric: Metric) => void) => {},
   getLCP: (callback: (metric: Metric) => void) => {},
   getTTFB: (callback: (metric: Metric) => void) => {},
-}
+};
 
 declare global {
   interface Window {
-    gtag?: (command: string, targetId: string, config?: Record<string, any>) => void
+    gtag?: (
+      command: string,
+      targetId: string,
+      config?: Record<string, any>
+    ) => void;
   }
 }
 
@@ -29,14 +33,16 @@ function sendToAnalytics(metric: Metric) {
     window.gtag('event', metric.name, {
       event_category: 'Web Vitals',
       event_label: metric.id,
-      value: Math.round(metric.name === 'CLS' ? metric.value * 1000 : metric.value),
+      value: Math.round(
+        metric.name === 'CLS' ? metric.value * 1000 : metric.value
+      ),
       non_interaction: true,
-    })
+    });
   }
 
   // 개발 환경에서는 콘솔에 출력
   if (process.env.NODE_ENV === 'development') {
-    console.log(`${metric.name}: ${metric.value}`, metric)
+    console.log(`${metric.name}: ${metric.value}`, metric);
   }
 
   // 프로덕션에서는 분석 서비스로 전송 (예: Vercel Analytics)
@@ -50,9 +56,9 @@ export async function reportWebVitals() {
   try {
     // 개발 환경에서만 Web Vitals 활성화 (실제로는 프로덕션에서도 사용해야 함)
     if (process.env.NODE_ENV === 'development') {
-      console.log('Web Vitals monitoring would be active in production')
+      console.log('Web Vitals monitoring would be active in production');
     }
-    
+
     // TODO: web-vitals 패키지 설치 후 활성화
     // const { getCLS, getFID, getFCP, getLCP, getTTFB } = stubWebVitals
     // getCLS(sendToAnalytics)
@@ -61,14 +67,14 @@ export async function reportWebVitals() {
     // getLCP(sendToAnalytics)
     // getTTFB(sendToAnalytics)
   } catch (err) {
-    console.error('Failed to report web vitals:', err)
+    console.error('Failed to report web vitals:', err);
   }
 }
 
 // 에러 추적
 export function trackError(error: Error, context?: Record<string, any>) {
   if (process.env.NODE_ENV === 'development') {
-    console.error('Error tracked:', error, context)
+    console.error('Error tracked:', error, context);
   }
 
   // 프로덕션에서는 에러 추적 서비스로 전송
@@ -91,7 +97,7 @@ export function trackError(error: Error, context?: Record<string, any>) {
         }),
       }).catch(() => {
         // 에러 전송 실패시 무시 (무한 루프 방지)
-      })
+      });
     } catch (err) {
       // 에러 추적 자체가 실패해도 무시
     }

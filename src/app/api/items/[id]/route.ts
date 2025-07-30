@@ -1,46 +1,54 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { NextRequest, NextResponse } from 'next/server';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
-    
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const supabase = createRouteHandlerClient({ cookies });
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { data: item, error } = await supabase
       .from('items')
-      .select(`
+      .select(
+        `
         *,
         suppliers (
           id,
           name
         )
-      `)
+      `
+      )
       .eq('id', params.id)
-      .single()
+      .single();
 
     if (error) {
-      console.error('Error fetching item:', error)
-      return NextResponse.json({ error: 'Item not found' }, { status: 404 })
+      console.error('Error fetching item:', error);
+      return NextResponse.json({ error: 'Item not found' }, { status: 404 });
     }
 
     // Flatten supplier data
     const formattedItem = {
       ...item,
-      supplier_name: item.suppliers?.name || null
-    }
+      supplier_name: item.suppliers?.name || null,
+    };
 
-    return NextResponse.json(formattedItem)
+    return NextResponse.json(formattedItem);
   } catch (error) {
-    console.error('Error in item GET:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('Error in item GET:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }
 
@@ -49,14 +57,17 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
-    
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const supabase = createRouteHandlerClient({ cookies });
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await request.json()
+    const body = await request.json();
     const {
       name,
       description,
@@ -70,15 +81,18 @@ export async function PUT(
       stock_quantity,
       barcode,
       sku,
-      status
-    } = body
+      status,
+    } = body;
 
     // Validate required fields
     if (!name || !category || !unit || unit_price === undefined || !sku) {
       return NextResponse.json(
-        { error: 'Missing required fields: name, category, unit, unit_price, sku' },
+        {
+          error:
+            'Missing required fields: name, category, unit, unit_price, sku',
+        },
         { status: 400 }
-      )
+      );
     }
 
     // Check if SKU already exists for other items
@@ -87,13 +101,13 @@ export async function PUT(
       .select('id')
       .eq('sku', sku)
       .neq('id', params.id)
-      .single()
+      .single();
 
     if (existingSku) {
       return NextResponse.json(
         { error: 'SKU already exists' },
         { status: 400 }
-      )
+      );
     }
 
     const { data: item, error } = await supabase
@@ -113,21 +127,27 @@ export async function PUT(
         sku,
         status: status || 'active',
         updated_by: user.id,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
       .eq('id', params.id)
       .select()
-      .single()
+      .single();
 
     if (error) {
-      console.error('Error updating item:', error)
-      return NextResponse.json({ error: 'Failed to update item' }, { status: 500 })
+      console.error('Error updating item:', error);
+      return NextResponse.json(
+        { error: 'Failed to update item' },
+        { status: 500 }
+      );
     }
 
-    return NextResponse.json(item)
+    return NextResponse.json(item);
   } catch (error) {
-    console.error('Error in item PUT:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('Error in item PUT:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }
 
@@ -136,11 +156,14 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
-    
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const supabase = createRouteHandlerClient({ cookies });
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Check if item is used in any quotes
@@ -148,28 +171,31 @@ export async function DELETE(
       .from('quote_items')
       .select('id')
       .eq('item_id', params.id)
-      .limit(1)
+      .limit(1);
 
     if (quoteItems && quoteItems.length > 0) {
       return NextResponse.json(
         { error: 'Cannot delete item that is used in quotes' },
         { status: 400 }
-      )
+      );
     }
 
-    const { error } = await supabase
-      .from('items')
-      .delete()
-      .eq('id', params.id)
+    const { error } = await supabase.from('items').delete().eq('id', params.id);
 
     if (error) {
-      console.error('Error deleting item:', error)
-      return NextResponse.json({ error: 'Failed to delete item' }, { status: 500 })
+      console.error('Error deleting item:', error);
+      return NextResponse.json(
+        { error: 'Failed to delete item' },
+        { status: 500 }
+      );
     }
 
-    return NextResponse.json({ message: 'Item deleted successfully' })
+    return NextResponse.json({ message: 'Item deleted successfully' });
   } catch (error) {
-    console.error('Error in item DELETE:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('Error in item DELETE:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }

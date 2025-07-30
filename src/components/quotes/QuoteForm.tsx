@@ -1,32 +1,29 @@
-'use client'
+'use client';
 
-import React, { useState, useEffect } from 'react'
-import {
-  Box,
-  Alert,
-} from '@mui/material'
-import { useQuoteForm } from '@/hooks/useQuoteForm'
-import { QuoteService } from '@/lib/services/quote-service'
-import { Customer } from '@/types'
-import QuoteFormHeader from './QuoteFormHeader'
-import QuoteBasicInfo from './QuoteBasicInfo'
-import QuoteItemsManager from './QuoteItemsManager'
-import QuoteCalculationSummary from './QuoteCalculationSummary'
-import QuoteFormActions from './QuoteFormActions'
-import QuoteExitDialog from './QuoteExitDialog'
+import React, { useState, useEffect } from 'react';
+import { Box, Alert } from '@mui/material';
+import { useQuoteForm } from '@/hooks/useQuoteForm';
+import { QuoteService } from '@/lib/services/quote-service';
+import { Customer } from '@/types';
+import QuoteFormHeader from './QuoteFormHeader';
+import QuoteBasicInfo from './QuoteBasicInfo';
+import QuoteItemsManager from './QuoteItemsManager';
+import QuoteCalculationSummary from './QuoteCalculationSummary';
+import QuoteFormActions from './QuoteFormActions';
+import QuoteExitDialog from './QuoteExitDialog';
 
 interface QuoteFormProps {
-  initialData?: any
-  isEdit?: boolean
-  onSave?: (id: string) => void
-  onCancel?: () => void
+  initialData?: any;
+  isEdit?: boolean;
+  onSave?: (id: string) => void;
+  onCancel?: () => void;
 }
 
-const QuoteForm = React.memo(function QuoteForm({ 
-  initialData, 
-  isEdit = false, 
-  onSave, 
-  onCancel 
+const QuoteForm = React.memo(function QuoteForm({
+  initialData,
+  isEdit = false,
+  onSave,
+  onCancel,
 }: QuoteFormProps) {
   const {
     formData,
@@ -39,78 +36,80 @@ const QuoteForm = React.memo(function QuoteForm({
     removeGroup,
     validateForm,
     resetForm,
-  } = useQuoteForm(initialData)
+  } = useQuoteForm(initialData);
 
-  const [customers, setCustomers] = useState<Customer[]>([])
-  const [loading, setLoading] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [showExitDialog, setShowExitDialog] = useState(false)
-  const [showCostPrice, setShowCostPrice] = useState(false)
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [showExitDialog, setShowExitDialog] = useState(false);
+  const [showCostPrice, setShowCostPrice] = useState(false);
 
   // 고객사 목록 로드
   useEffect(() => {
     const loadCustomers = async () => {
       try {
-        const customerList = await QuoteService.getCustomers()
-        setCustomers(customerList)
+        const customerList = await QuoteService.getCustomers();
+        setCustomers(customerList);
       } catch (error) {
-        console.error('고객사 목록 로드 실패:', error)
+        console.error('고객사 목록 로드 실패:', error);
       }
-    }
-    loadCustomers()
-  }, [])
+    };
+    loadCustomers();
+  }, []);
 
   // 고객사 선택 시 고객사명 스냅샷 업데이트
   const handleCustomerChange = (customerId: string) => {
-    const customer = customers.find(c => c.id === customerId)
+    const customer = customers.find((c) => c.id === customerId);
     updateFormData({
       customer_id: customerId,
-      customer_name_snapshot: customer?.name || ''
-    })
-  }
+      customer_name_snapshot: customer?.name || '',
+    });
+  };
 
   // 저장
   const handleSave = async (status: 'draft' | 'sent') => {
     if (!validateForm()) {
-      return
+      return;
     }
 
-    setSaving(true)
+    setSaving(true);
     try {
       const dataToSave = {
         ...formData,
-        status: status || formData.status
-      }
+        status: status || formData.status,
+      };
 
-      let quoteId: string
+      let quoteId: string;
       if (isEdit && initialData?.id) {
-        quoteId = await QuoteService.updateQuote(initialData.id, dataToSave)
+        quoteId = await QuoteService.updateQuote(initialData.id, dataToSave);
       } else {
-        quoteId = await QuoteService.createQuote(dataToSave)
+        quoteId = await QuoteService.createQuote(dataToSave);
       }
 
-      onSave?.(quoteId)
+      onSave?.(quoteId);
     } catch (error) {
-      console.error('저장 실패:', error)
-      alert(error instanceof Error ? error.message : '저장 중 오류가 발생했습니다.')
+      console.error('저장 실패:', error);
+      alert(
+        error instanceof Error ? error.message : '저장 중 오류가 발생했습니다.'
+      );
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   // 페이지 이탈 방지
   const handleCancel = () => {
     if (isDirty) {
-      setShowExitDialog(true)
+      setShowExitDialog(true);
     } else {
-      onCancel?.()
+      onCancel?.();
     }
-  }
+  };
 
   const confirmExit = () => {
-    setShowExitDialog(false)
-    onCancel?.()
-  }
+    setShowExitDialog(false);
+    onCancel?.();
+  };
 
   return (
     <Box>
@@ -124,17 +123,17 @@ const QuoteForm = React.memo(function QuoteForm({
 
       {/* 에러 메시지 */}
       {Object.keys(errors).length > 0 && (
-        <Alert 
-          severity="error" 
-          sx={{ 
+        <Alert
+          severity='error'
+          sx={{
             mb: 3,
             borderRadius: 2,
             '& .MuiAlert-message': {
               fontSize: '0.875rem',
             },
           }}
-          role="alert"
-          aria-live="polite"
+          role='alert'
+          aria-live='polite'
         >
           {Object.values(errors)[0]}
         </Alert>
@@ -160,7 +159,7 @@ const QuoteForm = React.memo(function QuoteForm({
 
       {/* 계산 요약 */}
       {calculation && (
-        <QuoteCalculationSummary 
+        <QuoteCalculationSummary
           calculation={calculation}
           formData={formData}
         />
@@ -183,7 +182,7 @@ const QuoteForm = React.memo(function QuoteForm({
         isEdit={isEdit}
       />
     </Box>
-  )
-})
+  );
+});
 
-export default QuoteForm
+export default QuoteForm;

@@ -1,33 +1,33 @@
-'use client'
+'use client';
 
-import { Alert, Button, Box } from '@mui/material'
-import { Refresh as RefreshIcon } from '@mui/icons-material'
+import { Alert, Button, Box } from '@mui/material';
+import { Refresh as RefreshIcon } from '@mui/icons-material';
 
 interface ErrorAlertProps {
-  message: string
-  onRetry?: () => void
-  onDismiss?: () => void
-  severity?: 'error' | 'warning' | 'info'
+  message: string;
+  onRetry?: () => void;
+  onDismiss?: () => void;
+  severity?: 'error' | 'warning' | 'info';
 }
 
 export function ErrorAlert({
   message,
   onRetry,
   onDismiss,
-  severity = 'error'
+  severity = 'error',
 }: ErrorAlertProps) {
   return (
-    <Alert 
-      severity={severity} 
+    <Alert
+      severity={severity}
       onClose={onDismiss}
       sx={{ mb: 2 }}
       action={
         onRetry && (
           <Button
-            size="small"
+            size='small'
             startIcon={<RefreshIcon />}
             onClick={onRetry}
-            color="inherit"
+            color='inherit'
           >
             다시 시도
           </Button>
@@ -36,7 +36,7 @@ export function ErrorAlert({
     >
       {message}
     </Alert>
-  )
+  );
 }
 
-export default ErrorAlert
+export default ErrorAlert;

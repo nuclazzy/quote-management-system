@@ -1,10 +1,10 @@
-import { createTheme } from '@mui/material/styles'
+import { createTheme } from '@mui/material/styles';
 
 // 모던 그라데이션 컬러 팔레트
 export const modernColors = {
   primary: {
     50: '#f0f4ff',
-    100: '#e0e7ff', 
+    100: '#e0e7ff',
     200: '#c7d2fe',
     300: '#a5b4fc',
     400: '#818cf8',
@@ -73,8 +73,8 @@ export const modernColors = {
     700: '#374151',
     800: '#1f2937',
     900: '#111827',
-  }
-}
+  },
+};
 
 // 모던 테마 생성
 export const modernTheme = createTheme({
@@ -292,7 +292,8 @@ export const modernTheme = createTheme({
     MuiTableHead: {
       styleOverrides: {
         root: {
-          background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)',
+          background:
+            'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)',
           '& .MuiTableCell-head': {
             fontWeight: 600,
             fontSize: '0.875rem',
@@ -325,7 +326,7 @@ export const modernTheme = createTheme({
       },
     },
   },
-})
+});
 
 // 다크 테마
 export const modernDarkTheme = createTheme({
@@ -368,4 +369,4 @@ export const modernDarkTheme = createTheme({
       },
     },
   },
-})
+});

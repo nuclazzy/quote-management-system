@@ -9,27 +9,27 @@ const createTransactionSchema = z.object({
   item_name: z.string().min(1),
   amount: z.number().positive(),
   due_date: z.string().optional(),
-  notes: z.string().optional()
+  notes: z.string().optional(),
 });
 
 const updateTransactionSchema = z.object({
   status: z.enum(['pending', 'processing', 'completed', 'issue']).optional(),
   tax_invoice_status: z.enum(['not_issued', 'issued', 'received']).optional(),
-  notes: z.string().optional()
+  notes: z.string().optional(),
 });
 
 export async function GET(request: NextRequest) {
   try {
     const supabase = createServerClient();
     const { searchParams } = new URL(request.url);
-    
+
     // 현재 사용자 확인
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
     if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const projectId = searchParams.get('project_id');
@@ -40,10 +40,12 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('transactions')
-      .select(`
+      .select(
+        `
         *,
         projects!inner(id, name, quotes!inner(customer_name_snapshot))
-      `)
+      `
+      )
       .order('created_at', { ascending: false });
 
     // 필터 적용
@@ -74,7 +76,6 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({ transactions: data });
-
   } catch (error) {
     console.error('Transactions GET error:', error);
     return NextResponse.json(
@@ -87,14 +88,14 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const supabase = createServerClient();
-    
+
     // 현재 사용자 확인
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
     if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // 요청 데이터 검증
@@ -109,10 +110,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (projectError || !project) {
-      return NextResponse.json(
-        { error: 'Project not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
     // 거래 생성
@@ -122,7 +120,7 @@ export async function POST(request: NextRequest) {
         ...validatedData,
         status: 'pending',
         tax_invoice_status: 'not_issued',
-        created_by: user.id
+        created_by: user.id,
       })
       .select()
       .single();
@@ -142,7 +140,7 @@ export async function POST(request: NextRequest) {
         user_id: user.id,
         message: `새로운 ${validatedData.type === 'income' ? '수입' : '지출'} 거래가 등록되었습니다: ${validatedData.item_name}`,
         link_url: `/projects/${validatedData.project_id}`,
-        notification_type: 'general'
+        notification_type: 'general',
       });
 
     if (notificationError) {
@@ -151,12 +149,11 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      transaction
+      transaction,
     });
-
   } catch (error) {
     console.error('Transactions POST error:', error);
-    
+
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Invalid request data', details: error.errors },

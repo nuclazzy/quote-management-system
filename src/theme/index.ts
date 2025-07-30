@@ -1,8 +1,8 @@
-import { createTheme } from '@mui/material/styles'
-import * as colors from './colors'
-import { typography } from './typography'
-import * as spacing from './spacing'
-import { components } from './components'
+import { createTheme } from '@mui/material/styles';
+import * as colors from './colors';
+import { typography } from './typography';
+import * as spacing from './spacing';
+import { components } from './components';
 
 export const theme = createTheme({
   palette: {
@@ -51,6 +51,6 @@ export const theme = createTheme({
     borderRadius: 8,
   },
   components,
-})
+});
 
-export default theme
+export default theme;

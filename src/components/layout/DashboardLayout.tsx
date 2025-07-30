@@ -1,6 +1,6 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
+import { useState } from 'react';
 import {
   Box,
   Drawer,
@@ -19,7 +19,7 @@ import {
   MenuItem,
   useTheme,
   useMediaQuery,
-} from '@mui/material'
+} from '@mui/material';
 import {
   Menu as MenuIcon,
   Dashboard,
@@ -34,19 +34,19 @@ import {
   Notifications,
   AdminPanelSettings,
   ManageAccounts,
-} from '@mui/icons-material'
-import { useRouter, usePathname } from 'next/navigation'
-import { useAuth } from '@/contexts/AuthContext'
-import { NotificationBell } from '@/components/notifications/NotificationBell'
-import ThemeToggle from '@/components/common/ThemeToggle'
+} from '@mui/icons-material';
+import { useRouter, usePathname } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
+import ThemeToggle from '@/components/common/ThemeToggle';
 
-const drawerWidth = 240
+const drawerWidth = 240;
 
 interface NavItem {
-  text: string
-  icon: React.ReactNode
-  path: string
-  adminOnly?: boolean
+  text: string;
+  icon: React.ReactNode;
+  path: string;
+  adminOnly?: boolean;
 }
 
 const navItems: NavItem[] = [
@@ -59,62 +59,73 @@ const navItems: NavItem[] = [
   { text: '프로젝트', icon: <Analytics />, path: '/projects' },
   { text: '정산 관리', icon: <Analytics />, path: '/revenue' },
   { text: '알림', icon: <Notifications />, path: '/notifications' },
-  { text: '사용자 관리', icon: <ManageAccounts />, path: '/admin/users', adminOnly: true },
-  { text: '시스템 설정', icon: <Settings />, path: '/admin/settings', adminOnly: true },
-]
+  {
+    text: '사용자 관리',
+    icon: <ManageAccounts />,
+    path: '/admin/users',
+    adminOnly: true,
+  },
+  {
+    text: '시스템 설정',
+    icon: <Settings />,
+    path: '/admin/settings',
+    adminOnly: true,
+  },
+];
 
 interface DashboardLayoutProps {
-  children: React.ReactNode
+  children: React.ReactNode;
 }
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
-  const theme = useTheme()
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'))
-  const [mobileOpen, setMobileOpen] = useState(false)
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
-  
-  const router = useRouter()
-  const pathname = usePathname()
-  const { user, signOut } = useAuth()
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+
+  const router = useRouter();
+  const pathname = usePathname();
+  const { user, signOut } = useAuth();
 
   const handleDrawerToggle = () => {
-    setMobileOpen(!mobileOpen)
-  }
+    setMobileOpen(!mobileOpen);
+  };
 
   const handleUserMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget)
-  }
+    setAnchorEl(event.currentTarget);
+  };
 
   const handleUserMenuClose = () => {
-    setAnchorEl(null)
-  }
+    setAnchorEl(null);
+  };
 
   const handleSignOut = async () => {
-    handleUserMenuClose()
-    await signOut()
-    router.push('/auth/login')
-  }
+    handleUserMenuClose();
+    await signOut();
+    router.push('/auth/login');
+  };
 
   const handleNavigation = (path: string) => {
-    router.push(path)
+    router.push(path);
     if (isMobile) {
-      setMobileOpen(false)
+      setMobileOpen(false);
     }
-  }
+  };
 
-  const isAdmin = user?.profile?.role === 'admin' || user?.profile?.role === 'super_admin'
+  const isAdmin =
+    user?.profile?.role === 'admin' || user?.profile?.role === 'super_admin';
 
   const drawer = (
     <div>
       <Toolbar>
-        <Typography variant="h6" noWrap component="div">
+        <Typography variant='h6' noWrap component='div'>
           견적서 시스템
         </Typography>
       </Toolbar>
       <Divider />
       <List>
         {navItems
-          .filter(item => !item.adminOnly || isAdmin)
+          .filter((item) => !item.adminOnly || isAdmin)
           .map((item) => (
             <ListItem key={item.text} disablePadding>
               <ListItemButton
@@ -128,12 +139,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           ))}
       </List>
     </div>
-  )
+  );
 
   return (
     <Box sx={{ display: 'flex' }}>
       <AppBar
-        position="fixed"
+        position='fixed'
         sx={{
           width: { md: `calc(100% - ${drawerWidth}px)` },
           ml: { md: `${drawerWidth}px` },
@@ -141,40 +152,41 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       >
         <Toolbar>
           <IconButton
-            color="inherit"
-            aria-label="네비게이션 메뉴 열기"
-            edge="start"
+            color='inherit'
+            aria-label='네비게이션 메뉴 열기'
+            edge='start'
             onClick={handleDrawerToggle}
             sx={{ mr: 2, display: { md: 'none' } }}
           >
             <MenuIcon />
           </IconButton>
-          
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            {navItems.find(item => item.path === pathname)?.text || '견적서 관리 시스템'}
+
+          <Typography variant='h6' noWrap component='div' sx={{ flexGrow: 1 }}>
+            {navItems.find((item) => item.path === pathname)?.text ||
+              '견적서 관리 시스템'}
           </Typography>
 
           <NotificationBell />
-          
+
           <ThemeToggle />
 
           <IconButton
-            size="large"
-            edge="end"
-            aria-label="사용자 계정 메뉴"
-            aria-controls="user-menu"
-            aria-haspopup="true"
+            size='large'
+            edge='end'
+            aria-label='사용자 계정 메뉴'
+            aria-controls='user-menu'
+            aria-haspopup='true'
             aria-expanded={Boolean(anchorEl)}
             onClick={handleUserMenuOpen}
-            color="inherit"
+            color='inherit'
           >
             <Avatar sx={{ width: 32, height: 32 }}>
               {user?.profile?.full_name?.[0] || <AccountCircle />}
             </Avatar>
           </IconButton>
-          
+
           <Menu
-            id="user-menu"
+            id='user-menu'
             anchorEl={anchorEl}
             anchorOrigin={{
               vertical: 'bottom',
@@ -189,20 +201,23 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             onClose={handleUserMenuClose}
           >
             <MenuItem disabled>
-              <Typography variant="body2">
+              <Typography variant='body2'>
                 {user?.profile?.full_name || user?.email}
               </Typography>
             </MenuItem>
             <MenuItem disabled>
-              <Typography variant="caption" color="textSecondary">
-                {user?.profile?.role === 'super_admin' ? '최고 관리자' : 
-                 user?.profile?.role === 'admin' ? '관리자' : '사용자'}
+              <Typography variant='caption' color='textSecondary'>
+                {user?.profile?.role === 'super_admin'
+                  ? '최고 관리자'
+                  : user?.profile?.role === 'admin'
+                    ? '관리자'
+                    : '사용자'}
               </Typography>
             </MenuItem>
             <Divider />
             <MenuItem onClick={handleSignOut}>
               <ListItemIcon>
-                <Logout fontSize="small" />
+                <Logout fontSize='small' />
               </ListItemIcon>
               로그아웃
             </MenuItem>
@@ -211,15 +226,15 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       </AppBar>
 
       <Box
-        component="nav"
+        component='nav'
         sx={{ width: { md: drawerWidth }, flexShrink: { md: 0 } }}
       >
         <Drawer
-          variant="temporary"
+          variant='temporary'
           open={mobileOpen}
           onClose={handleDrawerToggle}
           ModalProps={{ keepMounted: true }}
-          aria-label="모바일 네비게이션 메뉴"
+          aria-label='모바일 네비게이션 메뉴'
           sx={{
             display: { xs: 'block', md: 'none' },
             '& .MuiDrawer-paper': {
@@ -230,9 +245,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         >
           {drawer}
         </Drawer>
-        
+
         <Drawer
-          variant="permanent"
+          variant='permanent'
           sx={{
             display: { xs: 'none', md: 'block' },
             '& .MuiDrawer-paper': {
@@ -247,7 +262,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       </Box>
 
       <Box
-        component="main"
+        component='main'
         sx={{
           flexGrow: 1,
           p: 3,
@@ -258,5 +273,5 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         {children}
       </Box>
     </Box>
-  )
+  );
 }

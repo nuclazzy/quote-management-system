@@ -1,6 +1,6 @@
-import { Components, Theme } from '@mui/material/styles'
-import { brandColors, statusColors } from './colors'
-import { spacing } from './spacing'
+import { Components, Theme } from '@mui/material/styles';
+import { brandColors, statusColors } from './colors';
+import { spacing } from './spacing';
 
 export const components: Components<Theme> = {
   // 버튼 컴포넌트
@@ -35,9 +35,11 @@ export const components: Components<Theme> = {
     styleOverrides: {
       root: {
         borderRadius: '12px',
-        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06)',
+        boxShadow:
+          '0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06)',
         '&:hover': {
-          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06)',
+          boxShadow:
+            '0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06)',
         },
       },
     },
@@ -50,13 +52,16 @@ export const components: Components<Theme> = {
         borderRadius: '8px',
       },
       elevation1: {
-        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06)',
+        boxShadow:
+          '0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06)',
       },
       elevation2: {
-        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06)',
+        boxShadow:
+          '0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06)',
       },
       elevation3: {
-        boxShadow: '0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05)',
+        boxShadow:
+          '0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05)',
       },
     },
   },
@@ -235,9 +240,11 @@ export const components: Components<Theme> = {
   MuiFab: {
     styleOverrides: {
       root: {
-        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06)',
+        boxShadow:
+          '0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06)',
         '&:hover': {
-          boxShadow: '0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05)',
+          boxShadow:
+            '0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05)',
         },
       },
     },
@@ -267,4 +274,4 @@ export const components: Components<Theme> = {
       },
     },
   },
-}
+};

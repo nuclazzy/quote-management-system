@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 import {
   Dialog,
@@ -7,36 +7,40 @@ import {
   DialogActions,
   Typography,
   Button,
-  Box
-} from '@mui/material'
-import { Warning as WarningIcon, Info as InfoIcon, Error as ErrorIcon } from '@mui/icons-material'
+  Box,
+} from '@mui/material';
+import {
+  Warning as WarningIcon,
+  Info as InfoIcon,
+  Error as ErrorIcon,
+} from '@mui/icons-material';
 
 interface ConfirmDialogProps {
-  open: boolean
-  onClose: () => void
-  onConfirm: () => void
-  title: string
-  message: string
-  confirmText?: string
-  cancelText?: string
-  variant?: 'warning' | 'error' | 'info'
-  loading?: boolean
+  open: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  title: string;
+  message: string;
+  confirmText?: string;
+  cancelText?: string;
+  variant?: 'warning' | 'error' | 'info';
+  loading?: boolean;
 }
 
 const variantConfig = {
   warning: {
     icon: <WarningIcon />,
-    color: '#ed6c02'
+    color: '#ed6c02',
   },
   error: {
     icon: <ErrorIcon />,
-    color: '#d32f2f'
+    color: '#d32f2f',
   },
   info: {
     icon: <InfoIcon />,
-    color: '#0288d1'
-  }
-}
+    color: '#0288d1',
+  },
+};
 
 export default function ConfirmDialog({
   open,
@@ -47,43 +51,36 @@ export default function ConfirmDialog({
   confirmText = '확인',
   cancelText = '취소',
   variant = 'warning',
-  loading = false
+  loading = false,
 }: ConfirmDialogProps) {
-  const config = variantConfig[variant]
+  const config = variantConfig[variant];
 
   return (
-    <Dialog 
-      open={open} 
+    <Dialog
+      open={open}
       onClose={onClose}
-      maxWidth="sm"
+      maxWidth='sm'
       fullWidth
-      aria-labelledby="confirm-dialog-title"
+      aria-labelledby='confirm-dialog-title'
     >
-      <DialogTitle id="confirm-dialog-title">
+      <DialogTitle id='confirm-dialog-title'>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Box sx={{ color: config.color }}>
-            {config.icon}
-          </Box>
+          <Box sx={{ color: config.color }}>{config.icon}</Box>
           {title}
         </Box>
       </DialogTitle>
-      
+
       <DialogContent>
-        <Typography variant="body1">
-          {message}
-        </Typography>
+        <Typography variant='body1'>{message}</Typography>
       </DialogContent>
-      
+
       <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button 
-          onClick={onClose}
-          disabled={loading}
-        >
+        <Button onClick={onClose} disabled={loading}>
           {cancelText}
         </Button>
-        <Button 
+        <Button
           onClick={onConfirm}
-          variant="contained"
+          variant='contained'
           color={variant === 'error' ? 'error' : 'primary'}
           disabled={loading}
           autoFocus
@@ -92,5 +89,5 @@ export default function ConfirmDialog({
         </Button>
       </DialogActions>
     </Dialog>
-  )
+  );
 }

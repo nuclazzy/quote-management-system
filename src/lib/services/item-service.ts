@@ -1,68 +1,68 @@
-import { supabase } from '../supabase/client'
+import { supabase } from '../supabase/client';
 
 export interface ItemCategory {
-  id: string
-  name: string
-  description?: string
-  parent_category_id?: string
-  is_active: boolean
-  created_at: string
-  updated_at: string
-  created_by: string
-  updated_by?: string
+  id: string;
+  name: string;
+  description?: string;
+  parent_category_id?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  created_by: string;
+  updated_by?: string;
 }
 
 export interface Item {
-  id: string
-  name: string
-  description?: string
-  category_id: string
-  sku: string
-  unit: string
-  unit_price: number
-  stock_quantity: number
-  minimum_stock_level?: number
-  is_active: boolean
-  created_at: string
-  updated_at: string
-  created_by: string
-  updated_by?: string
-  category?: ItemCategory
+  id: string;
+  name: string;
+  description?: string;
+  category_id: string;
+  sku: string;
+  unit: string;
+  unit_price: number;
+  stock_quantity: number;
+  minimum_stock_level?: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  created_by: string;
+  updated_by?: string;
+  category?: ItemCategory;
 }
 
 export interface CreateCategoryData {
-  name: string
-  description?: string
-  parent_category_id?: string
+  name: string;
+  description?: string;
+  parent_category_id?: string;
 }
 
 export interface UpdateCategoryData {
-  name?: string
-  description?: string
-  parent_category_id?: string
-  is_active?: boolean
+  name?: string;
+  description?: string;
+  parent_category_id?: string;
+  is_active?: boolean;
 }
 
 export interface CreateItemData {
-  name: string
-  description?: string
-  category_id: string
-  sku: string
-  unit: string
-  unit_price: number
-  stock_quantity: number
-  minimum_stock_level?: number
+  name: string;
+  description?: string;
+  category_id: string;
+  sku: string;
+  unit: string;
+  unit_price: number;
+  stock_quantity: number;
+  minimum_stock_level?: number;
 }
 
 export interface UpdateItemData {
-  name?: string
-  description?: string
-  category_id?: string
-  unit?: string
-  unit_price?: number
-  stock_quantity?: number
-  minimum_stock_level?: number
-  is_active?: boolean
+  name?: string;
+  description?: string;
+  category_id?: string;
+  unit?: string;
+  unit_price?: number;
+  stock_quantity?: number;
+  minimum_stock_level?: number;
+  is_active?: boolean;
 }
 
 export class ItemService {
@@ -74,57 +74,62 @@ export class ItemService {
       .from('item_categories')
       .select('*')
       .eq('is_active', true)
-      .order('name')
+      .order('name');
 
     if (error) {
-      console.error('Categories fetch error:', error)
-      throw new Error(`카테고리 조회 실패: ${error.message}`)
+      console.error('Categories fetch error:', error);
+      throw new Error(`카테고리 조회 실패: ${error.message}`);
     }
 
-    return data || []
+    return data || [];
   }
 
   /**
    * 카테고리 생성
    */
-  static async createCategory(categoryData: CreateCategoryData): Promise<ItemCategory> {
+  static async createCategory(
+    categoryData: CreateCategoryData
+  ): Promise<ItemCategory> {
     const { data, error } = await supabase
       .from('item_categories')
       .insert({
         ...categoryData,
-        is_active: true
+        is_active: true,
       })
       .select()
-      .single()
+      .single();
 
     if (error) {
-      console.error('Category creation error:', error)
-      throw new Error(`카테고리 생성 실패: ${error.message}`)
+      console.error('Category creation error:', error);
+      throw new Error(`카테고리 생성 실패: ${error.message}`);
     }
 
-    return data
+    return data;
   }
 
   /**
    * 카테고리 수정
    */
-  static async updateCategory(id: string, updates: UpdateCategoryData): Promise<ItemCategory> {
+  static async updateCategory(
+    id: string,
+    updates: UpdateCategoryData
+  ): Promise<ItemCategory> {
     const { data, error } = await supabase
       .from('item_categories')
       .update({
         ...updates,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
       .eq('id', id)
       .select()
-      .single()
+      .single();
 
     if (error) {
-      console.error('Category update error:', error)
-      throw new Error(`카테고리 수정 실패: ${error.message}`)
+      console.error('Category update error:', error);
+      throw new Error(`카테고리 수정 실패: ${error.message}`);
     }
 
-    return data
+    return data;
   }
 
   /**
@@ -136,25 +141,25 @@ export class ItemService {
       .from('items')
       .select('*', { count: 'exact', head: true })
       .eq('category_id', id)
-      .eq('is_active', true)
+      .eq('is_active', true);
 
     if (countError) {
-      console.error('Category items count error:', countError)
-      throw new Error(`카테고리 품목 확인 실패: ${countError.message}`)
+      console.error('Category items count error:', countError);
+      throw new Error(`카테고리 품목 확인 실패: ${countError.message}`);
     }
 
     if (count && count > 0) {
-      throw new Error('해당 카테고리에 품목이 존재하여 삭제할 수 없습니다.')
+      throw new Error('해당 카테고리에 품목이 존재하여 삭제할 수 없습니다.');
     }
 
     const { error } = await supabase
       .from('item_categories')
       .update({ is_active: false })
-      .eq('id', id)
+      .eq('id', id);
 
     if (error) {
-      console.error('Category deletion error:', error)
-      throw new Error(`카테고리 삭제 실패: ${error.message}`)
+      console.error('Category deletion error:', error);
+      throw new Error(`카테고리 삭제 실패: ${error.message}`);
     }
   }
 
@@ -164,19 +169,21 @@ export class ItemService {
   static async getItems(): Promise<Item[]> {
     const { data, error } = await supabase
       .from('items')
-      .select(`
+      .select(
+        `
         *,
         category:item_categories(*)
-      `)
+      `
+      )
       .eq('is_active', true)
-      .order('name')
+      .order('name');
 
     if (error) {
-      console.error('Items fetch error:', error)
-      throw new Error(`품목 조회 실패: ${error.message}`)
+      console.error('Items fetch error:', error);
+      throw new Error(`품목 조회 실패: ${error.message}`);
     }
 
-    return data || []
+    return data || [];
   }
 
   /**
@@ -185,20 +192,22 @@ export class ItemService {
   static async getItem(id: string): Promise<Item> {
     const { data, error } = await supabase
       .from('items')
-      .select(`
+      .select(
+        `
         *,
         category:item_categories(*)
-      `)
+      `
+      )
       .eq('id', id)
       .eq('is_active', true)
-      .single()
+      .single();
 
     if (error) {
-      console.error('Item fetch error:', error)
-      throw new Error(`품목 조회 실패: ${error.message}`)
+      console.error('Item fetch error:', error);
+      throw new Error(`품목 조회 실패: ${error.message}`);
     }
 
-    return data
+    return data;
   }
 
   /**
@@ -209,23 +218,25 @@ export class ItemService {
       .from('items')
       .insert({
         ...itemData,
-        is_active: true
+        is_active: true,
       })
-      .select(`
+      .select(
+        `
         *,
         category:item_categories(*)
-      `)
-      .single()
+      `
+      )
+      .single();
 
     if (error) {
-      console.error('Item creation error:', error)
+      console.error('Item creation error:', error);
       if (error.code === '23505') {
-        throw new Error('이미 존재하는 SKU입니다.')
+        throw new Error('이미 존재하는 SKU입니다.');
       }
-      throw new Error(`품목 생성 실패: ${error.message}`)
+      throw new Error(`품목 생성 실패: ${error.message}`);
     }
 
-    return data
+    return data;
   }
 
   /**
@@ -236,21 +247,23 @@ export class ItemService {
       .from('items')
       .update({
         ...updates,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
       .eq('id', id)
-      .select(`
+      .select(
+        `
         *,
         category:item_categories(*)
-      `)
-      .single()
+      `
+      )
+      .single();
 
     if (error) {
-      console.error('Item update error:', error)
-      throw new Error(`품목 수정 실패: ${error.message}`)
+      console.error('Item update error:', error);
+      throw new Error(`품목 수정 실패: ${error.message}`);
     }
 
-    return data
+    return data;
   }
 
   /**
@@ -260,35 +273,38 @@ export class ItemService {
     const { error } = await supabase
       .from('items')
       .update({ is_active: false })
-      .eq('id', id)
+      .eq('id', id);
 
     if (error) {
-      console.error('Item deletion error:', error)
-      throw new Error(`품목 삭제 실패: ${error.message}`)
+      console.error('Item deletion error:', error);
+      throw new Error(`품목 삭제 실패: ${error.message}`);
     }
   }
 
   /**
    * SKU 중복 확인
    */
-  static async checkSkuExists(sku: string, excludeId?: string): Promise<boolean> {
+  static async checkSkuExists(
+    sku: string,
+    excludeId?: string
+  ): Promise<boolean> {
     let query = supabase
       .from('items')
       .select('id')
       .eq('sku', sku)
-      .eq('is_active', true)
+      .eq('is_active', true);
 
     if (excludeId) {
-      query = query.neq('id', excludeId)
+      query = query.neq('id', excludeId);
     }
 
-    const { data, error } = await query
+    const { data, error } = await query;
 
     if (error) {
-      console.error('SKU check error:', error)
-      throw new Error(`SKU 확인 실패: ${error.message}`)
+      console.error('SKU check error:', error);
+      throw new Error(`SKU 확인 실패: ${error.message}`);
     }
 
-    return (data?.length || 0) > 0
+    return (data?.length || 0) > 0;
   }
 }

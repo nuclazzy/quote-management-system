@@ -1,14 +1,17 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { NextRequest, NextResponse } from 'next/server';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
-    
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const supabase = createRouteHandlerClient({ cookies });
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Check if user is admin
@@ -16,10 +19,13 @@ export async function GET(request: NextRequest) {
       .from('users')
       .select('role, company_id')
       .eq('id', user.id)
-      .single()
+      .single();
 
     if (!userProfile || userProfile.role !== 'admin') {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
+      return NextResponse.json(
+        { error: 'Admin access required' },
+        { status: 403 }
+      );
     }
 
     // Get company settings
@@ -27,11 +33,14 @@ export async function GET(request: NextRequest) {
       .from('companies')
       .select('*')
       .eq('id', userProfile.company_id)
-      .single()
+      .single();
 
     if (error) {
-      console.error('Error fetching company settings:', error)
-      return NextResponse.json({ error: 'Failed to fetch company settings' }, { status: 500 })
+      console.error('Error fetching company settings:', error);
+      return NextResponse.json(
+        { error: 'Failed to fetch company settings' },
+        { status: 500 }
+      );
     }
 
     // Ensure settings object exists with defaults
@@ -44,28 +53,34 @@ export async function GET(request: NextRequest) {
       email_notifications: true,
       quote_expiry_days: 30,
       max_file_size_mb: 10,
-    }
+    };
 
     const formattedCompany = {
       ...company,
       bank_info: company.bank_info || {},
-      settings: { ...defaultSettings, ...(company.settings || {}) }
-    }
+      settings: { ...defaultSettings, ...(company.settings || {}) },
+    };
 
-    return NextResponse.json(formattedCompany)
+    return NextResponse.json(formattedCompany);
   } catch (error) {
-    console.error('Error in admin settings GET:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('Error in admin settings GET:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }
 
 export async function PUT(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
-    
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const supabase = createRouteHandlerClient({ cookies });
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Check if user is admin
@@ -73,13 +88,16 @@ export async function PUT(request: NextRequest) {
       .from('users')
       .select('role, company_id')
       .eq('id', user.id)
-      .single()
+      .single();
 
     if (!userProfile || userProfile.role !== 'admin') {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
+      return NextResponse.json(
+        { error: 'Admin access required' },
+        { status: 403 }
+      );
     }
 
-    const body = await request.json()
+    const body = await request.json();
     const {
       name,
       logo_url,
@@ -91,15 +109,15 @@ export async function PUT(request: NextRequest) {
       bank_info,
       default_terms,
       default_payment_terms,
-      settings
-    } = body
+      settings,
+    } = body;
 
     // Validate required fields
     if (!name) {
       return NextResponse.json(
         { error: 'Company name is required' },
         { status: 400 }
-      )
+      );
     }
 
     // Update company settings
@@ -117,20 +135,26 @@ export async function PUT(request: NextRequest) {
         default_terms: default_terms || null,
         default_payment_terms: Number(default_payment_terms) || 30,
         settings: settings || {},
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
       .eq('id', userProfile.company_id)
       .select()
-      .single()
+      .single();
 
     if (updateError) {
-      console.error('Error updating company settings:', updateError)
-      return NextResponse.json({ error: 'Failed to update company settings' }, { status: 500 })
+      console.error('Error updating company settings:', updateError);
+      return NextResponse.json(
+        { error: 'Failed to update company settings' },
+        { status: 500 }
+      );
     }
 
-    return NextResponse.json(updatedCompany)
+    return NextResponse.json(updatedCompany);
   } catch (error) {
-    console.error('Error in admin settings PUT:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('Error in admin settings PUT:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }

@@ -9,7 +9,7 @@ const updateTransactionSchema = z.object({
   partner_name: z.string().optional(),
   item_name: z.string().optional(),
   amount: z.number().positive().optional(),
-  due_date: z.string().nullable().optional()
+  due_date: z.string().nullable().optional(),
 });
 
 export async function GET(
@@ -19,23 +19,25 @@ export async function GET(
   try {
     const supabase = createServerClient();
     const transactionId = params.id;
-    
+
     // 현재 사용자 확인
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
     if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // 거래 정보 조회
     const { data: transaction, error } = await supabase
       .from('transactions')
-      .select(`
+      .select(
+        `
         *,
         projects!inner(id, name, quotes!inner(customer_name_snapshot))
-      `)
+      `
+      )
       .eq('id', transactionId)
       .single();
 
@@ -47,7 +49,6 @@ export async function GET(
     }
 
     return NextResponse.json({ transaction });
-
   } catch (error) {
     console.error('Transaction GET error:', error);
     return NextResponse.json(
@@ -64,14 +65,14 @@ export async function PATCH(
   try {
     const supabase = createServerClient();
     const transactionId = params.id;
-    
+
     // 현재 사용자 확인
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
     if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // 요청 데이터 검증
@@ -97,10 +98,12 @@ export async function PATCH(
       .from('transactions')
       .update(validatedData)
       .eq('id', transactionId)
-      .select(`
+      .select(
+        `
         *,
         projects!inner(id, name)
-      `)
+      `
+      )
       .single();
 
     if (updateError) {
@@ -112,12 +115,15 @@ export async function PATCH(
     }
 
     // 상태 변경 시 알림 생성
-    if (validatedData.status && validatedData.status !== existingTransaction.status) {
+    if (
+      validatedData.status &&
+      validatedData.status !== existingTransaction.status
+    ) {
       const statusText = {
-        'pending': '대기',
-        'processing': '진행중',
-        'completed': '완료',
-        'issue': '문제'
+        pending: '대기',
+        processing: '진행중',
+        completed: '완료',
+        issue: '문제',
       }[validatedData.status];
 
       const { error: notificationError } = await supabase
@@ -126,8 +132,12 @@ export async function PATCH(
           user_id: user.id,
           message: `거래 "${existingTransaction.item_name}"의 상태가 "${statusText}"로 변경되었습니다.`,
           link_url: `/projects/${existingTransaction.project_id}`,
-          notification_type: validatedData.status === 'completed' ? 'general' : 
-                           validatedData.status === 'issue' ? 'issue' : 'general'
+          notification_type:
+            validatedData.status === 'completed'
+              ? 'general'
+              : validatedData.status === 'issue'
+                ? 'issue'
+                : 'general',
         });
 
       if (notificationError) {
@@ -137,12 +147,11 @@ export async function PATCH(
 
     return NextResponse.json({
       success: true,
-      transaction
+      transaction,
     });
-
   } catch (error) {
     console.error('Transaction PATCH error:', error);
-    
+
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Invalid request data', details: error.errors },
@@ -164,14 +173,14 @@ export async function DELETE(
   try {
     const supabase = createServerClient();
     const transactionId = params.id;
-    
+
     // 현재 사용자 확인
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
     if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // 거래 존재 확인
@@ -212,9 +221,8 @@ export async function DELETE(
 
     return NextResponse.json({
       success: true,
-      message: 'Transaction deleted successfully'
+      message: 'Transaction deleted successfully',
     });
-
   } catch (error) {
     console.error('Transaction DELETE error:', error);
     return NextResponse.json(

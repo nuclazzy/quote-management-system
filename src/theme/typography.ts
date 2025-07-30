@@ -1,4 +1,4 @@
-import { TypographyOptions } from '@mui/material/styles/createTypography'
+import { TypographyOptions } from '@mui/material/styles/createTypography';
 
 // 타이포그래피 스케일
 export const typographyScale = {
@@ -38,15 +38,15 @@ export const typographyScale = {
 
   // Font sizes (rem)
   fontSize: {
-    xs: '0.75rem',    // 12px
-    sm: '0.875rem',   // 14px
-    base: '1rem',     // 16px
-    lg: '1.125rem',   // 18px
-    xl: '1.25rem',    // 20px
-    '2xl': '1.5rem',  // 24px
+    xs: '0.75rem', // 12px
+    sm: '0.875rem', // 14px
+    base: '1rem', // 16px
+    lg: '1.125rem', // 18px
+    xl: '1.25rem', // 20px
+    '2xl': '1.5rem', // 24px
     '3xl': '1.875rem', // 30px
     '4xl': '2.25rem', // 36px
-    '5xl': '3rem',    // 48px
+    '5xl': '3rem', // 48px
   },
 
   // Line heights
@@ -55,12 +55,12 @@ export const typographyScale = {
     normal: 1.5,
     relaxed: 1.75,
   },
-}
+};
 
 // Material-UI 타이포그래피 옵션
 export const typography: TypographyOptions = {
   fontFamily: typographyScale.fontFamily.primary,
-  
+
   // 헤드라인
   h1: {
     fontSize: typographyScale.fontSize['5xl'],
@@ -137,4 +137,4 @@ export const typography: TypographyOptions = {
     lineHeight: typographyScale.lineHeight.normal,
     textTransform: 'none', // 버튼 텍스트 대문자 변환 비활성화
   },
-}
+};

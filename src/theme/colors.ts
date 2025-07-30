@@ -71,8 +71,8 @@ export const brandColors = {
     700: '#616161',
     800: '#424242',
     900: '#212121',
-  }
-}
+  },
+};
 
 // 2025 모던 시맨틱 컬러 - 라이트/다크 모드 지원
 export const semanticColors = {
@@ -122,7 +122,7 @@ export const semanticColors = {
       disabledBackground: '#1e293b',
     },
   },
-}
+};
 
 // 2025 모던 상태별 컬러 - 그라디언트 지원
 export const statusColors = {
@@ -151,7 +151,7 @@ export const statusColors = {
     gradient: 'linear-gradient(135deg, #ef4444 0%, #f87171 100%)',
     glass: 'rgba(239, 68, 68, 0.1)',
   },
-}
+};
 
 // MUI 표준 팔레트 구조로 색상 정의
 export const primary = {
@@ -169,7 +169,7 @@ export const primary = {
   light: brandColors.primary[300],
   dark: brandColors.primary[700],
   contrastText: '#ffffff',
-}
+};
 
 export const secondary = {
   50: brandColors.secondary[50],
@@ -186,7 +186,7 @@ export const secondary = {
   light: brandColors.secondary[300],
   dark: brandColors.secondary[700],
   contrastText: '#ffffff',
-}
+};
 
 export const success = {
   50: brandColors.success[50],
@@ -203,7 +203,7 @@ export const success = {
   light: brandColors.success[300],
   dark: brandColors.success[700],
   contrastText: '#ffffff',
-}
+};
 
 export const warning = {
   50: brandColors.warning[50],
@@ -220,7 +220,7 @@ export const warning = {
   light: brandColors.warning[300],
   dark: brandColors.warning[700],
   contrastText: 'rgba(0, 0, 0, 0.87)',
-}
+};
 
 export const error = {
   50: brandColors.error[50],
@@ -237,7 +237,7 @@ export const error = {
   light: brandColors.error[300],
   dark: brandColors.error[700],
   contrastText: '#ffffff',
-}
+};
 
 export const info = {
   50: '#e3f2fd',
@@ -254,7 +254,7 @@ export const info = {
   light: '#64b5f6',
   dark: '#1976d2',
   contrastText: '#ffffff',
-}
+};
 
 export const grey = {
   50: brandColors.neutral[50],
@@ -271,7 +271,7 @@ export const grey = {
   A200: '#eeeeee',
   A400: '#bdbdbd',
   A700: '#616161',
-}
+};
 
 // 2025 트렌드 - 그라디언트 컬렉션
 export const gradients = {
@@ -280,11 +280,13 @@ export const gradients = {
   success: 'linear-gradient(135deg, #22c55e 0%, #4ade80 100%)',
   warning: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',
   error: 'linear-gradient(135deg, #ef4444 0%, #f87171 100%)',
-  glass: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
-  darkGlass: 'linear-gradient(135deg, rgba(30,41,59,0.8) 0%, rgba(51,65,85,0.6) 100%)',
+  glass:
+    'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
+  darkGlass:
+    'linear-gradient(135deg, rgba(30,41,59,0.8) 0%, rgba(51,65,85,0.6) 100%)',
   sunset: 'linear-gradient(135deg, #f59e0b 0%, #ec4899 50%, #8b5cf6 100%)',
   ocean: 'linear-gradient(135deg, #0ea5e9 0%, #22c55e 100%)',
-}
+};
 
 // 2025 네오모피즘 그림자
 export const shadows = {
@@ -298,11 +300,13 @@ export const shadows = {
   },
   modern: {
     small: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
-    medium: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-    large: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+    medium:
+      '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+    large:
+      '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
     xl: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
   },
-}
+};
 
 // 상태별 색상 (기존 유지 + 확장)
-export const status = statusColors
+export const status = statusColors;

@@ -1,6 +1,6 @@
-'use client'
+'use client';
 
-import React, { memo } from 'react'
+import React, { memo } from 'react';
 import {
   Box,
   Paper,
@@ -9,38 +9,42 @@ import {
   Card,
   CardContent,
   Stack,
-} from '@mui/material'
+} from '@mui/material';
 import {
   Add as AddIcon,
   Assignment as AssignmentIcon,
-} from '@mui/icons-material'
-import QuoteGroupForm from './QuoteGroupForm'
+} from '@mui/icons-material';
+import QuoteGroupForm from './QuoteGroupForm';
 
 interface QuoteGroup {
-  id?: string
-  name: string
+  id?: string;
+  name: string;
   items: Array<{
-    id?: string
-    name: string
-    quantity: number
-    unit_cost: number
-    selling_price: number
-    notes?: string
-  }>
+    id?: string;
+    name: string;
+    quantity: number;
+    unit_cost: number;
+    selling_price: number;
+    notes?: string;
+  }>;
 }
 
 interface QuoteItemsManagerProps {
-  groups: QuoteGroup[]
-  showCostPrice: boolean
-  onAddGroup: () => void
-  onUpdateGroup: (groupIndex: number, updates: Partial<QuoteGroup>) => void
-  onRemoveGroup: (groupIndex: number) => void
+  groups: QuoteGroup[];
+  showCostPrice: boolean;
+  onAddGroup: () => void;
+  onUpdateGroup: (groupIndex: number, updates: Partial<QuoteGroup>) => void;
+  onRemoveGroup: (groupIndex: number) => void;
 }
 
-const EmptyState = memo(function EmptyState({ onAddGroup }: { onAddGroup: () => void }) {
+const EmptyState = memo(function EmptyState({
+  onAddGroup,
+}: {
+  onAddGroup: () => void;
+}) {
   return (
-    <Card 
-      sx={{ 
+    <Card
+      sx={{
         minHeight: 200,
         display: 'flex',
         alignItems: 'center',
@@ -56,37 +60,37 @@ const EmptyState = memo(function EmptyState({ onAddGroup }: { onAddGroup: () => 
       }}
     >
       <CardContent>
-        <Stack spacing={3} alignItems="center" textAlign="center">
-          <AssignmentIcon 
-            sx={{ 
-              fontSize: 64, 
+        <Stack spacing={3} alignItems='center' textAlign='center'>
+          <AssignmentIcon
+            sx={{
+              fontSize: 64,
               color: 'grey.400',
               mb: 1,
-            }} 
+            }}
           />
           <Box>
-            <Typography 
-              variant="h6" 
-              color="text.secondary" 
+            <Typography
+              variant='h6'
+              color='text.secondary'
               gutterBottom
               sx={{ fontWeight: 500 }}
             >
               견적 항목이 없습니다
             </Typography>
-            <Typography 
-              variant="body2" 
-              color="text.secondary"
+            <Typography
+              variant='body2'
+              color='text.secondary'
               sx={{ mb: 3, maxWidth: 300 }}
             >
-              견적서에 포함할 그룹과 항목들을 추가해보세요.
-              각 그룹별로 관련 항목들을 체계적으로 관리할 수 있습니다.
+              견적서에 포함할 그룹과 항목들을 추가해보세요. 각 그룹별로 관련
+              항목들을 체계적으로 관리할 수 있습니다.
             </Typography>
           </Box>
           <Button
-            variant="contained"
+            variant='contained'
             startIcon={<AddIcon />}
             onClick={onAddGroup}
-            size="large"
+            size='large'
             sx={{
               px: 4,
               py: 1.5,
@@ -100,15 +104,15 @@ const EmptyState = memo(function EmptyState({ onAddGroup }: { onAddGroup: () => 
               },
               transition: 'all 0.2s ease-in-out',
             }}
-            aria-label="첫 번째 견적 그룹 추가"
+            aria-label='첫 번째 견적 그룹 추가'
           >
             그룹 추가하기
           </Button>
         </Stack>
       </CardContent>
     </Card>
-  )
-})
+  );
+});
 
 const QuoteItemsManager = memo(function QuoteItemsManager({
   groups,
@@ -119,21 +123,21 @@ const QuoteItemsManager = memo(function QuoteItemsManager({
 }: QuoteItemsManagerProps) {
   return (
     <Paper sx={{ p: 3, mb: 3 }} elevation={1}>
-      <Box 
-        sx={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center', 
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
           mb: 3,
           flexWrap: 'wrap',
           gap: 2,
         }}
       >
         <Box>
-          <Typography 
-            variant="h6"
-            component="h2"
-            sx={{ 
+          <Typography
+            variant='h6'
+            component='h2'
+            sx={{
               fontWeight: 600,
               color: 'text.primary',
               mb: 0.5,
@@ -141,18 +145,18 @@ const QuoteItemsManager = memo(function QuoteItemsManager({
           >
             견적 내용
           </Typography>
-          <Typography 
-            variant="body2" 
-            color="text.secondary"
+          <Typography
+            variant='body2'
+            color='text.secondary'
             sx={{ display: { xs: 'none', sm: 'block' } }}
           >
             그룹별로 견적 항목을 관리하고 계산하세요
           </Typography>
         </Box>
-        
+
         {groups.length > 0 && (
           <Button
-            variant="outlined"
+            variant='outlined'
             startIcon={<AddIcon />}
             onClick={onAddGroup}
             sx={{
@@ -167,7 +171,7 @@ const QuoteItemsManager = memo(function QuoteItemsManager({
               },
               transition: 'all 0.2s ease-in-out',
             }}
-            aria-label="새로운 견적 그룹 추가"
+            aria-label='새로운 견적 그룹 추가'
           >
             그룹 추가
           </Button>
@@ -191,7 +195,7 @@ const QuoteItemsManager = memo(function QuoteItemsManager({
         </Stack>
       )}
     </Paper>
-  )
-})
+  );
+});
 
-export default QuoteItemsManager
+export default QuoteItemsManager;

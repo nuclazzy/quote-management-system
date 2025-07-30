@@ -1,80 +1,80 @@
 // 브라우저 기반 PDF 생성기 (Print API 사용)
 export interface QuoteData {
-  id: string
-  quote_number: string
-  title: string
-  description?: string
-  status: string
-  subtotal: number
-  tax_rate: number
-  tax_amount: number
-  total: number
-  valid_until?: string
-  terms?: string
-  notes?: string
-  created_at: string
-  
+  id: string;
+  quote_number: string;
+  title: string;
+  description?: string;
+  status: string;
+  subtotal: number;
+  tax_rate: number;
+  tax_amount: number;
+  total: number;
+  valid_until?: string;
+  terms?: string;
+  notes?: string;
+  created_at: string;
+
   // 관련 데이터
   customers: {
-    id: string
-    name: string
-    email?: string
-    phone?: string
-    address?: string
-    contact_person?: string
-  }
-  
+    id: string;
+    name: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    contact_person?: string;
+  };
+
   projects?: {
-    id: string
-    name: string
-    description?: string
-  }
-  
+    id: string;
+    name: string;
+    description?: string;
+  };
+
   quote_groups: Array<{
-    id: string
-    title: string
-    sort_order: number
+    id: string;
+    title: string;
+    sort_order: number;
     quote_items: Array<{
-      id: string
-      item_name: string
-      description?: string
-      quantity: number
-      unit_price: number
-      total_price: number
-      sort_order: number
+      id: string;
+      item_name: string;
+      description?: string;
+      quantity: number;
+      unit_price: number;
+      total_price: number;
+      sort_order: number;
       suppliers?: {
-        id: string
-        name: string
-      }
+        id: string;
+        name: string;
+      };
       quote_item_details: Array<{
-        id: string
-        detail_name: string
-        description?: string
-        quantity: number
-        unit_price: number
-        total_price: number
-        sort_order: number
-      }>
-    }>
-  }>
+        id: string;
+        detail_name: string;
+        description?: string;
+        quantity: number;
+        unit_price: number;
+        total_price: number;
+        sort_order: number;
+      }>;
+    }>;
+  }>;
 }
 
 export interface CompanyInfo {
-  name: string
-  logo_url?: string
-  address?: string
-  phone?: string
-  email?: string
-  website?: string
-  tax_number?: string
-  bank_info?: any
+  name: string;
+  logo_url?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  tax_number?: string;
+  bank_info?: any;
 }
 
 export class BrowserPDFGenerator {
-  private companyInfo: CompanyInfo
+  private companyInfo: CompanyInfo;
 
   constructor(companyInfo: CompanyInfo) {
-    this.companyInfo = companyInfo
+    this.companyInfo = companyInfo;
   }
 
   // 통화 포맷팅
@@ -82,19 +82,21 @@ export class BrowserPDFGenerator {
     return new Intl.NumberFormat('ko-KR', {
       style: 'currency',
       currency: 'KRW',
-      minimumFractionDigits: 0
-    }).format(amount)
+      minimumFractionDigits: 0,
+    }).format(amount);
   }
 
   // 숫자 포맷팅
   private formatNumber(num: number): string {
-    return new Intl.NumberFormat('ko-KR').format(num)
+    return new Intl.NumberFormat('ko-KR').format(num);
   }
 
   // HTML 생성
   private generateHTML(quote: QuoteData): string {
-    const groups = quote.quote_groups.sort((a, b) => a.sort_order - b.sort_order)
-    
+    const groups = quote.quote_groups.sort(
+      (a, b) => a.sort_order - b.sort_order
+    );
+
     return `
 <!DOCTYPE html>
 <html lang="ko">
@@ -313,17 +315,23 @@ export class BrowserPDFGenerator {
             </tr>
         </thead>
         <tbody>
-            ${groups.map((group, groupIndex) => {
-              const items = group.quote_items.sort((a, b) => a.sort_order - b.sort_order)
-              
-              return `
+            ${groups
+              .map((group, groupIndex) => {
+                const items = group.quote_items.sort(
+                  (a, b) => a.sort_order - b.sort_order
+                );
+
+                return `
                 <tr class="group-header">
                     <td colspan="5">${groupIndex + 1}. ${group.title}</td>
                 </tr>
-                ${items.map(item => {
-                  const details = item.quote_item_details.sort((a, b) => a.sort_order - b.sort_order)
-                  
-                  return `
+                ${items
+                  .map((item) => {
+                    const details = item.quote_item_details.sort(
+                      (a, b) => a.sort_order - b.sort_order
+                    );
+
+                    return `
                     <tr class="item-row">
                         <td>• ${item.item_name}</td>
                         <td class="center">${this.formatNumber(item.quantity)}</td>
@@ -331,7 +339,9 @@ export class BrowserPDFGenerator {
                         <td class="number">${this.formatCurrency(item.total_price)}</td>
                         <td class="center">${item.suppliers?.name || ''}</td>
                     </tr>
-                    ${details.map(detail => `
+                    ${details
+                      .map(
+                        (detail) => `
                       <tr class="detail-row">
                           <td>&nbsp;&nbsp;&nbsp;&nbsp;- ${detail.detail_name}</td>
                           <td class="center">${this.formatNumber(detail.quantity)}</td>
@@ -339,11 +349,15 @@ export class BrowserPDFGenerator {
                           <td class="number">${this.formatCurrency(detail.total_price)}</td>
                           <td class="center"></td>
                       </tr>
-                    `).join('')}
-                  `
-                }).join('')}
-              `
-            }).join('')}
+                    `
+                      )
+                      .join('')}
+                  `;
+                  })
+                  .join('')}
+              `;
+              })
+              .join('')}
         </tbody>
     </table>
     
@@ -362,72 +376,89 @@ export class BrowserPDFGenerator {
         </div>
     </div>
     
-    ${quote.terms || quote.notes ? `
+    ${
+      quote.terms || quote.notes
+        ? `
     <div class="terms-section">
-        ${quote.terms ? `
+        ${
+          quote.terms
+            ? `
         <div>
             <h4>조건 및 기타사항:</h4>
             <div class="terms-content">${quote.terms}</div>
         </div>
-        ` : ''}
+        `
+            : ''
+        }
         
-        ${quote.notes ? `
+        ${
+          quote.notes
+            ? `
         <div style="margin-top: 15px;">
             <h4>비고:</h4>
             <div class="terms-content">${quote.notes}</div>
         </div>
-        ` : ''}
+        `
+            : ''
+        }
     </div>
-    ` : ''}
+    `
+        : ''
+    }
 </body>
 </html>
-    `
+    `;
   }
 
   // PDF 생성 (브라우저 print 기능 사용)
   public generatePDF(quote: QuoteData): Promise<void> {
     return new Promise((resolve, reject) => {
       try {
-        const htmlContent = this.generateHTML(quote)
-        
+        const htmlContent = this.generateHTML(quote);
+
         // 새 창에서 PDF 생성
-        const printWindow = window.open('', '_blank')
+        const printWindow = window.open('', '_blank');
         if (!printWindow) {
-          reject(new Error('팝업이 차단되었습니다. 팝업을 허용해 주세요.'))
-          return
+          reject(new Error('팝업이 차단되었습니다. 팝업을 허용해 주세요.'));
+          return;
         }
-        
-        printWindow.document.write(htmlContent)
-        printWindow.document.close()
-        
+
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+
         // 이미지 로드 대기 후 인쇄
         printWindow.onload = () => {
           setTimeout(() => {
-            printWindow.print()
-            printWindow.close()
-            resolve()
-          }, 500)
-        }
-        
+            printWindow.print();
+            printWindow.close();
+            resolve();
+          }, 500);
+        };
       } catch (error) {
-        reject(error)
+        reject(error);
       }
-    })
+    });
   }
 
   // HTML 미리보기 생성
   public generatePreview(quote: QuoteData): string {
-    return this.generateHTML(quote)
+    return this.generateHTML(quote);
   }
 }
 
 // 편의 함수들
-export function generateQuotePDF(quote: QuoteData, companyInfo: CompanyInfo): Promise<void> {
-  const generator = new BrowserPDFGenerator(companyInfo)
-  return generator.generatePDF(quote)
+export function generateQuotePDF(
+  quote: QuoteData,
+  companyInfo: CompanyInfo
+): Promise<void> {
+  const generator = new BrowserPDFGenerator(companyInfo);
+  return generator.generatePDF(quote);
 }
 
-export function generateQuotePreview(quote: QuoteData, companyInfo: CompanyInfo): string {
-  const generator = new BrowserPDFGenerator(companyInfo)
-  return generator.generatePreview(quote)
+export function generateQuotePreview(
+  quote: QuoteData,
+  companyInfo: CompanyInfo
+): string {
+  const generator = new BrowserPDFGenerator(companyInfo);
+  return generator.generatePreview(quote);
 }

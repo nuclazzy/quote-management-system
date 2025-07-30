@@ -1,12 +1,17 @@
-'use client'
+'use client';
 
-import { Chip, ChipProps } from '@mui/material'
-import { statusColors } from '@/theme/colors'
+import { Chip, ChipProps } from '@mui/material';
+import { statusColors } from '@/theme/colors';
 
-export type QuoteStatus = 'draft' | 'sent' | 'accepted' | 'revised' | 'canceled'
+export type QuoteStatus =
+  | 'draft'
+  | 'sent'
+  | 'accepted'
+  | 'revised'
+  | 'canceled';
 
 interface QuoteStatusChipProps extends Omit<ChipProps, 'color'> {
-  status: QuoteStatus
+  status: QuoteStatus;
 }
 
 const statusConfig = {
@@ -35,15 +40,15 @@ const statusConfig = {
     color: statusColors.canceled,
     bgcolor: '#ffebee',
   },
-}
+};
 
 export function QuoteStatusChip({ status, ...props }: QuoteStatusChipProps) {
-  const config = statusConfig[status]
+  const config = statusConfig[status];
 
   return (
     <Chip
       label={config.label}
-      size="small"
+      size='small'
       sx={{
         backgroundColor: config.bgcolor,
         color: config.color,
@@ -53,7 +58,7 @@ export function QuoteStatusChip({ status, ...props }: QuoteStatusChipProps) {
       }}
       {...props}
     />
-  )
+  );
 }
 
-export default QuoteStatusChip
+export default QuoteStatusChip;
