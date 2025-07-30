@@ -41,22 +41,45 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   const fetchNotifications = async () => {
     if (!user) return;
 
+    // Temporary: Skip notifications if not in development
+    if (process.env.NODE_ENV === 'production') {
+      console.log('Notifications temporarily disabled in production');
+      setNotifications([]);
+      setUnreadCount(0);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
-      setError(null);
-
+      // Don't clear error immediately to prevent UI flashing
+      
       const response = await fetch('/api/notifications?limit=50');
       if (!response.ok) {
-        throw new Error('Failed to fetch notifications');
+        // If it's a 500 error, fail silently and use empty data
+        if (response.status === 500) {
+          console.warn('Notifications API returned 500, using empty data');
+          setNotifications([]);
+          setUnreadCount(0);
+          setError(null);
+          return;
+        }
+        throw new Error(`Failed to fetch notifications: ${response.status}`);
       }
 
       const data: NotificationResponse = await response.json();
-      setNotifications(data.notifications);
-      setUnreadCount(data.unreadCount);
+      setNotifications(data.notifications || []);
+      setUnreadCount(data.unreadCount || 0);
+      setError(null); // Clear error on success
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       setError(errorMessage);
       console.error('Failed to fetch notifications:', err);
+      
+      // Use empty data as fallback
+      setNotifications([]);
+      setUnreadCount(0);
     } finally {
       setLoading(false);
     }
@@ -157,10 +180,10 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     if (user) {
       fetchNotifications();
 
-      // Set up polling for new notifications every 30 seconds
+      // Set up polling for new notifications every 2 minutes (reduced frequency)
       const interval = setInterval(() => {
         fetchNotifications();
-      }, 30000);
+      }, 120000);
 
       return () => clearInterval(interval);
     }
