@@ -10,12 +10,12 @@ export default function DashboardRootLayout({
   children: React.ReactNode
 }) {
   return (
-    <AuthGuard>
+    // <AuthGuard> {/* 임시 비활성화 */}
       <NotificationProvider>
         <DashboardLayout>
           {children}
         </DashboardLayout>
       </NotificationProvider>
-    </AuthGuard>
+    // </AuthGuard>
   )
 }
