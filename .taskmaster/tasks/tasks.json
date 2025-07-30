@@ -172,7 +172,74 @@
           2
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Define and Create Supabase Tables for Items and Categories",
+            "description": "Establish the necessary database schema in Supabase. This includes creating the `item_categories` table and the `items` table, defining their columns, and setting up the foreign key relationship and necessary constraints.",
+            "dependencies": [],
+            "details": "Create the `item_categories` table with columns like `id` and `name`. Create the `items` table with columns for `id`, `name`, `category_id` (as a foreign key to `item_categories.id`), `sku`, `price`, and `stock_quantity`. Enforce a UNIQUE constraint on the `sku` column in the `items` table.",
+            "status": "done",
+            "testStrategy": "Using the Supabase SQL Editor or UI, verify that both tables and their columns are created correctly. Test the foreign key constraint by trying to insert an item with a non-existent `category_id`. Test the unique constraint by attempting to insert two items with the same SKU."
+          },
+          {
+            "id": 2,
+            "title": "Implement CRUD Operations for Item Categories",
+            "description": "Develop the UI and backend logic for managing item categories. This functionality is a prerequisite for creating items, as each item must be assigned to a category.",
+            "dependencies": [
+              "5.1"
+            ],
+            "details": "On the `/dashboard/items` page, add a component (e.g., a separate card or modal) to list, create, edit, and delete categories. The backend logic will interact with the `item_categories` table. Deletion should be prevented if a category is currently associated with any items.",
+            "status": "in-progress",
+            "testStrategy": "Create several new categories. Edit the name of one category and verify the change. Attempt to delete a category that has items assigned to it (this should fail) and one that does not (this should succeed)."
+          },
+          {
+            "id": 3,
+            "title": "Build the Item List View and Data Fetching",
+            "description": "Create the main view for the `/dashboard/items` page that displays a list of all items from the database. This serves as the 'Read' part of the CRUD functionality.",
+            "dependencies": [
+              "5.1"
+            ],
+            "details": "Implement a table on the `/dashboard/items` page to display item data. The table should include columns for Name, Category Name (requiring a join with `item_categories`), SKU, Price, and Stock Quantity. Also, include action buttons for 'Edit' and 'Delete' in each row. Fetch the data using a Next.js Server Component or API route.",
+            "status": "pending",
+            "testStrategy": "Manually add sample data to the `items` and `item_categories` tables. Navigate to `/dashboard/items` and verify that the table correctly displays all items and their associated category names."
+          },
+          {
+            "id": 4,
+            "title": "Implement the 'Create Item' Form and Backend Logic",
+            "description": "Develop the user interface and server-side logic for adding a new item to the system. This covers the 'Create' operation of the item management feature.",
+            "dependencies": [
+              "5.2",
+              "5.3"
+            ],
+            "details": "Add a 'Create New Item' button to the item list page that opens a form in a modal or on a new page. The form must have input fields for name, SKU, price, and stock quantity, plus a dropdown select for the category, populated from the `item_categories` table. Implement both client-side and server-side validation.",
+            "status": "pending",
+            "testStrategy": "Fill out and submit the form to create a new item. Verify it appears in the item list. Test validation by attempting to submit the form with missing required fields or with a SKU that already exists."
+          },
+          {
+            "id": 5,
+            "title": "Implement the 'Update Item' Form and Backend Logic",
+            "description": "Create the functionality for users to edit the details of an existing item. This covers the 'Update' operation of the item management feature.",
+            "dependencies": [
+              "5.3",
+              "5.4"
+            ],
+            "details": "The 'Edit' button in the item list table should trigger a form, pre-populated with the selected item's data. The form should allow updating the name, category, price, and stock quantity. The SKU field should be read-only. On submission, the backend logic should update the corresponding record in the `items` table.",
+            "status": "pending",
+            "testStrategy": "Click the 'Edit' button for an item. Change its price and stock quantity. Save the changes and confirm that the updated values are reflected in the item list view."
+          },
+          {
+            "id": 6,
+            "title": "Implement 'Delete Item' Functionality with Confirmation",
+            "description": "Add the functionality to remove an item from the database. This covers the 'Delete' operation and should include a confirmation step to prevent accidental data loss.",
+            "dependencies": [
+              "5.3"
+            ],
+            "details": "The 'Delete' button in the item list table should open a confirmation dialog (e.g., 'Are you sure you want to delete this item?'). Upon user confirmation, a server action or API call should be made to remove the item's record from the `items` table in Supabase.",
+            "status": "pending",
+            "testStrategy": "Create a temporary item for testing. Click its 'Delete' button, cancel the action in the confirmation dialog, and verify the item remains. Then, click 'Delete' again, confirm the action, and verify the item is removed from the list and the database."
+          }
+        ]
       },
       {
         "id": 6,
@@ -311,7 +378,7 @@
         "id": 16,
         "title": "Fix Google OAuth Infinite Loading in AuthCallback",
         "description": "Resolved the infinite loading issue for Google OAuth by fixing Supabase RLS policies, enhancing the AuthCallback component with a timeout and robust error handling, and creating an automated migration script.",
-        "status": "in-progress",
+        "status": "done",
         "dependencies": [],
         "priority": "medium",
         "details": "The fix involved a multi-faceted approach to ensure a robust authentication flow:\n\n1. **`AuthCallback` Component Enhancement**: The component was significantly improved with a 30-second timeout to prevent indefinite loading, multiple fallback methods for user profile creation, better error handling with clear user feedback, and logic to prevent duplicate processing of the authentication callback.\n\n2. **Database Migration and RLS Fix**: A new migration (`19_fix_auth_permissions.sql`) was created to address the root cause of the issue. It fixes broken RLS policies by creating a missing `check_user_permission` function, simplifies existing policies for profile creation, and establishes a more robust permission system for future features.\n\n3. **Automated Fix Script**: To streamline deployment and recovery, an automated Node.js script (`fix-auth-issue.js`) was developed. This script verifies the database connection, applies the necessary migration, creates/verifies admin accounts, and provides manual fallback instructions if needed.",
@@ -358,7 +425,7 @@
     ],
     "metadata": {
       "created": "2025-07-29T05:22:49.131Z",
-      "updated": "2025-07-30T09:39:50.757Z",
+      "updated": "2025-07-30T10:23:14.364Z",
       "description": "Tasks for master context"
     }
   }
