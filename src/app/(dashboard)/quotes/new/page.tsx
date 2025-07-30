@@ -6,85 +6,126 @@ import {
   Box,
   Container,
   Typography,
-  Paper,
   Grid,
   TextField,
   Autocomplete,
   Button,
-  Divider,
-  IconButton,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Chip,
-  Alert,
-  Stepper,
-  Step,
-  StepLabel,
+  Switch,
+  FormControlLabel,
   Card,
   CardContent,
+  CardHeader,
+  Divider,
+  Chip,
+  Alert,
+  Paper,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemButton,
 } from '@mui/material';
 import {
-  Add,
-  Delete,
+  ArrowBack,
   Save,
   Send,
-  ArrowBack,
-  Receipt,
-  Person,
-  ShoppingCart,
+  Add,
+  Delete,
+  ExpandMore,
+  AccountTree,
+  Calculate,
+  Visibility,
+  VisibilityOff,
+  Warning,
+  CheckCircle,
+  Template,
 } from '@mui/icons-material';
 import { ModernBackground } from '@/components/layout/ModernBackground';
 import { GlassCard } from '@/components/common/GlassCard';
 import { LoadingState } from '@/components/common/LoadingState';
+import { useMotionsenseQuote } from '@/hooks/useMotionsenseQuote';
 import { formatCurrency } from '@/utils/format';
+import { MasterItem, QuoteTemplate } from '@/types/motionsense-quote';
 
-// 임시 타입 정의
-interface Client {
-  id: string;
-  name: string;
-  email?: string;
-  phone?: string;
-}
+// 임시 데이터
+const mockClients = [
+  { id: '1', name: '(주)모션센스', email: 'info@motionsense.co.kr' },
+  { id: '2', name: '삼성전자', email: 'contact@samsung.com' },
+  { id: '3', name: 'LG전자', email: 'info@lge.co.kr' },
+];
 
-interface Item {
-  id: string;
-  name: string;
-  sku: string;
-  price: number;
-  category?: string;
-}
+const mockMasterItems: MasterItem[] = [
+  { id: '1', name: '메인 카메라 촬영', description: '4K 메인 카메라 촬영', default_unit_price: 1000000, default_unit: '일', is_active: true },
+  { id: '2', name: '보조 카메라 촬영', description: '보조 카메라 촬영', default_unit_price: 500000, default_unit: '일', is_active: true },
+  { id: '3', name: '드론 촬영', description: '드론 항공 촬영', default_unit_price: 800000, default_unit: '반일', is_active: true },
+  { id: '4', name: '1차 편집', description: '영상 1차 편집 작업', default_unit_price: 1500000, default_unit: '건', is_active: true },
+  { id: '5', name: '최종 편집', description: '영상 최종 편집 작업', default_unit_price: 1000000, default_unit: '건', is_active: true },
+];
 
-interface QuoteItem {
-  itemId: string;
-  itemName: string;
-  quantity: number;
-  unitPrice: number;
-  total: number;
-}
+const mockTemplates: QuoteTemplate[] = [
+  {
+    id: '1',
+    name: '기본 행사 패키지',
+    is_active: true,
+    template_data: {
+      groups: [
+        {
+          name: '행사 진행',
+          include_in_fee: true,
+          items: [
+            {
+              name: '촬영 서비스',
+              include_in_fee: true,
+              details: [
+                { name: '메인 카메라 촬영', quantity: 1, days: 1, unit_price: 1000000 },
+                { name: '보조 카메라 촬영', quantity: 1, days: 1, unit_price: 500000 },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  },
+];
 
-const steps = ['고객 정보', '견적 항목', '최종 확인'];
-
-export default function NewQuotePage() {
+export default function NewMotionsenseQuotePage() {
   const router = useRouter();
-  const [activeStep, setActiveStep] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<any>(null);
   
-  // 폼 데이터
-  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-  const [projectTitle, setProjectTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [validUntil, setValidUntil] = useState('');
-  const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
-  
-  // 데이터 로딩 상태
-  const [clients, setClients] = useState<Client[]>([]);
-  const [items, setItems] = useState<Item[]>([]);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  // 다이얼로그 상태
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+  const [masterItemDialogOpen, setMasterItemDialogOpen] = useState(false);
+  const [selectedGroupIndex, setSelectedGroupIndex] = useState(0);
+  const [selectedItemIndex, setSelectedItemIndex] = useState(0);
+
+  const {
+    formData,
+    calculation,
+    isDirty,
+    isCalculating,
+    updateFormData,
+    addGroup,
+    updateGroup,
+    removeGroup,
+    addItem,
+    updateItem,
+    removeItem,
+    addDetailFromMaster,
+    addDetail,
+    updateDetail,
+    removeDetail,
+    applyTemplate,
+    setMasterItems,
+  } = useMotionsenseQuote();
 
   // 초기 데이터 로드
   useEffect(() => {
@@ -92,24 +133,13 @@ export default function NewQuotePage() {
       try {
         setLoading(true);
         
-        // 임시 더미 데이터 - 실제로는 API에서 가져옴
-        setClients([
-          { id: '1', name: '(주)모션센스', email: 'info@motionsense.co.kr', phone: '02-1234-5678' },
-          { id: '2', name: '삼성전자', email: 'contact@samsung.com', phone: '02-2222-3333' },
-          { id: '3', name: 'LG전자', email: 'info@lge.co.kr', phone: '02-3333-4444' },
-        ]);
-
-        setItems([
-          { id: '1', name: '웹사이트 개발', sku: 'WEB-001', price: 5000000, category: '개발' },
-          { id: '2', name: '모바일 앱 개발', sku: 'APP-001', price: 8000000, category: '개발' },
-          { id: '3', name: 'UI/UX 디자인', sku: 'DES-001', price: 2000000, category: '디자인' },
-          { id: '4', name: '데이터베이스 설계', sku: 'DB-001', price: 3000000, category: '개발' },
-        ]);
-
-        // 오늘부터 30일 후를 기본 유효기간으로 설정
-        const futureDate = new Date();
-        futureDate.setDate(futureDate.getDate() + 30);
-        setValidUntil(futureDate.toISOString().split('T')[0]);
+        // 마스터 데이터 설정
+        setMasterItems(mockMasterItems);
+        
+        // 기본 구조 추가
+        if (formData.groups.length === 0) {
+          addGroup('행사 진행');
+        }
         
       } catch (error) {
         console.error('데이터 로드 실패:', error);
@@ -121,108 +151,40 @@ export default function NewQuotePage() {
     loadData();
   }, []);
 
-  // 견적 항목 추가
-  const addQuoteItem = () => {
-    const newItem: QuoteItem = {
-      itemId: '',
-      itemName: '',
-      quantity: 1,
-      unitPrice: 0,
-      total: 0,
-    };
-    setQuoteItems([...quoteItems, newItem]);
+  // 고객 선택 핸들러
+  const handleClientChange = (client: any) => {
+    setSelectedClient(client);
+    updateFormData({
+      customer_id: client?.id || '',
+      customer_name_snapshot: client?.name || '',
+    });
   };
 
-  // 견적 항목 업데이트
-  const updateQuoteItem = (index: number, field: keyof QuoteItem, value: any) => {
-    const updatedItems = [...quoteItems];
-    updatedItems[index] = {
-      ...updatedItems[index],
-      [field]: value,
-    };
-
-    // 아이템 선택시 이름과 가격 자동 설정
-    if (field === 'itemId') {
-      const selectedItem = items.find(item => item.id === value);
-      if (selectedItem) {
-        updatedItems[index].itemName = selectedItem.name;
-        updatedItems[index].unitPrice = selectedItem.price;
-      }
-    }
-
-    // 총액 계산
-    if (field === 'quantity' || field === 'unitPrice') {
-      updatedItems[index].total = updatedItems[index].quantity * updatedItems[index].unitPrice;
-    }
-
-    setQuoteItems(updatedItems);
+  // 템플릿 적용
+  const handleApplyTemplate = (template: QuoteTemplate) => {
+    applyTemplate(template);
+    setTemplateDialogOpen(false);
   };
 
-  // 견적 항목 삭제
-  const removeQuoteItem = (index: number) => {
-    setQuoteItems(quoteItems.filter((_, i) => i !== index));
+  // 마스터 품목 추가
+  const handleAddMasterItem = (masterItem: MasterItem) => {
+    addDetailFromMaster(selectedGroupIndex, selectedItemIndex, masterItem);
+    setMasterItemDialogOpen(false);
   };
 
-  // 총액 계산
-  const totalAmount = quoteItems.reduce((sum, item) => sum + item.total, 0);
-  const vatAmount = totalAmount * 0.1;
-  const finalAmount = totalAmount + vatAmount;
-
-  // 유효성 검사
-  const validateStep = (step: number) => {
-    const newErrors: Record<string, string> = {};
-
-    if (step === 0) {
-      if (!selectedClient) newErrors.client = '고객사를 선택해주세요';
-      if (!projectTitle.trim()) newErrors.projectTitle = '프로젝트명을 입력해주세요';
-      if (!validUntil) newErrors.validUntil = '견적 유효기간을 선택해주세요';
-    } else if (step === 1) {
-      if (quoteItems.length === 0) newErrors.items = '견적 항목을 최소 1개 이상 추가해주세요';
-      quoteItems.forEach((item, index) => {
-        if (!item.itemId) newErrors[`item_${index}`] = `${index + 1}번 항목을 선택해주세요`;
-        if (item.quantity <= 0) newErrors[`quantity_${index}`] = `${index + 1}번 항목의 수량을 입력해주세요`;
-      });
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  // 다음 단계로
-  const handleNext = () => {
-    if (validateStep(activeStep)) {
-      setActiveStep(prev => prev + 1);
-    }
-  };
-
-  // 이전 단계로
-  const handleBack = () => {
-    setActiveStep(prev => prev - 1);
-  };
-
-  // 견적서 저장
+  // 저장
   const handleSave = async (status: 'draft' | 'sent') => {
-    if (!validateStep(activeStep)) return;
-
     setSaving(true);
     try {
       // 실제로는 API 호출
       const quoteData = {
-        client_id: selectedClient?.id,
-        project_title: projectTitle,
-        description,
-        valid_until: validUntil,
-        items: quoteItems,
-        total_amount: finalAmount,
+        ...formData,
         status,
       };
-
-      console.log('견적서 저장:', quoteData);
       
-      // 임시 지연
+      console.log('견적서 저장:', quoteData);
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // 성공시 견적서 목록으로 이동
       router.push('/quotes');
     } catch (error) {
       console.error('견적서 저장 실패:', error);
@@ -238,353 +200,471 @@ export default function NewQuotePage() {
 
   return (
     <ModernBackground>
-      <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Container maxWidth="xl" sx={{ py: 4 }}>
         {/* 헤더 */}
-        <Box sx={{ mb: 4 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-            <IconButton 
-              onClick={() => router.push('/quotes')}
-              sx={{ mr: 1 }}
-            >
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 4 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <IconButton onClick={() => router.push('/quotes')} sx={{ mr: 2 }}>
               <ArrowBack />
             </IconButton>
             <Typography variant="h4" component="h1" sx={{ fontWeight: 600 }}>
-              새 견적서 작성
+              견적서 작성
             </Typography>
-          </Box>
-          
-          {/* 진행 단계 */}
-          <GlassCard sx={{ p: 3 }}>
-            <Stepper activeStep={activeStep} alternativeLabel>
-              {steps.map((label, index) => (
-                <Step key={label}>
-                  <StepLabel
-                    StepIconComponent={() => (
-                      <Box
-                        sx={{
-                          width: 40,
-                          height: 40,
-                          borderRadius: '50%',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          bgcolor: activeStep >= index ? 'primary.main' : 'grey.300',
-                          color: activeStep >= index ? 'white' : 'grey.600',
-                          fontWeight: 600,
-                        }}
-                      >
-                        {index === 0 && <Person />}
-                        {index === 1 && <ShoppingCart />}
-                        {index === 2 && <Receipt />}
-                      </Box>
-                    )}
-                  >
-                    {label}
-                  </StepLabel>
-                </Step>
-              ))}
-            </Stepper>
-          </GlassCard>
-        </Box>
-
-        {/* 에러 알림 */}
-        {Object.keys(errors).length > 0 && (
-          <Alert severity="error" sx={{ mb: 3 }}>
-            폼을 완전히 작성해주세요.
-          </Alert>
-        )}
-
-        {/* 단계별 내용 */}
-        {activeStep === 0 && (
-          <GlassCard>
-            <CardContent sx={{ p: 4 }}>
-              <Typography variant="h5" sx={{ mb: 3, fontWeight: 600 }}>
-                고객 정보 입력
-              </Typography>
-              
-              <Grid container spacing={3}>
-                <Grid item xs={12} md={6}>
-                  <Autocomplete
-                    options={clients}
-                    getOptionLabel={(option) => option.name}
-                    value={selectedClient}
-                    onChange={(_, newValue) => setSelectedClient(newValue)}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        label="고객사 선택"
-                        required
-                        error={!!errors.client}
-                        helperText={errors.client}
-                        fullWidth
-                      />
-                    )}
-                    renderOption={(props, option) => (
-                      <li {...props}>
-                        <Box>
-                          <Typography variant="body1">{option.name}</Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {option.email} • {option.phone}
-                          </Typography>
-                        </Box>
-                      </li>
-                    )}
-                  />
-                </Grid>
-                
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    label="프로젝트명"
-                    value={projectTitle}
-                    onChange={(e) => setProjectTitle(e.target.value)}
-                    required
-                    error={!!errors.projectTitle}
-                    helperText={errors.projectTitle}
-                    fullWidth
-                  />
-                </Grid>
-                
-                <Grid item xs={12}>
-                  <TextField
-                    label="프로젝트 설명"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    multiline
-                    rows={4}
-                    fullWidth
-                  />
-                </Grid>
-                
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    label="견적 유효기간"
-                    type="date"
-                    value={validUntil}
-                    onChange={(e) => setValidUntil(e.target.value)}
-                    required
-                    error={!!errors.validUntil}
-                    helperText={errors.validUntil}
-                    fullWidth
-                    InputLabelProps={{ shrink: true }}
-                  />
-                </Grid>
-              </Grid>
-            </CardContent>
-          </GlassCard>
-        )}
-
-        {activeStep === 1 && (
-          <GlassCard>
-            <CardContent sx={{ p: 4 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                <Typography variant="h5" sx={{ fontWeight: 600 }}>
-                  견적 항목
-                </Typography>
-                <Button
-                  variant="contained"
-                  startIcon={<Add />}
-                  onClick={addQuoteItem}
-                  sx={{ borderRadius: 2 }}
-                >
-                  항목 추가
-                </Button>
-              </Box>
-
-              {quoteItems.length === 0 ? (
-                <Box sx={{ textAlign: 'center', py: 8 }}>
-                  <Typography variant="h6" color="text.secondary" sx={{ mb: 2 }}>
-                    견적 항목이 없습니다
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    "항목 추가" 버튼을 클릭하여 견적 항목을 추가해주세요
-                  </Typography>
-                </Box>
-              ) : (
-                <TableContainer component={Paper} sx={{ borderRadius: 2 }}>
-                  <Table>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>항목</TableCell>
-                        <TableCell align="center">수량</TableCell>
-                        <TableCell align="right">단가</TableCell>
-                        <TableCell align="right">총액</TableCell>
-                        <TableCell align="center">작업</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {quoteItems.map((item, index) => (
-                        <TableRow key={index}>
-                          <TableCell>
-                            <Autocomplete
-                              options={items}
-                              getOptionLabel={(option) => option.name}
-                              value={items.find(i => i.id === item.itemId) || null}
-                              onChange={(_, newValue) => updateQuoteItem(index, 'itemId', newValue?.id || '')}
-                              renderInput={(params) => (
-                                <TextField
-                                  {...params}
-                                  label="항목 선택"
-                                  size="small"
-                                  error={!!errors[`item_${index}`]}
-                                  helperText={errors[`item_${index}`]}
-                                />
-                              )}
-                              sx={{ minWidth: 200 }}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <TextField
-                              type="number"
-                              value={item.quantity}
-                              onChange={(e) => updateQuoteItem(index, 'quantity', parseInt(e.target.value) || 0)}
-                              size="small"
-                              inputProps={{ min: 1 }}
-                              error={!!errors[`quantity_${index}`]}
-                              sx={{ width: 80 }}
-                            />
-                          </TableCell>
-                          <TableCell align="right">
-                            <TextField
-                              type="number"
-                              value={item.unitPrice}
-                              onChange={(e) => updateQuoteItem(index, 'unitPrice', parseInt(e.target.value) || 0)}
-                              size="small"
-                              inputProps={{ min: 0 }}
-                              sx={{ width: 120 }}
-                            />
-                          </TableCell>
-                          <TableCell align="right">
-                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                              {formatCurrency(item.total)}
-                            </Typography>
-                          </TableCell>
-                          <TableCell align="center">
-                            <IconButton
-                              onClick={() => removeQuoteItem(index)}
-                              size="small"
-                              color="error"
-                            >
-                              <Delete />
-                            </IconButton>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              )}
-
-              {quoteItems.length > 0 && (
-                <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
-                  <Card sx={{ minWidth: 300 }}>
-                    <CardContent>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                        <Typography>소계:</Typography>
-                        <Typography>{formatCurrency(totalAmount)}</Typography>
-                      </Box>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                        <Typography>부가세 (10%):</Typography>
-                        <Typography>{formatCurrency(vatAmount)}</Typography>
-                      </Box>
-                      <Divider sx={{ my: 1 }} />
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <Typography variant="h6" sx={{ fontWeight: 600 }}>총액:</Typography>
-                        <Typography variant="h6" sx={{ fontWeight: 600, color: 'primary.main' }}>
-                          {formatCurrency(finalAmount)}
-                        </Typography>
-                      </Box>
-                    </CardContent>
-                  </Card>
-                </Box>
-              )}
-            </CardContent>
-          </GlassCard>
-        )}
-
-        {activeStep === 2 && (
-          <GlassCard>
-            <CardContent sx={{ p: 4 }}>
-              <Typography variant="h5" sx={{ mb: 3, fontWeight: 600 }}>
-                최종 확인
-              </Typography>
-
-              <Grid container spacing={3}>
-                <Grid item xs={12} md={6}>
-                  <Card variant="outlined">
-                    <CardContent>
-                      <Typography variant="h6" sx={{ mb: 2 }}>고객 정보</Typography>
-                      <Typography><strong>고객사:</strong> {selectedClient?.name}</Typography>
-                      <Typography><strong>프로젝트:</strong> {projectTitle}</Typography>
-                      <Typography><strong>유효기간:</strong> {validUntil}</Typography>
-                      {description && (
-                        <Typography><strong>설명:</strong> {description}</Typography>
-                      )}
-                    </CardContent>
-                  </Card>
-                </Grid>
-
-                <Grid item xs={12} md={6}>
-                  <Card variant="outlined">
-                    <CardContent>
-                      <Typography variant="h6" sx={{ mb: 2 }}>견적 요약</Typography>
-                      <Typography><strong>항목 수:</strong> {quoteItems.length}개</Typography>
-                      <Typography><strong>소계:</strong> {formatCurrency(totalAmount)}</Typography>
-                      <Typography><strong>부가세:</strong> {formatCurrency(vatAmount)}</Typography>
-                      <Typography variant="h6" color="primary.main">
-                        <strong>총액: {formatCurrency(finalAmount)}</strong>
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              </Grid>
-            </CardContent>
-          </GlassCard>
-        )}
-
-        {/* 네비게이션 버튼 */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
-          <Button
-            onClick={handleBack}
-            disabled={activeStep === 0}
-            variant="outlined"
-            sx={{ borderRadius: 2, px: 3 }}
-          >
-            이전
-          </Button>
-
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            {activeStep === steps.length - 1 ? (
-              <>
-                <Button
-                  onClick={() => handleSave('draft')}
-                  disabled={saving}
-                  variant="outlined"
-                  startIcon={<Save />}
-                  sx={{ borderRadius: 2, px: 3 }}
-                >
-                  임시저장
-                </Button>
-                <Button
-                  onClick={() => handleSave('sent')}
-                  disabled={saving}
-                  variant="contained"
-                  startIcon={<Send />}
-                  sx={{ borderRadius: 2, px: 3 }}
-                >
-                  견적서 발송
-                </Button>
-              </>
-            ) : (
-              <Button
-                onClick={handleNext}
-                variant="contained"
-                sx={{ borderRadius: 2, px: 3 }}
-              >
-                다음
-              </Button>
+            {isDirty && (
+              <Chip 
+                label="수정됨" 
+                color="warning" 
+                size="small" 
+                sx={{ ml: 2 }}
+              />
             )}
           </Box>
+          
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Button
+              variant="outlined"
+              startIcon={<Template />}
+              onClick={() => setTemplateDialogOpen(true)}
+            >
+              템플릿
+            </Button>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={formData.show_cost_management}
+                  onChange={(e) => updateFormData({ show_cost_management: e.target.checked })}
+                />
+              }
+              label="원가 관리"
+            />
+          </Box>
         </Box>
+
+        <Grid container spacing={4}>
+          {/* 좌측: 견적서 작성 */}
+          <Grid item xs={12} lg={8}>
+            {/* 기본 정보 */}
+            <GlassCard sx={{ mb: 4 }}>
+              <CardHeader 
+                title="기본 정보" 
+                avatar={<AccountTree color="primary" />}
+              />
+              <CardContent>
+                <Grid container spacing={3}>
+                  <Grid item xs={12} md={6}>
+                    <Autocomplete
+                      options={mockClients}
+                      getOptionLabel={(option) => option.name}
+                      value={selectedClient}
+                      onChange={(_, newValue) => handleClientChange(newValue)}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="고객사 선택"
+                          required
+                          fullWidth
+                        />
+                      )}
+                    />
+                  </Grid>
+                  
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      label="프로젝트명"
+                      value={formData.project_title}
+                      onChange={(e) => updateFormData({ project_title: e.target.value })}
+                      required
+                      fullWidth
+                    />
+                  </Grid>
+                  
+                  <Grid item xs={12} md={4}>
+                    <TextField
+                      label="발행일"
+                      type="date"
+                      value={formData.issue_date}
+                      onChange={(e) => updateFormData({ issue_date: e.target.value })}
+                      InputLabelProps={{ shrink: true }}
+                      fullWidth
+                    />
+                  </Grid>
+                  
+                  <Grid item xs={12} md={4}>
+                    <TextField
+                      label="대행 수수료율 (%)"
+                      type="number"
+                      value={formData.agency_fee_rate * 100}
+                      onChange={(e) => updateFormData({ agency_fee_rate: Number(e.target.value) / 100 })}
+                      inputProps={{ min: 0, max: 100, step: 0.1 }}
+                      fullWidth
+                    />
+                  </Grid>
+                  
+                  <Grid item xs={12} md={4}>
+                    <TextField
+                      label="할인 금액"
+                      type="number"
+                      value={formData.discount_amount}
+                      onChange={(e) => updateFormData({ discount_amount: Number(e.target.value) })}
+                      inputProps={{ min: 0 }}
+                      fullWidth
+                    />
+                  </Grid>
+                </Grid>
+              </CardContent>
+            </GlassCard>
+
+            {/* 견적 구성 */}
+            <GlassCard>
+              <CardHeader 
+                title="견적 구성"
+                action={
+                  <Button
+                    variant="contained"
+                    startIcon={<Add />}
+                    onClick={() => addGroup()}
+                    size="small"
+                  >
+                    그룹 추가
+                  </Button>
+                }
+              />
+              <CardContent>
+                {formData.groups.map((group, groupIndex) => (
+                  <Accordion key={groupIndex} defaultExpanded sx={{ mb: 2 }}>
+                    <AccordionSummary expandIcon={<ExpandMore />}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
+                        <TextField
+                          value={group.name}
+                          onChange={(e) => updateGroup(groupIndex, { name: e.target.value })}
+                          onClick={(e) => e.stopPropagation()}
+                          size="small"
+                          sx={{ minWidth: 200 }}
+                        />
+                        <FormControlLabel
+                          control={
+                            <Switch
+                              checked={group.include_in_fee}
+                              onChange={(e) => updateGroup(groupIndex, { include_in_fee: e.target.checked })}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          }
+                          label="수수료 포함"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                        <IconButton
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeGroup(groupIndex);
+                          }}
+                          color="error"
+                          size="small"
+                        >
+                          <Delete />
+                        </IconButton>
+                      </Box>
+                    </AccordionSummary>
+                    
+                    <AccordionDetails>
+                      {/* 항목들 */}
+                      {group.items.map((item, itemIndex) => (
+                        <Card key={itemIndex} variant="outlined" sx={{ mb: 2 }}>
+                          <CardContent>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                              <TextField
+                                label="항목명"
+                                value={item.name}
+                                onChange={(e) => updateItem(groupIndex, itemIndex, { name: e.target.value })}
+                                size="small"
+                                sx={{ minWidth: 200 }}
+                              />
+                              <Button
+                                variant="outlined"
+                                startIcon={<Add />}
+                                onClick={() => {
+                                  setSelectedGroupIndex(groupIndex);
+                                  setSelectedItemIndex(itemIndex);
+                                  setMasterItemDialogOpen(true);
+                                }}
+                                size="small"
+                              >
+                                품목 추가
+                              </Button>
+                              <IconButton
+                                onClick={() => removeItem(groupIndex, itemIndex)}
+                                color="error"
+                                size="small"
+                              >
+                                <Delete />
+                              </IconButton>
+                            </Box>
+                            
+                            {/* 세부내용들 */}
+                            {item.details.map((detail, detailIndex) => (
+                              <Paper key={detailIndex} sx={{ p: 2, mb: 1, bgcolor: 'grey.50' }}>
+                                <Grid container spacing={2} alignItems="center">
+                                  <Grid item xs={12} md={3}>
+                                    <TextField
+                                      label="품목명"
+                                      value={detail.name}
+                                      onChange={(e) => updateDetail(groupIndex, itemIndex, detailIndex, { name: e.target.value })}
+                                      size="small"
+                                      fullWidth
+                                    />
+                                  </Grid>
+                                  <Grid item xs={6} md={1}>
+                                    <TextField
+                                      label="수량"
+                                      type="number"
+                                      value={detail.quantity}
+                                      onChange={(e) => updateDetail(groupIndex, itemIndex, detailIndex, { quantity: Number(e.target.value) })}
+                                      size="small"
+                                      inputProps={{ min: 0.1, step: 0.1 }}
+                                    />
+                                  </Grid>
+                                  <Grid item xs={6} md={1}>
+                                    <TextField
+                                      label="일수"
+                                      type="number"
+                                      value={detail.days}
+                                      onChange={(e) => updateDetail(groupIndex, itemIndex, detailIndex, { days: Number(e.target.value) })}
+                                      size="small"
+                                      inputProps={{ min: 0.1, step: 0.1 }}
+                                    />
+                                  </Grid>
+                                  <Grid item xs={12} md={2}>
+                                    <TextField
+                                      label="단가"
+                                      type="number"
+                                      value={detail.unit_price}
+                                      onChange={(e) => updateDetail(groupIndex, itemIndex, detailIndex, { unit_price: Number(e.target.value) })}
+                                      size="small"
+                                      inputProps={{ min: 0 }}
+                                    />
+                                  </Grid>
+                                  
+                                  {formData.show_cost_management && (
+                                    <Grid item xs={12} md={2}>
+                                      <TextField
+                                        label="원가"
+                                        type="number"
+                                        value={detail.cost_price}
+                                        onChange={(e) => updateDetail(groupIndex, itemIndex, detailIndex, { cost_price: Number(e.target.value) })}
+                                        size="small"
+                                        inputProps={{ min: 0 }}
+                                      />
+                                    </Grid>
+                                  )}
+                                  
+                                  <Grid item xs={12} md={formData.show_cost_management ? 2 : 3}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                        {formatCurrency(detail.subtotal || 0)}
+                                      </Typography>
+                                      {formData.show_cost_management && detail.profit_margin !== undefined && (
+                                        <Chip
+                                          label={`${detail.profit_margin.toFixed(1)}%`}
+                                          color={detail.profit_margin < 0 ? 'error' : detail.profit_margin < 10 ? 'warning' : 'success'}
+                                          size="small"
+                                        />
+                                      )}
+                                    </Box>
+                                  </Grid>
+                                  
+                                  <Grid item xs={12} md={1}>
+                                    <IconButton
+                                      onClick={() => removeDetail(groupIndex, itemIndex, detailIndex)}
+                                      color="error"
+                                      size="small"
+                                    >
+                                      <Delete />
+                                    </IconButton>
+                                  </Grid>
+                                </Grid>
+                              </Paper>
+                            ))}
+                          </CardContent>
+                        </Card>
+                      ))}
+                      
+                      <Button
+                        variant="outlined"
+                        startIcon={<Add />}
+                        onClick={() => addItem(groupIndex)}
+                        size="small"
+                      >
+                        항목 추가
+                      </Button>
+                    </AccordionDetails>
+                  </Accordion>
+                ))}
+              </CardContent>
+            </GlassCard>
+          </Grid>
+
+          {/* 우측: 계산 결과 */}
+          <Grid item xs={12} lg={4}>
+            <GlassCard sx={{ position: 'sticky', top: 20 }}>
+              <CardHeader 
+                title="견적 요약" 
+                avatar={<Calculate color="primary" />}
+                action={isCalculating && <Typography variant="caption">계산 중...</Typography>}
+              />
+              <CardContent>
+                {calculation && (
+                  <>
+                    {/* 그룹별 합계 */}
+                    {calculation.groups.map((group, index) => (
+                      <Box key={index} sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Typography variant="body2">{group.name}</Typography>
+                          {!group.include_in_fee && (
+                            <Chip label="수수료 제외" size="small" variant="outlined" />
+                          )}
+                        </Box>
+                        <Typography variant="body2">
+                          {formatCurrency(group.subtotal)}
+                        </Typography>
+                      </Box>
+                    ))}
+                    
+                    <Divider sx={{ my: 2 }} />
+                    
+                    {/* 계산 내역 */}
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                      <Typography>소계</Typography>
+                      <Typography>{formatCurrency(calculation.subtotal)}</Typography>
+                    </Box>
+                    
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                      <Typography>대행 수수료 ({(formData.agency_fee_rate * 100).toFixed(1)}%)</Typography>
+                      <Typography>{formatCurrency(calculation.agency_fee)}</Typography>
+                    </Box>
+                    
+                    {formData.discount_amount > 0 && (
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography>할인</Typography>
+                        <Typography color="error">-{formatCurrency(formData.discount_amount)}</Typography>
+                      </Box>
+                    )}
+                    
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                      <Typography>부가세 (10%)</Typography>
+                      <Typography>{formatCurrency(calculation.vat_amount)}</Typography>
+                    </Box>
+                    
+                    <Divider sx={{ my: 2 }} />
+                    
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                      <Typography variant="h6" sx={{ fontWeight: 600 }}>최종 총액</Typography>
+                      <Typography variant="h6" sx={{ fontWeight: 600, color: 'primary.main' }}>
+                        {formatCurrency(calculation.final_total)}
+                      </Typography>
+                    </Box>
+                    
+                    {/* 수익률 정보 (원가 관리 시) */}
+                    {formData.show_cost_management && (
+                      <>
+                        <Divider sx={{ my: 2 }} />
+                        <Alert 
+                          severity={calculation.profit_margin_percentage < 0 ? 'error' : calculation.profit_margin_percentage < 10 ? 'warning' : 'success'}
+                          sx={{ mb: 2 }}
+                        >
+                          <Box>
+                            <Typography variant="body2">
+                              예상 수익률: <strong>{calculation.profit_margin_percentage.toFixed(1)}%</strong>
+                            </Typography>
+                            <Typography variant="caption">
+                              총 원가: {formatCurrency(calculation.total_cost)}
+                            </Typography>
+                          </Box>
+                        </Alert>
+                      </>
+                    )}
+                    
+                    {/* 액션 버튼 */}
+                    <Box sx={{ display: 'flex', gap: 2, mt: 3 }}>
+                      <Button
+                        variant="outlined"
+                        onClick={() => handleSave('draft')}
+                        disabled={saving}
+                        startIcon={<Save />}
+                        fullWidth
+                      >
+                        임시저장
+                      </Button>
+                      <Button
+                        variant="contained"
+                        onClick={() => handleSave('sent')}
+                        disabled={saving}
+                        startIcon={<Send />}
+                        fullWidth
+                      >
+                        발송
+                      </Button>
+                    </Box>
+                  </>
+                )}
+              </CardContent>
+            </GlassCard>
+          </Grid>
+        </Grid>
+
+        {/* 템플릿 선택 다이얼로그 */}
+        <Dialog 
+          open={templateDialogOpen} 
+          onClose={() => setTemplateDialogOpen(false)}
+          maxWidth="md"
+          fullWidth
+        >
+          <DialogTitle>견적서 템플릿 선택</DialogTitle>
+          <DialogContent>
+            <List>
+              {mockTemplates.map((template) => (
+                <ListItemButton
+                  key={template.id}
+                  onClick={() => handleApplyTemplate(template)}
+                >
+                  <ListItemText
+                    primary={template.name}
+                    secondary={`${template.template_data.groups.length}개 그룹`}
+                  />
+                </ListItemButton>
+              ))}
+            </List>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setTemplateDialogOpen(false)}>취소</Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* 마스터 품목 선택 다이얼로그 */}
+        <Dialog 
+          open={masterItemDialogOpen} 
+          onClose={() => setMasterItemDialogOpen(false)}
+          maxWidth="md"
+          fullWidth
+        >
+          <DialogTitle>품목 선택</DialogTitle>
+          <DialogContent>
+            <List>
+              {mockMasterItems.map((item) => (
+                <ListItemButton
+                  key={item.id}
+                  onClick={() => handleAddMasterItem(item)}
+                >
+                  <ListItemText
+                    primary={item.name}
+                    secondary={`${formatCurrency(item.default_unit_price)} / ${item.default_unit}`}
+                  />
+                </ListItemButton>
+              ))}
+            </List>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setMasterItemDialogOpen(false)}>취소</Button>
+          </DialogActions>
+        </Dialog>
       </Container>
     </ModernBackground>
   );
