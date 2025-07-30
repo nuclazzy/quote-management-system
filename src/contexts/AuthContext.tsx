@@ -14,16 +14,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initialized: false
   })
 
-  // 인증 상태 변경 감지
+  // 인증 상태 변경 감지 - 단순화 버전
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        const user = await AuthService.getCurrentUser()
-        setAuthState({
-          user,
-          loading: false,
-          initialized: true
-        })
+        // 현재 세션 확인
+        const { data: { session } } = await supabase.auth.getSession()
+        
+        if (session?.user) {
+          // 간단한 사용자 객체 생성 (프로필 생성 스킵)
+          const user = {
+            ...session.user,
+            profile: {
+              id: session.user.id,
+              email: session.user.email!,
+              full_name: session.user.user_metadata?.full_name || session.user.email!.split('@')[0],
+              role: 'user',
+              is_active: true
+            }
+          }
+          
+          setAuthState({
+            user,
+            loading: false,
+            initialized: true
+          })
+        } else {
+          setAuthState({
+            user: null,
+            loading: false,
+            initialized: true
+          })
+        }
       } catch (error) {
         console.error('Auth initialization error:', error)
         setAuthState({
@@ -39,33 +61,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (event === 'SIGNED_IN' && session?.user) {
-          try {
-            // 도메인 체크
-            if (!session.user.email?.endsWith('@motionsense.co.kr')) {
-              await AuthService.signOut()
-              throw new Error('접근이 제한된 도메인입니다.')
+          // 간단한 사용자 객체 생성 (프로필 생성 스킵)
+          const user = {
+            ...session.user,
+            profile: {
+              id: session.user.id,
+              email: session.user.email!,
+              full_name: session.user.user_metadata?.full_name || session.user.email!.split('@')[0],
+              role: 'user',
+              is_active: true
             }
-
-            // 프로필 생성/업데이트
-            const profile = await AuthService.upsertProfile(
-              session.user.id,
-              session.user.email,
-              session.user.user_metadata?.full_name
-            )
-
-            setAuthState({
-              user: { ...session.user, profile },
-              loading: false,
-              initialized: true
-            })
-          } catch (error) {
-            console.error('Sign in error:', error)
-            setAuthState({
-              user: null,
-              loading: false,
-              initialized: true
-            })
           }
+          
+          setAuthState({
+            user,
+            loading: false,
+            initialized: true
+          })
         } else if (event === 'SIGNED_OUT') {
           setAuthState({
             user: null,
