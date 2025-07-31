@@ -109,6 +109,12 @@ export default function AdminSettingsPage() {
     },
   });
 
+  useEffect(() => {
+    if (user?.profile?.role === 'admin') {
+      fetchCompanySettings();
+    }
+  }, [user?.profile?.role]);
+
   // Check if current user is admin
   if (user?.profile?.role !== 'admin') {
     return (
@@ -117,10 +123,6 @@ export default function AdminSettingsPage() {
       </Box>
     );
   }
-
-  useEffect(() => {
-    fetchCompanySettings();
-  }, []);
 
   const fetchCompanySettings = async () => {
     try {

@@ -6,9 +6,7 @@
     "react/no-unescaped-entities": "off",
     "@next/next/no-img-element": "warn",
     "react-hooks/exhaustive-deps": "warn",
-    "react-hooks/rules-of-hooks": "warn",
-    "@typescript-eslint/no-unused-vars": "warn",
-    "@typescript-eslint/no-explicit-any": "off",
-    "@typescript-eslint/ban-ts-comment": "off"
+    "react-hooks/rules-of-hooks": "error",
+    "no-unused-vars": "warn"
   }
 }
