@@ -272,18 +272,81 @@ export default function NewMotionsenseQuotePage() {
     );
   }
 
-  // 초기화되지 않은 경우
-  if (!initialized && loading) {
+  // 초기화되지 않은 경우 (로딩 중이거나 초기화 실패)
+  if (!initialized) {
+    if (loading) {
+      return (
+        <ModernBackground>
+          <Container maxWidth="md" sx={{ py: 8, textAlign: 'center' }}>
+            <Alert severity="info">
+              <Typography variant="h6" gutterBottom>
+                견적서 시스템을 초기화하는 중...
+              </Typography>
+              <Typography variant="body2">
+                잠시만 기다려주세요.
+              </Typography>
+            </Alert>
+          </Container>
+        </ModernBackground>
+      );
+    } else {
+      // 로딩 완료되었지만 초기화되지 않은 경우 (에러 상황)
+      return (
+        <ModernBackground>
+          <Container maxWidth="md" sx={{ py: 8, textAlign: 'center' }}>
+            <Alert severity="warning">
+              <Typography variant="h6" gutterBottom>
+                견적서 시스템 초기화 실패
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 2 }}>
+                페이지를 새로고침하거나 다시 시도해주세요.
+              </Typography>
+              <Button 
+                variant="contained" 
+                onClick={() => window.location.reload()}
+                sx={{ mr: 2 }}
+              >
+                페이지 새로고침
+              </Button>
+              <Button 
+                variant="outlined" 
+                onClick={() => router.push('/quotes')}
+              >
+                견적서 목록으로
+              </Button>
+            </Alert>
+          </Container>
+        </ModernBackground>
+      );
+    }
+  }
+
+  // 최종 안전 체크: formData 유효성 검증
+  if (!formData) {
+    console.error('formData가 null/undefined입니다');
     return (
       <ModernBackground>
         <Container maxWidth="md" sx={{ py: 8, textAlign: 'center' }}>
-          <Alert severity="info">
+          <Alert severity="error">
             <Typography variant="h6" gutterBottom>
-              견적서 시스템을 초기화하는 중...
+              견적서 데이터 초기화 실패
             </Typography>
-            <Typography variant="body2">
-              잠시만 기다려주세요.
+            <Typography variant="body2" sx={{ mb: 2 }}>
+              내부 데이터 구조에 문제가 발생했습니다.
             </Typography>
+            <Button 
+              variant="contained" 
+              onClick={() => window.location.reload()}
+              sx={{ mr: 2 }}
+            >
+              페이지 새로고침
+            </Button>
+            <Button 
+              variant="outlined" 
+              onClick={() => router.push('/quotes')}
+            >
+              견적서 목록으로
+            </Button>
           </Alert>
         </Container>
       </ModernBackground>
@@ -324,7 +387,7 @@ export default function NewMotionsenseQuotePage() {
               control={
                 <Switch
                   checked={formData?.show_cost_management || false}
-                  onChange={(e) => updateFormData({ show_cost_management: e.target.checked })}
+                  onChange={(e) => updateFormData && updateFormData({ show_cost_management: e.target.checked })}
                 />
               }
               label="원가 관리"
