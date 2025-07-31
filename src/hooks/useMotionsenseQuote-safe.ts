@@ -103,14 +103,254 @@ export function useMotionsenseQuoteSafe(initialData?: Partial<MotionsenseQuote>)
     setIsDirty(true);
   }, []);
 
-  // 기타 안전한 함수들 (더미 구현)
-  const updateItem = useCallback(() => setIsDirty(true), []);
-  const removeItem = useCallback(() => setIsDirty(true), []);
-  const addDetailFromMaster = useCallback(() => setIsDirty(true), []);
-  const addDetail = useCallback(() => setIsDirty(true), []);
-  const updateDetail = useCallback(() => setIsDirty(true), []);
-  const removeDetail = useCallback(() => setIsDirty(true), []);
-  const applyTemplate = useCallback(() => setIsDirty(true), []);
+  // 안전한 항목 업데이트
+  const updateItem = useCallback((groupIndex: number, itemIndex: number, updates: Partial<QuoteItem>) => {
+    setFormData(prev => {
+      const updatedGroups = [...prev.groups];
+      if (updatedGroups[groupIndex]?.items[itemIndex]) {
+        updatedGroups[groupIndex].items[itemIndex] = {
+          ...updatedGroups[groupIndex].items[itemIndex],
+          ...updates
+        };
+      }
+      return { ...prev, groups: updatedGroups };
+    });
+    setIsDirty(true);
+  }, []);
+
+  // 안전한 항목 삭제
+  const removeItem = useCallback((groupIndex: number, itemIndex: number) => {
+    setFormData(prev => {
+      const updatedGroups = [...prev.groups];
+      if (updatedGroups[groupIndex]) {
+        updatedGroups[groupIndex].items = updatedGroups[groupIndex].items.filter((_, index) => index !== itemIndex);
+      }
+      return { ...prev, groups: updatedGroups };
+    });
+    setIsDirty(true);
+  }, []);
+
+  // 안전한 세부내용 추가 (마스터 품목에서)
+  const addDetailFromMaster = useCallback((groupIndex: number, itemIndex: number, masterItem: MasterItem) => {
+    setFormData(prev => {
+      const updatedGroups = [...prev.groups];
+      if (updatedGroups[groupIndex]?.items[itemIndex]) {
+        const newDetail: QuoteDetail = {
+          name: masterItem.name,
+          description: masterItem.description || '',
+          quantity: 1,
+          days: 1,
+          unit: masterItem.default_unit,
+          unit_price: masterItem.default_unit_price,
+          is_service: masterItem.name.includes('편집') || masterItem.name.includes('제작'),
+          cost_price: 0,
+          supplier_id: undefined,
+          supplier_name_snapshot: '',
+        };
+        updatedGroups[groupIndex].items[itemIndex].details.push(newDetail);
+      }
+      return { ...prev, groups: updatedGroups };
+    });
+    setIsDirty(true);
+  }, []);
+
+  // 안전한 세부내용 추가
+  const addDetail = useCallback((groupIndex: number, itemIndex: number) => {
+    setFormData(prev => {
+      const updatedGroups = [...prev.groups];
+      if (updatedGroups[groupIndex]?.items[itemIndex]) {
+        const newDetail: QuoteDetail = {
+          name: '',
+          description: '',
+          quantity: 1,
+          days: 1,
+          unit: '개',
+          unit_price: 0,
+          is_service: false,
+          cost_price: 0,
+          supplier_name_snapshot: '',
+        };
+        updatedGroups[groupIndex].items[itemIndex].details.push(newDetail);
+      }
+      return { ...prev, groups: updatedGroups };
+    });
+    setIsDirty(true);
+  }, []);
+
+  // 안전한 세부내용 업데이트
+  const updateDetail = useCallback((groupIndex: number, itemIndex: number, detailIndex: number, updates: Partial<QuoteDetail>) => {
+    setFormData(prev => {
+      const updatedGroups = [...prev.groups];
+      if (updatedGroups[groupIndex]?.items[itemIndex]?.details[detailIndex]) {
+        updatedGroups[groupIndex].items[itemIndex].details[detailIndex] = {
+          ...updatedGroups[groupIndex].items[itemIndex].details[detailIndex],
+          ...updates
+        };
+      }
+      return { ...prev, groups: updatedGroups };
+    });
+    setIsDirty(true);
+  }, []);
+
+  // 안전한 세부내용 삭제
+  const removeDetail = useCallback((groupIndex: number, itemIndex: number, detailIndex: number) => {
+    setFormData(prev => {
+      const updatedGroups = [...prev.groups];
+      if (updatedGroups[groupIndex]?.items[itemIndex]) {
+        updatedGroups[groupIndex].items[itemIndex].details = 
+          updatedGroups[groupIndex].items[itemIndex].details.filter((_, index) => index !== detailIndex);
+      }
+      return { ...prev, groups: updatedGroups };
+    });
+    setIsDirty(true);
+  }, []);
+  const applyTemplate = useCallback((template: any) => {
+    try {
+      console.log('템플릿 적용:', template);
+      
+      // 템플릿에 따른 더미 그룹 생성
+      let templateGroups: QuoteGroup[] = [];
+      
+      if (template.id === '1') { // 기본 영상 제작
+        templateGroups = [
+          {
+            name: '기획/스토리보드',
+            sort_order: 0,
+            include_in_fee: true,
+            items: [
+              {
+                name: '컨셉 기획',
+                sort_order: 0,
+                include_in_fee: true,
+                details: [
+                  { name: '컨셉 설계', description: '', quantity: 1, days: 3, unit: '식', unit_price: 300000, is_service: true, cost_price: 0, supplier_name_snapshot: '' }
+                ]
+              },
+              {
+                name: '스토리보드 제작',
+                sort_order: 1,
+                include_in_fee: true,
+                details: [
+                  { name: '스토리보드 작성', description: '', quantity: 1, days: 2, unit: '식', unit_price: 400000, is_service: true, cost_price: 0, supplier_name_snapshot: '' }
+                ]
+              }
+            ]
+          },
+          {
+            name: '촬영',
+            sort_order: 1,
+            include_in_fee: true,
+            items: [
+              {
+                name: '메인 촬영',
+                sort_order: 0,
+                include_in_fee: true,
+                details: [
+                  { name: '현장 촬영', description: '', quantity: 1, days: 2, unit: '일', unit_price: 500000, is_service: false, cost_price: 200000, supplier_name_snapshot: '' }
+                ]
+              }
+            ]
+          },
+          {
+            name: '편집/후반작업',
+            sort_order: 2,
+            include_in_fee: true,
+            items: [
+              {
+                name: '영상 편집',
+                sort_order: 0,
+                include_in_fee: true,
+                details: [
+                  { name: '컷 편집', description: '', quantity: 1, days: 5, unit: '분', unit_price: 80000, is_service: true, cost_price: 0, supplier_name_snapshot: '' },
+                  { name: '컬러 그레이딩', description: '', quantity: 1, days: 2, unit: '분', unit_price: 50000, is_service: true, cost_price: 0, supplier_name_snapshot: '' }
+                ]
+              }
+            ]
+          }
+        ];
+      } else if (template.id === '2') { // 제품 촬영 패키지
+        templateGroups = [
+          {
+            name: '제품 촬영',
+            sort_order: 0,
+            include_in_fee: true,
+            items: [
+              {
+                name: '제품 사진 촬영',
+                sort_order: 0,
+                include_in_fee: true,
+                details: [
+                  { name: '스튜디오 촬영', description: '', quantity: 20, days: 1, unit: '컷', unit_price: 15000, is_service: false, cost_price: 5000, supplier_name_snapshot: '' }
+                ]
+              }
+            ]
+          }
+        ];
+      } else if (template.id === '3') { // 인포그래픽 제작
+        templateGroups = [
+          {
+            name: '컨셉 디자인',
+            sort_order: 0,
+            include_in_fee: true,
+            items: [
+              {
+                name: '컨셉 설계',
+                sort_order: 0,
+                include_in_fee: true,
+                details: [
+                  { name: '컨셉 기획', description: '', quantity: 1, days: 2, unit: '식', unit_price: 200000, is_service: true, cost_price: 0, supplier_name_snapshot: '' }
+                ]
+              }
+            ]
+          },
+          {
+            name: '인포그래픽 제작',
+            sort_order: 1,
+            include_in_fee: true,
+            items: [
+              {
+                name: '인포그래픽 디자인',
+                sort_order: 0,
+                include_in_fee: true,
+                details: [
+                  { name: '인포그래픽 제작', description: '', quantity: 5, days: 1, unit: '개', unit_price: 150000, is_service: true, cost_price: 0, supplier_name_snapshot: '' }
+                ]
+              }
+            ]
+          }
+        ];
+      } else if (template.id === '4') { // 웹사이트 개발
+        templateGroups = [
+          {
+            name: '기획/설계',
+            sort_order: 0,
+            include_in_fee: true,
+            items: [
+              {
+                name: '사이트 기획',
+                sort_order: 0,
+                include_in_fee: true,
+                details: [
+                  { name: '웹 개발', description: '', quantity: 10, days: 1, unit: '페이지', unit_price: 500000, is_service: true, cost_price: 0, supplier_name_snapshot: '' }
+                ]
+              }
+            ]
+          }
+        ];
+      }
+      
+      setFormData(prev => ({
+        ...prev,
+        groups: templateGroups,
+        project_title: template.name + ' 프로젝트'
+      }));
+      
+      setIsDirty(true);
+      console.log('템플릿 적용 완료');
+    } catch (error) {
+      console.error('템플릿 적용 실패:', error);
+    }
+  }, []);
   const resetForm = useCallback(() => {
     setFormData({
       project_title: '',
@@ -175,6 +415,86 @@ export function useMotionsenseQuoteSafe(initialData?: Partial<MotionsenseQuote>)
     const timeoutId = setTimeout(calculateQuote, 300);
     return () => clearTimeout(timeoutId);
   }, [calculateQuote]);
+
+  // 더미 마스터 품목 데이터 로드
+  useEffect(() => {
+    const dummyMasterItems: MasterItem[] = [
+      {
+        id: '1',
+        name: '2D 모션그래픽 제작',
+        category: '영상편집',
+        description: '2D 애니메이션 및 모션그래픽 제작',
+        default_unit: '초',
+        default_unit_price: 50000,
+        is_active: true
+      },
+      {
+        id: '2',
+        name: '3D 모델링',
+        category: '3D제작',
+        description: '3D 모델 제작 및 렌더링',
+        default_unit: '개',
+        default_unit_price: 200000,
+        is_active: true
+      },
+      {
+        id: '3',
+        name: '영상 편집',
+        category: '영상편집',
+        description: '컷 편집, 컬러 그레이딩 포함',
+        default_unit: '분',
+        default_unit_price: 80000,
+        is_active: true
+      },
+      {
+        id: '4',
+        name: '사운드 디자인',
+        category: '오디오',
+        description: 'BGM, 효과음 제작 및 믹싱',
+        default_unit: '분',
+        default_unit_price: 30000,
+        is_active: true
+      },
+      {
+        id: '5',
+        name: '현장 촬영',
+        category: '촬영',
+        description: '카메라, 조명 장비 포함',
+        default_unit: '일',
+        default_unit_price: 500000,
+        is_active: true
+      },
+      {
+        id: '6',
+        name: '스튜디오 촬영',
+        category: '촬영',
+        description: '스튜디오 대여 및 촬영',
+        default_unit: '일',
+        default_unit_price: 300000,
+        is_active: true
+      },
+      {
+        id: '7',
+        name: '인포그래픽 제작',
+        category: '그래픽디자인',
+        description: '정보 시각화 및 인포그래픽',
+        default_unit: '개',
+        default_unit_price: 150000,
+        is_active: true
+      },
+      {
+        id: '8',
+        name: '웹 개발',
+        category: '개발',
+        description: '웹사이트 개발 및 구축',
+        default_unit: '페이지',
+        default_unit_price: 500000,
+        is_active: true
+      }
+    ];
+    
+    setMasterItems(dummyMasterItems);
+  }, []);
 
   console.log('useMotionsenseQuoteSafe 훅 반환 준비 완료');
 
