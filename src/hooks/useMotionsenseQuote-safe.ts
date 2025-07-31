@@ -216,7 +216,7 @@ export function useMotionsenseQuoteSafe(initialData?: Partial<MotionsenseQuote>)
           {
             name: '기획/스토리보드',
             sort_order: 0,
-            include_in_fee: true,
+            include_in_fee: true, // 기획 서비스는 대행수수료 적용
             items: [
               {
                 name: '컨셉 기획',
@@ -239,12 +239,12 @@ export function useMotionsenseQuoteSafe(initialData?: Partial<MotionsenseQuote>)
           {
             name: '촬영',
             sort_order: 1,
-            include_in_fee: true,
+            include_in_fee: false, // 촬영은 직접 비용으로 대행수수료 미적용
             items: [
               {
                 name: '메인 촬영',
                 sort_order: 0,
-                include_in_fee: true,
+                include_in_fee: false,
                 details: [
                   { name: '현장 촬영', description: '', quantity: 1, days: 2, unit: '일', unit_price: 500000, is_service: false, cost_price: 200000, supplier_name_snapshot: '' }
                 ]
@@ -254,7 +254,7 @@ export function useMotionsenseQuoteSafe(initialData?: Partial<MotionsenseQuote>)
           {
             name: '편집/후반작업',
             sort_order: 2,
-            include_in_fee: true,
+            include_in_fee: true, // 편집 서비스는 대행수수료 적용
             items: [
               {
                 name: '영상 편집',
@@ -273,12 +273,12 @@ export function useMotionsenseQuoteSafe(initialData?: Partial<MotionsenseQuote>)
           {
             name: '제품 촬영',
             sort_order: 0,
-            include_in_fee: true,
+            include_in_fee: false, // 촬영은 직접 비용으로 대행수수료 미적용
             items: [
               {
                 name: '제품 사진 촬영',
                 sort_order: 0,
-                include_in_fee: true,
+                include_in_fee: false,
                 details: [
                   { name: '스튜디오 촬영', description: '', quantity: 20, days: 1, unit: '컷', unit_price: 15000, is_service: false, cost_price: 5000, supplier_name_snapshot: '' }
                 ]
@@ -291,7 +291,7 @@ export function useMotionsenseQuoteSafe(initialData?: Partial<MotionsenseQuote>)
           {
             name: '컨셉 디자인',
             sort_order: 0,
-            include_in_fee: true,
+            include_in_fee: true, // 디자인 서비스는 대행수수료 적용
             items: [
               {
                 name: '컨셉 설계',
@@ -306,7 +306,7 @@ export function useMotionsenseQuoteSafe(initialData?: Partial<MotionsenseQuote>)
           {
             name: '인포그래픽 제작',
             sort_order: 1,
-            include_in_fee: true,
+            include_in_fee: true, // 그래픽 제작 서비스는 대행수수료 적용
             items: [
               {
                 name: '인포그래픽 디자인',
@@ -324,7 +324,7 @@ export function useMotionsenseQuoteSafe(initialData?: Partial<MotionsenseQuote>)
           {
             name: '기획/설계',
             sort_order: 0,
-            include_in_fee: true,
+            include_in_fee: true, // 개발 서비스는 대행수수료 적용
             items: [
               {
                 name: '사이트 기획',
@@ -374,36 +374,73 @@ export function useMotionsenseQuoteSafe(initialData?: Partial<MotionsenseQuote>)
     console.log('견적서 계산 실행');
     setIsCalculating(true);
     
-    // 간단한 계산
+    // 개선된 계산 로직
     setTimeout(() => {
-      const subtotal = formData.groups.reduce((total, group) => {
-        return total + group.items.reduce((groupTotal, item) => {
+      // 그룹별 상세 계산
+      const groupCalculations = formData.groups.map(group => {
+        const groupSubtotal = group.items.reduce((groupTotal, item) => {
           return groupTotal + item.details.reduce((itemTotal, detail) => {
             return itemTotal + (detail.quantity * detail.days * detail.unit_price);
           }, 0);
         }, 0);
+        
+        return {
+          name: group.name,
+          subtotal: groupSubtotal,
+          include_in_fee: group.include_in_fee,
+        };
+      });
+      
+      // 전체 소계
+      const subtotal = groupCalculations.reduce((total, group) => total + group.subtotal, 0);
+      
+      // 대행수수료 적용 대상/미적용 구분
+      const feeApplicableAmount = groupCalculations
+        .filter(group => group.include_in_fee)
+        .reduce((total, group) => total + group.subtotal, 0);
+      
+      const feeExcludedAmount = groupCalculations
+        .filter(group => !group.include_in_fee)
+        .reduce((total, group) => total + group.subtotal, 0);
+      
+      // 대행수수료는 적용 대상에만 계산
+      const agencyFee = feeApplicableAmount * formData.agency_fee_rate;
+      
+      // 부가세 전 총액
+      const totalBeforeVat = subtotal + agencyFee - formData.discount_amount;
+      
+      // 부가세 계산
+      const vatAmount = formData.vat_type === 'exclusive' ? totalBeforeVat * 0.1 : 0;
+      
+      // 최종 총액
+      const finalTotal = totalBeforeVat + vatAmount;
+      
+      // 총 원가 계산
+      const totalCost = formData.groups.reduce((total, group) => {
+        return total + group.items.reduce((groupTotal, item) => {
+          return groupTotal + item.details.reduce((itemTotal, detail) => {
+            return itemTotal + (detail.quantity * detail.days * (detail.cost_price || 0));
+          }, 0);
+        }, 0);
       }, 0);
       
-      const agencyFee = subtotal * formData.agency_fee_rate;
-      const vatAmount = (subtotal + agencyFee - formData.discount_amount) * 0.1;
-      const finalTotal = subtotal + agencyFee - formData.discount_amount + vatAmount;
+      // 수익 계산
+      const totalProfit = finalTotal - totalCost;
+      const profitMarginPercentage = finalTotal > 0 ? (totalProfit / finalTotal) * 100 : 0;
       
       setCalculation({
-        groups: formData.groups.map(group => ({
-          name: group.name,
-          subtotal: 0,
-          include_in_fee: group.include_in_fee,
-        })),
+        groups: groupCalculations,
         subtotal,
-        fee_applicable_amount: subtotal,
+        fee_applicable_amount: feeApplicableAmount,
+        fee_excluded_amount: feeExcludedAmount,
         agency_fee: agencyFee,
-        total_before_vat: subtotal + agencyFee - formData.discount_amount,
+        total_before_vat: totalBeforeVat,
         vat_amount: vatAmount,
         discount_amount: formData.discount_amount,
         final_total: finalTotal,
-        total_cost: 0,
-        total_profit: finalTotal,
-        profit_margin_percentage: 0,
+        total_cost: totalCost,
+        total_profit: totalProfit,
+        profit_margin_percentage: profitMarginPercentage,
       });
       
       setIsCalculating(false);

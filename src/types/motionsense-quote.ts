@@ -121,6 +121,7 @@ export interface QuoteCalculation {
   // 전체 합계
   subtotal: number; // 모든 항목 합계
   fee_applicable_amount: number; // 수수료 적용 대상 금액
+  fee_excluded_amount: number; // 수수료 미적용 금액
   agency_fee: number; // 대행 수수료
   total_before_vat: number; // 부가세 전 총액
   vat_amount: number; // 부가세

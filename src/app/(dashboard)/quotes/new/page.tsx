@@ -213,6 +213,21 @@ export default function QuoteNewPage() {
                           size="small"
                           sx={{ flexGrow: 1, mr: 2 }}
                         />
+                        <FormControlLabel
+                          control={
+                            <Switch
+                              checked={group.include_in_fee}
+                              onChange={(e) => {
+                                const updatedGroups = [...(formData?.groups || [])];
+                                updatedGroups[groupIndex] = { ...group, include_in_fee: e.target.checked };
+                                updateFormData?.({ groups: updatedGroups });
+                              }}
+                              size="small"
+                            />
+                          }
+                          label="대행수수료 적용"
+                          sx={{ mr: 2, whiteSpace: 'nowrap' }}
+                        />
                         <Box>
                           <Button
                             variant="outlined"
@@ -539,8 +554,33 @@ export default function QuoteNewPage() {
                   </Typography>
                 </Box>
                 
+                {/* 대행수수료 적용 대상 표시 */}
+                {(calculation?.fee_applicable_amount || 0) > 0 && (
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      ∟ 대행수수료 적용 대상
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {(calculation?.fee_applicable_amount || 0).toLocaleString()}원
+                    </Typography>
+                  </Box>
+                )}
+                
+                {(calculation?.fee_excluded_amount || 0) > 0 && (
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      ∟ 대행수수료 미적용
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {(calculation?.fee_excluded_amount || 0).toLocaleString()}원
+                    </Typography>
+                  </Box>
+                )}
+                
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                  <Typography variant="body2">대행수수료</Typography>
+                  <Typography variant="body2">
+                    대행수수료 ({((formData?.agency_fee_rate || 0) * 100).toFixed(1)}%)
+                  </Typography>
                   <Typography variant="body2">
                     {(calculation?.agency_fee || 0).toLocaleString()}원
                   </Typography>
@@ -590,12 +630,29 @@ export default function QuoteNewPage() {
                       </Typography>
                     </Box>
                     
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                       <Typography variant="body2">수익률</Typography>
                       <Typography variant="body2" fontWeight="medium" color="success.main">
                         {(calculation?.profit_margin_percentage || 0).toFixed(1)}%
                       </Typography>
                     </Box>
+
+                    {/* 그룹별 대행수수료 적용 현황 */}
+                    <Divider sx={{ my: 2 }} />
+                    <Typography variant="subtitle2" gutterBottom color="text.secondary">
+                      대행수수료 적용 현황
+                    </Typography>
+                    
+                    {calculation?.groups?.map((group, index) => (
+                      <Box key={index} sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                        <Typography variant="caption" color="text.secondary">
+                          {group.name} {group.include_in_fee ? '✓' : '✗'}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {group.subtotal.toLocaleString()}원
+                        </Typography>
+                      </Box>
+                    ))}
                   </>
                 )}
               </Box>
