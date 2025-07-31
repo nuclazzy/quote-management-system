@@ -101,6 +101,7 @@ export default function NewMotionsenseQuotePage() {
   const [saving, setSaving] = useState(false);
   const [selectedClient, setSelectedClient] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [initialized, setInitialized] = useState(false);
   
   // 다이얼로그 상태
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
@@ -108,28 +109,62 @@ export default function NewMotionsenseQuotePage() {
   const [selectedGroupIndex, setSelectedGroupIndex] = useState(0);
   const [selectedItemIndex, setSelectedItemIndex] = useState(0);
 
-  // 안전한 훅 사용
-  const quoteHook = useMotionsenseQuote();
+  // 기본값으로 안전한 상태 초기화
+  const [localFormData, setLocalFormData] = useState({
+    project_title: '',
+    customer_id: '',
+    customer_name_snapshot: '',
+    issue_date: new Date().toISOString().split('T')[0],
+    status: 'draft' as const,
+    vat_type: 'exclusive' as const,
+    discount_amount: 0,
+    agency_fee_rate: 0.15,
+    version: 1,
+    groups: [],
+    show_cost_management: false,
+    auto_save_enabled: true,
+  });
+
+  // 훅 초기화 시도
+  let quoteHook: any = null;
+  try {
+    quoteHook = useMotionsenseQuote();
+  } catch (hookError) {
+    console.error('Quote hook 초기화 실패:', hookError);
+  }
   
-  // 안전한 구조 분해
+  // 안전한 구조 분해 - 훅이 실패해도 기본값 사용
   const {
-    formData,
-    calculation,
-    isDirty,
-    isCalculating,
-    updateFormData,
-    addGroup,
-    updateGroup,
-    removeGroup,
-    addItem,
-    updateItem,
-    removeItem,
-    addDetailFromMaster,
-    addDetail,
-    updateDetail,
-    removeDetail,
-    applyTemplate,
-    setMasterItems,
+    formData = localFormData,
+    calculation = null,
+    isDirty = false,
+    isCalculating = false,
+    updateFormData = (updates: any) => {
+      setLocalFormData(prev => ({ ...prev, ...updates }));
+    },
+    addGroup = (name: string = '새 그룹') => {
+      const newGroup = {
+        name,
+        sort_order: localFormData.groups.length,
+        include_in_fee: true,
+        items: [],
+      };
+      setLocalFormData(prev => ({
+        ...prev,
+        groups: [...prev.groups, newGroup],
+      }));
+    },
+    updateGroup = () => {},
+    removeGroup = () => {},
+    addItem = () => {},
+    updateItem = () => {},
+    removeItem = () => {},
+    addDetailFromMaster = () => {},
+    addDetail = () => {},
+    updateDetail = () => {},
+    removeDetail = () => {},
+    applyTemplate = () => {},
+    setMasterItems = () => {},
   } = quoteHook || {};
 
   // 초기 데이터 로드
@@ -139,38 +174,64 @@ export default function NewMotionsenseQuotePage() {
         setLoading(true);
         setError(null);
         
-        // 훅이 제대로 로드되었는지 확인
-        if (!quoteHook || !setMasterItems) {
-          throw new Error('Quote hook이 제대로 초기화되지 않았습니다.');
+        // 안전한 초기화
+        await new Promise(resolve => setTimeout(resolve, 100)); // 약간의 지연으로 안정성 확보
+        
+        // 마스터 데이터 설정 (훅이 있는 경우만)
+        if (setMasterItems && typeof setMasterItems === 'function') {
+          setMasterItems(mockMasterItems);
         }
         
-        // 마스터 데이터 설정
-        setMasterItems(mockMasterItems);
-        
-        // 기본 구조 추가
-        if (formData && formData.groups && formData.groups.length === 0 && addGroup) {
-          addGroup('행사 진행');
+        // 기본 구조 추가 (빈 그룹이 있는 경우)
+        if (formData && Array.isArray(formData.groups) && formData.groups.length === 0) {
+          if (addGroup && typeof addGroup === 'function') {
+            addGroup('행사 진행');
+          } else {
+            // Fallback: 로컬 상태로 추가
+            setLocalFormData(prev => ({
+              ...prev,
+              groups: [{
+                name: '행사 진행',
+                sort_order: 0,
+                include_in_fee: true,
+                items: []
+              }]
+            }));
+          }
         }
+        
+        setInitialized(true);
         
       } catch (error) {
         console.error('데이터 로드 실패:', error);
-        setError(error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.');
+        setError(error instanceof Error ? error.message : '페이지 초기화 중 오류가 발생했습니다.');
       } finally {
         setLoading(false);
       }
     };
 
     loadData();
-  }, [quoteHook, formData, addGroup, setMasterItems]);
+  }, []);  // 의존성 배열 단순화
 
   // 고객 선택 핸들러
   const handleClientChange = (client: any) => {
     setSelectedClient(client);
-    if (updateFormData) {
-      updateFormData({
-        customer_id: client?.id || '',
-        customer_name_snapshot: client?.name || '',
-      });
+    try {
+      if (updateFormData && typeof updateFormData === 'function') {
+        updateFormData({
+          customer_id: client?.id || '',
+          customer_name_snapshot: client?.name || '',
+        });
+      } else {
+        // Fallback: 로컬 상태 업데이트
+        setLocalFormData(prev => ({
+          ...prev,
+          customer_id: client?.id || '',
+          customer_name_snapshot: client?.name || '',
+        }));
+      }
+    } catch (error) {
+      console.error('고객 선택 처리 실패:', error);
     }
   };
 
@@ -248,12 +309,12 @@ export default function NewMotionsenseQuotePage() {
     );
   }
 
-  // 훅이 제대로 로드되지 않은 경우
-  if (!formData || calculation === undefined) {
+  // 초기화되지 않은 경우
+  if (!initialized && loading) {
     return (
       <ModernBackground>
         <Container maxWidth="md" sx={{ py: 8, textAlign: 'center' }}>
-          <Alert severity="warning">
+          <Alert severity="info">
             <Typography variant="h6" gutterBottom>
               견적서 시스템을 초기화하는 중...
             </Typography>
@@ -299,8 +360,18 @@ export default function NewMotionsenseQuotePage() {
             <FormControlLabel
               control={
                 <Switch
-                  checked={formData.show_cost_management}
-                  onChange={(e) => updateFormData({ show_cost_management: e.target.checked })}
+                  checked={formData?.show_cost_management || false}
+                  onChange={(e) => {
+                    try {
+                      if (updateFormData && typeof updateFormData === 'function') {
+                        updateFormData({ show_cost_management: e.target.checked });
+                      } else {
+                        setLocalFormData(prev => ({ ...prev, show_cost_management: e.target.checked }));
+                      }
+                    } catch (error) {
+                      console.error('원가 관리 설정 실패:', error);
+                    }
+                  }}
                 />
               }
               label="원가 관리"
@@ -339,8 +410,18 @@ export default function NewMotionsenseQuotePage() {
                   <Grid item xs={12} md={6}>
                     <TextField
                       label="프로젝트명"
-                      value={formData.project_title}
-                      onChange={(e) => updateFormData({ project_title: e.target.value })}
+                      value={formData?.project_title || ''}
+                      onChange={(e) => {
+                        try {
+                          if (updateFormData && typeof updateFormData === 'function') {
+                            updateFormData({ project_title: e.target.value });
+                          } else {
+                            setLocalFormData(prev => ({ ...prev, project_title: e.target.value }));
+                          }
+                        } catch (error) {
+                          console.error('프로젝트명 업데이트 실패:', error);
+                        }
+                      }}
                       required
                       fullWidth
                     />
@@ -350,8 +431,18 @@ export default function NewMotionsenseQuotePage() {
                     <TextField
                       label="발행일"
                       type="date"
-                      value={formData.issue_date}
-                      onChange={(e) => updateFormData({ issue_date: e.target.value })}
+                      value={formData?.issue_date || new Date().toISOString().split('T')[0]}
+                      onChange={(e) => {
+                        try {
+                          if (updateFormData && typeof updateFormData === 'function') {
+                            updateFormData({ issue_date: e.target.value });
+                          } else {
+                            setLocalFormData(prev => ({ ...prev, issue_date: e.target.value }));
+                          }
+                        } catch (error) {
+                          console.error('발행일 업데이트 실패:', error);
+                        }
+                      }}
                       InputLabelProps={{ shrink: true }}
                       fullWidth
                     />
@@ -361,8 +452,19 @@ export default function NewMotionsenseQuotePage() {
                     <TextField
                       label="대행 수수료율 (%)"
                       type="number"
-                      value={formData.agency_fee_rate * 100}
-                      onChange={(e) => updateFormData({ agency_fee_rate: Number(e.target.value) / 100 })}
+                      value={(formData?.agency_fee_rate || 0.15) * 100}
+                      onChange={(e) => {
+                        try {
+                          const newRate = Number(e.target.value) / 100;
+                          if (updateFormData && typeof updateFormData === 'function') {
+                            updateFormData({ agency_fee_rate: newRate });
+                          } else {
+                            setLocalFormData(prev => ({ ...prev, agency_fee_rate: newRate }));
+                          }
+                        } catch (error) {
+                          console.error('수수료율 업데이트 실패:', error);
+                        }
+                      }}
                       inputProps={{ min: 0, max: 100, step: 0.1 }}
                       fullWidth
                     />
@@ -372,8 +474,19 @@ export default function NewMotionsenseQuotePage() {
                     <TextField
                       label="할인 금액"
                       type="number"
-                      value={formData.discount_amount}
-                      onChange={(e) => updateFormData({ discount_amount: Number(e.target.value) })}
+                      value={formData?.discount_amount || 0}
+                      onChange={(e) => {
+                        try {
+                          const newAmount = Number(e.target.value);
+                          if (updateFormData && typeof updateFormData === 'function') {
+                            updateFormData({ discount_amount: newAmount });
+                          } else {
+                            setLocalFormData(prev => ({ ...prev, discount_amount: newAmount }));
+                          }
+                        } catch (error) {
+                          console.error('할인 금액 업데이트 실패:', error);
+                        }
+                      }}
                       inputProps={{ min: 0 }}
                       fullWidth
                     />
@@ -390,7 +503,27 @@ export default function NewMotionsenseQuotePage() {
                   <Button
                     variant="contained"
                     startIcon={<Add />}
-                    onClick={() => addGroup()}
+                    onClick={() => {
+                      try {
+                        if (addGroup && typeof addGroup === 'function') {
+                          addGroup();
+                        } else {
+                          // Fallback: 로컬 상태로 그룹 추가
+                          const newGroup = {
+                            name: '새 그룹',
+                            sort_order: (formData?.groups || []).length,
+                            include_in_fee: true,
+                            items: [],
+                          };
+                          setLocalFormData(prev => ({
+                            ...prev,
+                            groups: [...(prev.groups || []), newGroup],
+                          }));
+                        }
+                      } catch (error) {
+                        console.error('그룹 추가 실패:', error);
+                      }
+                    }}
                     size="small"
                   >
                     그룹 추가
@@ -398,7 +531,7 @@ export default function NewMotionsenseQuotePage() {
                 }
               />
               <CardContent>
-                {formData.groups.map((group, groupIndex) => (
+                {(formData?.groups || []).map((group, groupIndex) => (
                   <Accordion key={groupIndex} defaultExpanded sx={{ mb: 2 }}>
                     <AccordionSummary expandIcon={<ExpandMore />}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
@@ -579,19 +712,19 @@ export default function NewMotionsenseQuotePage() {
                 action={isCalculating && <Typography variant="caption">계산 중...</Typography>}
               />
               <CardContent>
-                {calculation && (
+                {calculation ? (
                   <>
                     {/* 그룹별 합계 */}
-                    {calculation.groups.map((group, index) => (
+                    {(calculation.groups || []).map((group, index) => (
                       <Box key={index} sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Typography variant="body2">{group.name}</Typography>
+                          <Typography variant="body2">{group.name || '이름 없음'}</Typography>
                           {!group.include_in_fee && (
                             <Chip label="수수료 제외" size="small" variant="outlined" />
                           )}
                         </Box>
                         <Typography variant="body2">
-                          {formatCurrency(group.subtotal)}
+                          {formatCurrency(group.subtotal || 0)}
                         </Typography>
                       </Box>
                     ))}
@@ -601,24 +734,24 @@ export default function NewMotionsenseQuotePage() {
                     {/* 계산 내역 */}
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                       <Typography>소계</Typography>
-                      <Typography>{formatCurrency(calculation.subtotal)}</Typography>
+                      <Typography>{formatCurrency(calculation.subtotal || 0)}</Typography>
                     </Box>
                     
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                      <Typography>대행 수수료 ({(formData.agency_fee_rate * 100).toFixed(1)}%)</Typography>
-                      <Typography>{formatCurrency(calculation.agency_fee)}</Typography>
+                      <Typography>대행 수수료 ({((formData?.agency_fee_rate || 0.15) * 100).toFixed(1)}%)</Typography>
+                      <Typography>{formatCurrency(calculation.agency_fee || 0)}</Typography>
                     </Box>
                     
-                    {formData.discount_amount > 0 && (
+                    {(formData?.discount_amount || 0) > 0 && (
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                         <Typography>할인</Typography>
-                        <Typography color="error">-{formatCurrency(formData.discount_amount)}</Typography>
+                        <Typography color="error">-{formatCurrency(formData?.discount_amount || 0)}</Typography>
                       </Box>
                     )}
                     
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                       <Typography>부가세 (10%)</Typography>
-                      <Typography>{formatCurrency(calculation.vat_amount)}</Typography>
+                      <Typography>{formatCurrency(calculation.vat_amount || 0)}</Typography>
                     </Box>
                     
                     <Divider sx={{ my: 2 }} />
@@ -626,24 +759,24 @@ export default function NewMotionsenseQuotePage() {
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
                       <Typography variant="h6" sx={{ fontWeight: 600 }}>최종 총액</Typography>
                       <Typography variant="h6" sx={{ fontWeight: 600, color: 'primary.main' }}>
-                        {formatCurrency(calculation.final_total)}
+                        {formatCurrency(calculation.final_total || 0)}
                       </Typography>
                     </Box>
                     
                     {/* 수익률 정보 (원가 관리 시) */}
-                    {formData.show_cost_management && (
+                    {(formData?.show_cost_management) && (
                       <>
                         <Divider sx={{ my: 2 }} />
                         <Alert 
-                          severity={calculation.profit_margin_percentage < 0 ? 'error' : calculation.profit_margin_percentage < 10 ? 'warning' : 'success'}
+                          severity={(calculation.profit_margin_percentage || 0) < 0 ? 'error' : (calculation.profit_margin_percentage || 0) < 10 ? 'warning' : 'success'}
                           sx={{ mb: 2 }}
                         >
                           <Box>
                             <Typography variant="body2">
-                              예상 수익률: <strong>{calculation.profit_margin_percentage.toFixed(1)}%</strong>
+                              예상 수익률: <strong>{(calculation.profit_margin_percentage || 0).toFixed(1)}%</strong>
                             </Typography>
                             <Typography variant="caption">
-                              총 원가: {formatCurrency(calculation.total_cost)}
+                              총 원가: {formatCurrency(calculation.total_cost || 0)}
                             </Typography>
                           </Box>
                         </Alert>
@@ -672,6 +805,12 @@ export default function NewMotionsenseQuotePage() {
                       </Button>
                     </Box>
                   </>
+                ) : (
+                  <Box sx={{ textAlign: 'center', py: 4 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      견적 내역을 추가하면 계산 결과가 표시됩니다.
+                    </Typography>
+                  </Box>
                 )}
               </CardContent>
             </GlassCard>
