@@ -7,13 +7,7 @@ import {
   Box, 
   TextField, 
   Grid, 
-  Divider, 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableContainer, 
-  TableHead, 
-  TableRow, 
+  Divider,
   IconButton, 
   Collapse, 
   Select, 
@@ -41,7 +35,7 @@ import { MasterItem } from '@/types/motionsense-quote';
 export default function QuoteNewPage() {
   const router = useRouter();
   
-  // 펼침/접힘 상태 관리
+  // 펼침/접힘 상태 관리 (기본값: 모든 항목 펼침)
   const [expandedItems, setExpandedItems] = useState<{[key: string]: boolean}>({});
   
   // 마스터 품목 선택 다이얼로그 상태
@@ -265,7 +259,7 @@ export default function QuoteNewPage() {
                         <Box>
                           {group.items?.map((item, itemIndex) => {
                             const key = `${groupIndex}-${itemIndex}`;
-                            const isExpanded = expandedItems[key];
+                            const isExpanded = expandedItems[key] !== undefined ? expandedItems[key] : true; // 기본값: true
                             
                             return (
                               <Box key={itemIndex} sx={{ border: '1px solid #e0e0e0', borderRadius: 1, mb: 1, bgcolor: 'grey.50' }}>
@@ -327,132 +321,148 @@ export default function QuoteNewPage() {
                                           세부항목을 추가하세요.
                                         </Typography>
                                       ) : (
-                                        <TableContainer sx={{ border: '1px solid #e0e0e0', borderRadius: 1, bgcolor: 'white' }}>
-                                          <Table size="small">
-                                            <TableHead>
-                                              <TableRow>
-                                                <TableCell sx={{ minWidth: 200, width: '30%' }}>품목명</TableCell>
-                                                <TableCell align="center" sx={{ width: '8%' }}>수량</TableCell>
-                                                <TableCell align="center" sx={{ width: '8%' }}>일수</TableCell>
-                                                <TableCell align="center" sx={{ width: '8%' }}>단위</TableCell>
-                                                <TableCell align="right" sx={{ width: '12%' }}>단가</TableCell>
+                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                          {item.details?.map((detail, detailIndex) => (
+                                            <Box key={detailIndex} sx={{ 
+                                              border: '1px solid #e0e0e0', 
+                                              borderRadius: 1, 
+                                              bgcolor: 'white',
+                                              p: 2
+                                            }}>
+                                              <Grid container spacing={2} alignItems="center">
+                                                {/* 품목명 - 전체 너비 */}
+                                                <Grid item xs={12}>
+                                                  <TextField
+                                                    label="품목명"
+                                                    value={detail.name}
+                                                    onChange={(e) => updateDetail?.(groupIndex, itemIndex, detailIndex, { name: e.target.value })}
+                                                    size="small"
+                                                    fullWidth
+                                                    placeholder="품목명 입력"
+                                                  />
+                                                </Grid>
+                                                
+                                                {/* 첫 번째 행: 수량, 일수, 단위 */}
+                                                <Grid item xs={4}>
+                                                  <TextField
+                                                    label="수량"
+                                                    type="number"
+                                                    value={detail.quantity}
+                                                    onChange={(e) => updateDetail?.(groupIndex, itemIndex, detailIndex, { quantity: Number(e.target.value) || 0 })}
+                                                    size="small"
+                                                    fullWidth
+                                                    inputProps={{ min: 0, step: 0.1 }}
+                                                  />
+                                                </Grid>
+                                                <Grid item xs={4}>
+                                                  <TextField
+                                                    label="일수"
+                                                    type="number"
+                                                    value={detail.days}
+                                                    onChange={(e) => updateDetail?.(groupIndex, itemIndex, detailIndex, { days: Number(e.target.value) || 0 })}
+                                                    size="small"
+                                                    fullWidth
+                                                    inputProps={{ min: 0, step: 0.5 }}
+                                                  />
+                                                </Grid>
+                                                <Grid item xs={4}>
+                                                  <TextField
+                                                    label="단위"
+                                                    value={detail.unit}
+                                                    onChange={(e) => updateDetail?.(groupIndex, itemIndex, detailIndex, { unit: e.target.value })}
+                                                    size="small"
+                                                    fullWidth
+                                                    placeholder="개"
+                                                  />
+                                                </Grid>
+                                                
+                                                {/* 두 번째 행: 단가, 원가 관리 정보 */}
+                                                <Grid item xs={formData?.show_cost_management ? 6 : 12}>
+                                                  <TextField
+                                                    label="단가"
+                                                    type="number"
+                                                    value={detail.unit_price}
+                                                    onChange={(e) => updateDetail?.(groupIndex, itemIndex, detailIndex, { unit_price: Number(e.target.value) || 0 })}
+                                                    size="small"
+                                                    fullWidth
+                                                    inputProps={{ min: 0, step: 1000 }}
+                                                  />
+                                                </Grid>
+                                                
                                                 {formData?.show_cost_management && (
-                                                  <>
-                                                    <TableCell align="right" sx={{ width: '12%' }}>원가</TableCell>
-                                                    <TableCell sx={{ width: '15%' }}>공급업체</TableCell>
-                                                  </>
-                                                )}
-                                                <TableCell align="right" sx={{ width: '12%' }}>합계</TableCell>
-                                                <TableCell align="center" sx={{ width: '8%' }}>삭제</TableCell>
-                                              </TableRow>
-                                            </TableHead>
-                                            <TableBody>
-                                              {item.details?.map((detail, detailIndex) => (
-                                                <TableRow key={detailIndex}>
-                                                  <TableCell>
+                                                  <Grid item xs={6}>
                                                     <TextField
-                                                      value={detail.name}
-                                                      onChange={(e) => updateDetail?.(groupIndex, itemIndex, detailIndex, { name: e.target.value })}
+                                                      label="원가"
+                                                      type="number"
+                                                      value={detail.cost_price || 0}
+                                                      onChange={(e) => updateDetail?.(groupIndex, itemIndex, detailIndex, { cost_price: Number(e.target.value) || 0 })}
                                                       size="small"
                                                       fullWidth
-                                                      placeholder="품목명 입력"
-                                                      sx={{ minWidth: 180 }}
-                                                    />
-                                                  </TableCell>
-                                                  <TableCell>
-                                                    <TextField
-                                                      type="number"
-                                                      value={detail.quantity}
-                                                      onChange={(e) => updateDetail?.(groupIndex, itemIndex, detailIndex, { quantity: Number(e.target.value) || 0 })}
-                                                      size="small"
-                                                      sx={{ width: 80 }}
-                                                      inputProps={{ min: 0, step: 0.1 }}
-                                                    />
-                                                  </TableCell>
-                                                  <TableCell>
-                                                    <TextField
-                                                      type="number"
-                                                      value={detail.days}
-                                                      onChange={(e) => updateDetail?.(groupIndex, itemIndex, detailIndex, { days: Number(e.target.value) || 0 })}
-                                                      size="small"
-                                                      sx={{ width: 80 }}
-                                                      inputProps={{ min: 0, step: 0.5 }}
-                                                    />
-                                                  </TableCell>
-                                                  <TableCell>
-                                                    <TextField
-                                                      value={detail.unit}
-                                                      onChange={(e) => updateDetail?.(groupIndex, itemIndex, detailIndex, { unit: e.target.value })}
-                                                      size="small"
-                                                      sx={{ width: 60 }}
-                                                      placeholder="개"
-                                                    />
-                                                  </TableCell>
-                                                  <TableCell>
-                                                    <TextField
-                                                      type="number"
-                                                      value={detail.unit_price}
-                                                      onChange={(e) => updateDetail?.(groupIndex, itemIndex, detailIndex, { unit_price: Number(e.target.value) || 0 })}
-                                                      size="small"
-                                                      sx={{ width: 100 }}
                                                       inputProps={{ min: 0, step: 1000 }}
                                                     />
-                                                  </TableCell>
-                                                  {formData?.show_cost_management && (
-                                                    <>
-                                                      <TableCell>
+                                                  </Grid>
+                                                )}
+                                                
+                                                {/* 공급업체 (원가 관리 모드에서만) */}
+                                                {formData?.show_cost_management && (
+                                                  <Grid item xs={12}>
+                                                    <Autocomplete
+                                                      options={suppliers}
+                                                      getOptionLabel={(option) => option.name}
+                                                      value={suppliers.find(s => s.id === detail.supplier_id) || null}
+                                                      onChange={(event, newValue) => {
+                                                        updateDetail?.(groupIndex, itemIndex, detailIndex, {
+                                                          supplier_id: newValue?.id,
+                                                          supplier_name_snapshot: newValue?.name || ''
+                                                        });
+                                                      }}
+                                                      size="small"
+                                                      renderInput={(params) => (
                                                         <TextField
-                                                          type="number"
-                                                          value={detail.cost_price || 0}
-                                                          onChange={(e) => updateDetail?.(groupIndex, itemIndex, detailIndex, { cost_price: Number(e.target.value) || 0 })}
+                                                          {...params}
+                                                          label="공급업체"
+                                                          placeholder="공급업체 선택"
                                                           size="small"
-                                                          sx={{ width: 100 }}
-                                                          inputProps={{ min: 0, step: 1000 }}
                                                         />
-                                                      </TableCell>
-                                                      <TableCell>
-                                                        <Autocomplete
-                                                          options={suppliers}
-                                                          getOptionLabel={(option) => option.name}
-                                                          value={suppliers.find(s => s.id === detail.supplier_id) || null}
-                                                          onChange={(event, newValue) => {
-                                                            updateDetail?.(groupIndex, itemIndex, detailIndex, {
-                                                              supplier_id: newValue?.id,
-                                                              supplier_name_snapshot: newValue?.name || ''
-                                                            });
-                                                          }}
-                                                          size="small"
-                                                          sx={{ width: 150 }}
-                                                          renderInput={(params) => (
-                                                            <TextField
-                                                              {...params}
-                                                              placeholder="선택"
-                                                              size="small"
-                                                            />
-                                                          )}
-                                                        />
-                                                      </TableCell>
-                                                    </>
-                                                  )}
-                                                  <TableCell align="right">
-                                                    <Typography variant="body2" fontWeight="medium">
+                                                      )}
+                                                    />
+                                                  </Grid>
+                                                )}
+                                                
+                                                {/* 하단: 합계와 삭제 버튼 */}
+                                                <Grid item xs={6}>
+                                                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start' }}>
+                                                    <Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>
+                                                      합계:
+                                                    </Typography>
+                                                    <Typography variant="body1" fontWeight="medium" color="primary">
                                                       {(detail.quantity * detail.days * detail.unit_price).toLocaleString()}원
                                                     </Typography>
-                                                  </TableCell>
-                                                  <TableCell align="center">
+                                                  </Box>
+                                                </Grid>
+                                                <Grid item xs={6}>
+                                                  <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
                                                     <IconButton
                                                       onClick={() => removeDetail?.(groupIndex, itemIndex, detailIndex)}
                                                       size="small"
                                                       color="error"
+                                                      sx={{
+                                                        border: '1px solid',
+                                                        borderColor: 'error.main',
+                                                        '&:hover': {
+                                                          bgcolor: 'error.light',
+                                                          color: 'white'
+                                                        }
+                                                      }}
                                                     >
                                                       <DeleteIcon />
                                                     </IconButton>
-                                                  </TableCell>
-                                                </TableRow>
-                                              ))}
-                                            </TableBody>
-                                          </Table>
-                                        </TableContainer>
+                                                  </Box>
+                                                </Grid>
+                                              </Grid>
+                                            </Box>
+                                          ))}
+                                        </Box>
                                       )}
                                     </Box>
                                   </Collapse>
