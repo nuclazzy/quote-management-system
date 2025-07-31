@@ -13,21 +13,32 @@ import {
 } from '@/types/motionsense-quote';
 
 export function useMotionsenseQuote(initialData?: Partial<MotionsenseQuote>) {
-  // 폼 데이터 상태
-  const [formData, setFormData] = useState<QuoteFormData>({
-    project_title: '',
-    customer_id: '',
-    customer_name_snapshot: '',
-    issue_date: new Date().toISOString().split('T')[0],
-    status: 'draft',
-    vat_type: 'exclusive',
-    discount_amount: 0,
-    agency_fee_rate: 0.15, // 15% 기본값
-    version: 1,
-    groups: [],
-    show_cost_management: false,
-    auto_save_enabled: true,
-    ...initialData,
+  console.log('useMotionsenseQuote 훅 초기화 시작');
+  
+  // 폼 데이터 상태 (안전한 초기화)
+  const [formData, setFormData] = useState<QuoteFormData>(() => {
+    try {
+      const defaultData = {
+        project_title: '',
+        customer_id: '',
+        customer_name_snapshot: '',
+        issue_date: new Date().toISOString().split('T')[0],
+        status: 'draft' as const,
+        vat_type: 'exclusive' as const,
+        discount_amount: 0,
+        agency_fee_rate: 0.15, // 15% 기본값
+        version: 1,
+        groups: [],
+        show_cost_management: false,
+        auto_save_enabled: true,
+        ...initialData,
+      };
+      console.log('폼 데이터 초기화 완료:', defaultData);
+      return defaultData;
+    } catch (error) {
+      console.error('폼 데이터 초기화 실패:', error);
+      throw new Error(`견적서 폼 데이터 초기화 중 오류: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   });
 
   // 계산 결과 상태
@@ -41,27 +52,45 @@ export function useMotionsenseQuote(initialData?: Partial<MotionsenseQuote>) {
   const [isDirty, setIsDirty] = useState(false);
   const [isCalculating, setIsCalculating] = useState(false);
 
-  // 폼 데이터 업데이트
+  console.log('useMotionsenseQuote 상태 초기화 완료');
+
+  // 폼 데이터 업데이트 (안전한 구현)
   const updateFormData = useCallback((updates: Partial<QuoteFormData>) => {
-    setFormData(prev => ({
-      ...prev,
-      ...updates,
-    }));
-    setIsDirty(true);
+    try {
+      console.log('폼 데이터 업데이트:', updates);
+      setFormData(prev => ({
+        ...prev,
+        ...updates,
+      }));
+      setIsDirty(true);
+    } catch (error) {
+      console.error('폼 데이터 업데이트 실패:', error);
+    }
   }, []);
 
-  // 그룹 추가
+  // 그룹 추가 (안전한 구현)
   const addGroup = useCallback((name: string = '새 그룹') => {
-    const newGroup: QuoteGroup = {
-      name,
-      sort_order: formData.groups.length,
-      include_in_fee: true,
-      items: [],
-    };
-    
-    updateFormData({
-      groups: [...formData.groups, newGroup],
-    });
+    try {
+      console.log('그룹 추가:', name);
+      if (!formData || !formData.groups) {
+        console.error('formData.groups가 정의되지 않음:', formData);
+        return;
+      }
+      
+      const newGroup: QuoteGroup = {
+        name,
+        sort_order: formData.groups.length,
+        include_in_fee: true,
+        items: [],
+      };
+      
+      updateFormData({
+        groups: [...formData.groups, newGroup],
+      });
+      console.log('그룹 추가 완료:', newGroup);
+    } catch (error) {
+      console.error('그룹 추가 실패:', error);
+    }
   }, [formData.groups, updateFormData]);
 
   // 그룹 업데이트
@@ -324,7 +353,9 @@ export function useMotionsenseQuote(initialData?: Partial<MotionsenseQuote>) {
     setIsDirty(false);
   }, []);
 
-  return {
+  console.log('useMotionsenseQuote 훅 반환 준비 완료');
+  
+  const hookResult = {
     // 상태
     formData,
     calculation,
@@ -361,4 +392,7 @@ export function useMotionsenseQuote(initialData?: Partial<MotionsenseQuote>) {
     setMasterItems,
     setSuppliers,
   };
+  
+  console.log('useMotionsenseQuote 훅 반환:', Object.keys(hookResult));
+  return hookResult;
 }
