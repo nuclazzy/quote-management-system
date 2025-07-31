@@ -15,7 +15,7 @@ import {
 export function useMotionsenseQuote(initialData?: Partial<MotionsenseQuote>) {
   console.log('useMotionsenseQuote 훅 초기화 시작');
   
-  // 폼 데이터 상태 (안전한 초기화)
+  // 폼 데이터 상태 (에러 throw 제거)
   const [formData, setFormData] = useState<QuoteFormData>(() => {
     try {
       const defaultData = {
@@ -37,7 +37,21 @@ export function useMotionsenseQuote(initialData?: Partial<MotionsenseQuote>) {
       return defaultData;
     } catch (error) {
       console.error('폼 데이터 초기화 실패:', error);
-      throw new Error(`견적서 폼 데이터 초기화 중 오류: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      // React Error #130 방지: 에러를 throw하는 대신 기본값 반환
+      return {
+        project_title: '',
+        customer_id: '',
+        customer_name_snapshot: '',
+        issue_date: new Date().toISOString().split('T')[0],
+        status: 'draft' as const,
+        vat_type: 'exclusive' as const,
+        discount_amount: 0,
+        agency_fee_rate: 0.15,
+        version: 1,
+        groups: [],
+        show_cost_management: false,
+        auto_save_enabled: true,
+      };
     }
   });
 
