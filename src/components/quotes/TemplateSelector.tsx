@@ -2,8 +2,6 @@
 
 import { useState } from 'react';
 import {
-  Card,
-  CardContent,
   Typography,
   Button,
   Grid,
@@ -113,8 +111,7 @@ export default function TemplateSelector({ onApplyTemplate }: TemplateSelectorPr
 
   return (
     <>
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
+      <Box sx={{ border: '1px solid #e0e0e0', borderRadius: 1, bgcolor: 'white', mb: 3, p: 3 }}>
           <Typography variant="h6" gutterBottom>
             견적서 템플릿 선택
           </Typography>
@@ -171,8 +168,7 @@ export default function TemplateSelector({ onApplyTemplate }: TemplateSelectorPr
               </Grid>
             ))}
           </Grid>
-        </CardContent>
-      </Card>
+      </Box>
 
       {/* 템플릿 적용 확인 다이얼로그 */}
       <Dialog open={confirmDialog} onClose={() => setConfirmDialog(false)}>

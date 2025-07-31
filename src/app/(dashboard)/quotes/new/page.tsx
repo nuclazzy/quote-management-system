@@ -316,19 +316,19 @@ export default function QuoteNewPage() {
                                           <Table size="small">
                                             <TableHead>
                                               <TableRow>
-                                                <TableCell>품목명</TableCell>
-                                                <TableCell align="center">수량</TableCell>
-                                                <TableCell align="center">일수</TableCell>
-                                                <TableCell align="center">단위</TableCell>
-                                                <TableCell align="right">단가</TableCell>
+                                                <TableCell sx={{ minWidth: 200, width: '30%' }}>품목명</TableCell>
+                                                <TableCell align="center" sx={{ width: '8%' }}>수량</TableCell>
+                                                <TableCell align="center" sx={{ width: '8%' }}>일수</TableCell>
+                                                <TableCell align="center" sx={{ width: '8%' }}>단위</TableCell>
+                                                <TableCell align="right" sx={{ width: '12%' }}>단가</TableCell>
                                                 {formData?.show_cost_management && (
                                                   <>
-                                                    <TableCell align="right">원가</TableCell>
-                                                    <TableCell>공급업체</TableCell>
+                                                    <TableCell align="right" sx={{ width: '12%' }}>원가</TableCell>
+                                                    <TableCell sx={{ width: '15%' }}>공급업체</TableCell>
                                                   </>
                                                 )}
-                                                <TableCell align="right">합계</TableCell>
-                                                <TableCell align="center">삭제</TableCell>
+                                                <TableCell align="right" sx={{ width: '12%' }}>합계</TableCell>
+                                                <TableCell align="center" sx={{ width: '8%' }}>삭제</TableCell>
                                               </TableRow>
                                             </TableHead>
                                             <TableBody>
@@ -341,6 +341,7 @@ export default function QuoteNewPage() {
                                                       size="small"
                                                       fullWidth
                                                       placeholder="품목명 입력"
+                                                      sx={{ minWidth: 180 }}
                                                     />
                                                   </TableCell>
                                                   <TableCell>

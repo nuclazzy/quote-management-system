@@ -109,7 +109,7 @@ export const modernTheme = createTheme({
     },
     background: {
       default: '#f8fafc',
-      paper: 'rgba(255, 255, 255, 0.8)',
+      paper: '#ffffff',
     },
     text: {
       primary: modernColors.gray[900],
@@ -179,52 +179,25 @@ export const modernTheme = createTheme({
   shape: {
     borderRadius: 12,
   },
-  shadows: [
-    'none',
-    '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
-    '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-    '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-    '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-    '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-    '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-    '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-    '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-    '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-    '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-    '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-    '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-    '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-    '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-    '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-    '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-    '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-    '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-    '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-    '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-    '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-    '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-    '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-    '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-  ],
+  shadows: Array(25).fill('none') as any,
   components: {
     MuiButton: {
       styleOverrides: {
         root: {
-          borderRadius: 10,
+          borderRadius: 8,
           textTransform: 'none',
           fontWeight: 500,
           padding: '10px 24px',
           boxShadow: 'none',
           '&:hover': {
-            boxShadow: '0 4px 12px rgba(99, 102, 241, 0.15)',
-            transform: 'translateY(-1px)',
-            transition: 'all 0.2s ease-in-out',
+            boxShadow: 'none',
+            transform: 'none',
           },
         },
         contained: {
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          backgroundColor: modernColors.primary[500],
           '&:hover': {
-            background: 'linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%)',
+            backgroundColor: modernColors.primary[600],
           },
         },
       },
@@ -232,15 +205,12 @@ export const modernTheme = createTheme({
     MuiCard: {
       styleOverrides: {
         root: {
-          borderRadius: 16,
-          background: 'rgba(255, 255, 255, 0.8)',
-          backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(255, 255, 255, 0.2)',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
-          transition: 'all 0.3s ease-in-out',
+          borderRadius: 8,
+          backgroundColor: '#ffffff',
+          border: '1px solid #e0e0e0',
+          boxShadow: 'none',
           '&:hover': {
-            transform: 'translateY(-4px)',
-            boxShadow: '0 20px 40px rgba(0, 0, 0, 0.1)',
+            boxShadow: 'none',
           },
         },
       },
@@ -248,33 +218,33 @@ export const modernTheme = createTheme({
     MuiPaper: {
       styleOverrides: {
         root: {
-          borderRadius: 12,
-          background: 'rgba(255, 255, 255, 0.9)',
-          backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(255, 255, 255, 0.2)',
+          borderRadius: 8,
+          backgroundColor: '#ffffff',
+          border: '1px solid #e0e0e0',
+          boxShadow: 'none',
         },
       },
     },
     MuiChip: {
       styleOverrides: {
         root: {
-          borderRadius: 8,
+          borderRadius: 6,
           fontWeight: 500,
         },
         colorPrimary: {
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          backgroundColor: modernColors.primary[500],
           color: 'white',
         },
         colorSuccess: {
-          background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+          backgroundColor: modernColors.success[500],
           color: 'white',
         },
         colorWarning: {
-          background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+          backgroundColor: modernColors.warning[500],
           color: 'white',
         },
         colorError: {
-          background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+          backgroundColor: modernColors.error[500],
           color: 'white',
         },
       },
@@ -282,18 +252,17 @@ export const modernTheme = createTheme({
     MuiTableContainer: {
       styleOverrides: {
         root: {
-          borderRadius: 12,
-          background: 'rgba(255, 255, 255, 0.9)',
-          backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(255, 255, 255, 0.2)',
+          borderRadius: 8,
+          backgroundColor: '#ffffff',
+          border: '1px solid #e0e0e0',
+          boxShadow: 'none',
         },
       },
     },
     MuiTableHead: {
       styleOverrides: {
         root: {
-          background:
-            'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)',
+          backgroundColor: '#f8fafc',
           '& .MuiTableCell-head': {
             fontWeight: 600,
             fontSize: '0.875rem',
@@ -306,7 +275,7 @@ export const modernTheme = createTheme({
       styleOverrides: {
         root: {
           '& .MuiTabs-indicator': {
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            backgroundColor: modernColors.primary[500],
             height: 3,
             borderRadius: '3px 3px 0 0',
           },
@@ -341,7 +310,7 @@ export const modernDarkTheme = createTheme({
     },
     background: {
       default: '#0f172a',
-      paper: 'rgba(30, 41, 59, 0.8)',
+      paper: '#1e293b',
     },
     text: {
       primary: '#f1f5f9',
@@ -353,18 +322,23 @@ export const modernDarkTheme = createTheme({
     MuiCard: {
       styleOverrides: {
         root: {
-          ...modernTheme.components?.MuiCard?.styleOverrides?.root,
-          background: 'rgba(30, 41, 59, 0.8)',
-          border: '1px solid rgba(148, 163, 184, 0.1)',
+          borderRadius: 8,
+          backgroundColor: '#1e293b',
+          border: '1px solid #475569',
+          boxShadow: 'none',
+          '&:hover': {
+            boxShadow: 'none',
+          },
         },
       },
     },
     MuiPaper: {
       styleOverrides: {
         root: {
-          ...modernTheme.components?.MuiPaper?.styleOverrides?.root,
-          background: 'rgba(30, 41, 59, 0.9)',
-          border: '1px solid rgba(148, 163, 184, 0.1)',
+          borderRadius: 8,
+          backgroundColor: '#1e293b',
+          border: '1px solid #475569',
+          boxShadow: 'none',
         },
       },
     },
