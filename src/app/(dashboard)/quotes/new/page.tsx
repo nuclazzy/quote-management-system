@@ -2,28 +2,18 @@
 
 import { Container, Typography, Button, Box, TextField } from '@mui/material';
 import { useRouter } from 'next/navigation';
-import { useMotionsenseQuote } from '@/hooks/useMotionsenseQuote';
+// import { useMotionsenseQuote } from '@/hooks/useMotionsenseQuote';
 
 export default function MinimalQuotePage() {
   const router = useRouter();
   
   console.log('MinimalQuotePage 컴포넌트 렌더링 시작');
   
-  // 원본 훅 사용 (최소한의 디스트럭처링만)
-  const quoteHook = useMotionsenseQuote();
-  
-  console.log('useMotionsenseQuote 결과:', quoteHook);
-  
-  if (!quoteHook) {
-    console.error('quoteHook이 undefined입니다!');
-    return (
-      <Container>
-        <Typography variant="h4">훅 초기화 실패</Typography>
-      </Container>
-    );
-  }
-  
-  const { formData, updateFormData } = quoteHook;
+  // 임시로 훅 없이 테스트
+  const formData = { project_title: '' };
+  const updateFormData = (updates: any) => {
+    console.log('업데이트:', updates);
+  };
   
   console.log('formData:', formData);
 
