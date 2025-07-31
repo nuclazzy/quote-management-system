@@ -185,7 +185,7 @@ export function useMotionsenseQuote(initialData?: Partial<MotionsenseQuote>) {
     updateFormData({ groups: updatedGroups });
   }, [formData.groups, updateFormData]);
 
-  // 견적서 계산
+  // 견적서 계산 (순환 의존성 해결을 위해 직접 상태 업데이트 분리)
   const calculateQuote = useCallback(() => {
     setIsCalculating(true);
     
@@ -195,7 +195,7 @@ export function useMotionsenseQuote(initialData?: Partial<MotionsenseQuote>) {
       let totalCost = 0;
       const groupCalculations = [];
 
-      // 그룹별 계산
+      // 그룹별 계산 (원본 데이터 변경 없이 계산만)
       for (const group of formData.groups) {
         let groupSubtotal = 0;
         
@@ -203,15 +203,7 @@ export function useMotionsenseQuote(initialData?: Partial<MotionsenseQuote>) {
           for (const detail of item.details) {
             const detailSubtotal = detail.quantity * detail.days * detail.unit_price;
             groupSubtotal += detailSubtotal;
-            totalCost += detail.quantity * detail.days * detail.cost_price;
-            
-            // 수익률 계산
-            detail.subtotal = detailSubtotal;
-            if (detail.unit_price > 0) {
-              detail.profit_margin = ((detail.unit_price - detail.cost_price) / detail.unit_price) * 100;
-            } else {
-              detail.profit_margin = 0;
-            }
+            totalCost += detail.quantity * detail.days * (detail.cost_price || 0);
           }
         }
         
@@ -230,17 +222,16 @@ export function useMotionsenseQuote(initialData?: Partial<MotionsenseQuote>) {
       }
 
       // 대행 수수료 계산
-      const agencyFee = feeApplicableAmount * formData.agency_fee_rate;
+      const agencyFee = feeApplicableAmount * (formData.agency_fee_rate || 0.15);
       
       // 부가세 전 총액
-      const totalBeforeVat = subtotal + agencyFee - formData.discount_amount;
+      const totalBeforeVat = subtotal + agencyFee - (formData.discount_amount || 0);
       
       // 부가세 계산
       let vatAmount = 0;
       if (formData.vat_type === 'exclusive') {
         vatAmount = totalBeforeVat * 0.1; // 부가세 별도
       }
-      // inclusive인 경우 이미 포함되어 있으므로 0
       
       // 최종 총액
       const finalTotal = totalBeforeVat + vatAmount;
@@ -256,7 +247,7 @@ export function useMotionsenseQuote(initialData?: Partial<MotionsenseQuote>) {
         agency_fee: agencyFee,
         total_before_vat: totalBeforeVat,
         vat_amount: vatAmount,
-        discount_amount: formData.discount_amount,
+        discount_amount: formData.discount_amount || 0,
         final_total: finalTotal,
         total_cost: totalCost,
         total_profit: totalProfit,
@@ -265,24 +256,24 @@ export function useMotionsenseQuote(initialData?: Partial<MotionsenseQuote>) {
 
       setCalculation(calculationResult);
       
-      // 총액을 폼 데이터에 업데이트
-      updateFormData({ total_amount: finalTotal });
+      // 순환 의존성 방지: 총액을 별도로 업데이트하지 않고 계산 결과만 설정
       
     } catch (error) {
       console.error('견적서 계산 오류:', error);
+      setCalculation(null);
     } finally {
       setIsCalculating(false);
     }
-  }, [formData, updateFormData]);
+  }, [formData.groups, formData.agency_fee_rate, formData.discount_amount, formData.vat_type]);
 
-  // 폼 데이터 변경 시 자동 계산
+  // 폼 데이터 변경 시 자동 계산 (디바운스와 함께)
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       calculateQuote();
     }, 300); // 300ms 디바운스
 
     return () => clearTimeout(timeoutId);
-  }, [formData.groups, formData.agency_fee_rate, formData.discount_amount, formData.vat_type]);
+  }, [calculateQuote]);
 
   // 템플릿 적용
   const applyTemplate = useCallback((template: any) => {

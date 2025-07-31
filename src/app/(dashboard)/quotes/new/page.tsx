@@ -133,39 +133,58 @@ export default function NewMotionsenseQuotePage() {
     setMasterItems,
   } = quoteHook;
 
-  // 초기 데이터 로드
+  // 초기 데이터 로드 (안전한 초기화)
   useEffect(() => {
     const loadData = async () => {
       try {
+        console.log('견적서 페이지 초기화 시작');
         setLoading(true);
         setError(null);
         
-        // 안전한 초기화
-        await new Promise(resolve => setTimeout(resolve, 100)); // 약간의 지연으로 안정성 확보
-        
-        // 마스터 데이터 설정
-        if (setMasterItems) {
-          setMasterItems(mockMasterItems);
+        // 훅 상태 검증
+        if (!formData) {
+          throw new Error('견적서 폼 데이터 초기화 실패');
         }
         
-        // 기본 그룹 추가 (빈 상태인 경우)
-        if (formData && formData.groups && formData.groups.length === 0) {
-          if (addGroup) {
-            addGroup('행사 진행');
+        // 약간의 지연으로 안정성 확보
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        // 마스터 데이터 설정
+        try {
+          if (setMasterItems && typeof setMasterItems === 'function') {
+            setMasterItems(mockMasterItems);
+            console.log('마스터 품목 데이터 설정 완료:', mockMasterItems.length);
           }
+        } catch (masterError) {
+          console.warn('마스터 품목 설정 실패:', masterError);
+        }
+        
+        // 기본 그룹 추가 (안전한 체크)
+        try {
+          if (formData.groups.length === 0 && addGroup && typeof addGroup === 'function') {
+            addGroup('행사 진행');
+            console.log('기본 그룹 추가 완료');
+          }
+        } catch (groupError) {
+          console.warn('기본 그룹 추가 실패:', groupError);
         }
         
         setInitialized(true);
+        console.log('견적서 페이지 초기화 완료');
         
       } catch (error) {
-        console.error('데이터 로드 실패:', error);
-        setError(error instanceof Error ? error.message : '페이지 초기화 중 오류가 발생했습니다.');
+        console.error('견적서 페이지 초기화 실패:', error);
+        const errorMessage = error instanceof Error ? error.message : '페이지 초기화 중 예상치 못한 오류가 발생했습니다.';
+        setError(errorMessage);
       } finally {
         setLoading(false);
       }
     };
 
-    loadData();
+    // 약간의 지연 후 로드 (DOM이 완전히 준비된 후)
+    const initTimeout = setTimeout(loadData, 100);
+    
+    return () => clearTimeout(initTimeout);
   }, []);  // 의존성 배열 단순화
 
   // 고객 선택 핸들러
