@@ -136,6 +136,9 @@ temp/
 # Local Netlify folder
 .netlify
 
+# Work directory (external tools)
+work/
+
 # Sentry Config File
 .sentryclirc
 

@@ -109,63 +109,29 @@ export default function NewMotionsenseQuotePage() {
   const [selectedGroupIndex, setSelectedGroupIndex] = useState(0);
   const [selectedItemIndex, setSelectedItemIndex] = useState(0);
 
-  // 기본값으로 안전한 상태 초기화
-  const [localFormData, setLocalFormData] = useState({
-    project_title: '',
-    customer_id: '',
-    customer_name_snapshot: '',
-    issue_date: new Date().toISOString().split('T')[0],
-    status: 'draft' as const,
-    vat_type: 'exclusive' as const,
-    discount_amount: 0,
-    agency_fee_rate: 0.15,
-    version: 1,
-    groups: [],
-    show_cost_management: false,
-    auto_save_enabled: true,
-  });
-
-  // 훅 초기화 시도
-  let quoteHook: any = null;
-  try {
-    quoteHook = useMotionsenseQuote();
-  } catch (hookError) {
-    console.error('Quote hook 초기화 실패:', hookError);
-  }
+  // 안전한 훅 초기화 - React Rules of Hooks 준수
+  const quoteHook = useMotionsenseQuote();
   
-  // 안전한 구조 분해 - 훅이 실패해도 기본값 사용
+  // 훅에서 안전하게 값 추출
   const {
-    formData = localFormData,
-    calculation = null,
-    isDirty = false,
-    isCalculating = false,
-    updateFormData = (updates: any) => {
-      setLocalFormData(prev => ({ ...prev, ...updates }));
-    },
-    addGroup = (name: string = '새 그룹') => {
-      const newGroup = {
-        name,
-        sort_order: localFormData.groups.length,
-        include_in_fee: true,
-        items: [],
-      };
-      setLocalFormData(prev => ({
-        ...prev,
-        groups: [...prev.groups, newGroup],
-      }));
-    },
-    updateGroup = () => {},
-    removeGroup = () => {},
-    addItem = () => {},
-    updateItem = () => {},
-    removeItem = () => {},
-    addDetailFromMaster = () => {},
-    addDetail = () => {},
-    updateDetail = () => {},
-    removeDetail = () => {},
-    applyTemplate = () => {},
-    setMasterItems = () => {},
-  } = quoteHook || {};
+    formData,
+    calculation,
+    isDirty,
+    isCalculating,
+    updateFormData,
+    addGroup,
+    updateGroup,
+    removeGroup,
+    addItem,
+    updateItem,
+    removeItem,
+    addDetailFromMaster,
+    addDetail,
+    updateDetail,
+    removeDetail,
+    applyTemplate,
+    setMasterItems,
+  } = quoteHook;
 
   // 초기 데이터 로드
   useEffect(() => {
@@ -177,26 +143,15 @@ export default function NewMotionsenseQuotePage() {
         // 안전한 초기화
         await new Promise(resolve => setTimeout(resolve, 100)); // 약간의 지연으로 안정성 확보
         
-        // 마스터 데이터 설정 (훅이 있는 경우만)
-        if (setMasterItems && typeof setMasterItems === 'function') {
+        // 마스터 데이터 설정
+        if (setMasterItems) {
           setMasterItems(mockMasterItems);
         }
         
-        // 기본 구조 추가 (빈 그룹이 있는 경우)
-        if (formData && Array.isArray(formData.groups) && formData.groups.length === 0) {
-          if (addGroup && typeof addGroup === 'function') {
+        // 기본 그룹 추가 (빈 상태인 경우)
+        if (formData && formData.groups && formData.groups.length === 0) {
+          if (addGroup) {
             addGroup('행사 진행');
-          } else {
-            // Fallback: 로컬 상태로 추가
-            setLocalFormData(prev => ({
-              ...prev,
-              groups: [{
-                name: '행사 진행',
-                sort_order: 0,
-                include_in_fee: true,
-                items: []
-              }]
-            }));
           }
         }
         
@@ -216,22 +171,11 @@ export default function NewMotionsenseQuotePage() {
   // 고객 선택 핸들러
   const handleClientChange = (client: any) => {
     setSelectedClient(client);
-    try {
-      if (updateFormData && typeof updateFormData === 'function') {
-        updateFormData({
-          customer_id: client?.id || '',
-          customer_name_snapshot: client?.name || '',
-        });
-      } else {
-        // Fallback: 로컬 상태 업데이트
-        setLocalFormData(prev => ({
-          ...prev,
-          customer_id: client?.id || '',
-          customer_name_snapshot: client?.name || '',
-        }));
-      }
-    } catch (error) {
-      console.error('고객 선택 처리 실패:', error);
+    if (updateFormData) {
+      updateFormData({
+        customer_id: client?.id || '',
+        customer_name_snapshot: client?.name || '',
+      });
     }
   };
 
@@ -361,17 +305,7 @@ export default function NewMotionsenseQuotePage() {
               control={
                 <Switch
                   checked={formData?.show_cost_management || false}
-                  onChange={(e) => {
-                    try {
-                      if (updateFormData && typeof updateFormData === 'function') {
-                        updateFormData({ show_cost_management: e.target.checked });
-                      } else {
-                        setLocalFormData(prev => ({ ...prev, show_cost_management: e.target.checked }));
-                      }
-                    } catch (error) {
-                      console.error('원가 관리 설정 실패:', error);
-                    }
-                  }}
+                  onChange={(e) => updateFormData({ show_cost_management: e.target.checked })}
                 />
               }
               label="원가 관리"
@@ -411,17 +345,7 @@ export default function NewMotionsenseQuotePage() {
                     <TextField
                       label="프로젝트명"
                       value={formData?.project_title || ''}
-                      onChange={(e) => {
-                        try {
-                          if (updateFormData && typeof updateFormData === 'function') {
-                            updateFormData({ project_title: e.target.value });
-                          } else {
-                            setLocalFormData(prev => ({ ...prev, project_title: e.target.value }));
-                          }
-                        } catch (error) {
-                          console.error('프로젝트명 업데이트 실패:', error);
-                        }
-                      }}
+                      onChange={(e) => updateFormData({ project_title: e.target.value })}
                       required
                       fullWidth
                     />
@@ -432,17 +356,7 @@ export default function NewMotionsenseQuotePage() {
                       label="발행일"
                       type="date"
                       value={formData?.issue_date || new Date().toISOString().split('T')[0]}
-                      onChange={(e) => {
-                        try {
-                          if (updateFormData && typeof updateFormData === 'function') {
-                            updateFormData({ issue_date: e.target.value });
-                          } else {
-                            setLocalFormData(prev => ({ ...prev, issue_date: e.target.value }));
-                          }
-                        } catch (error) {
-                          console.error('발행일 업데이트 실패:', error);
-                        }
-                      }}
+                      onChange={(e) => updateFormData({ issue_date: e.target.value })}
                       InputLabelProps={{ shrink: true }}
                       fullWidth
                     />
@@ -454,16 +368,8 @@ export default function NewMotionsenseQuotePage() {
                       type="number"
                       value={(formData?.agency_fee_rate || 0.15) * 100}
                       onChange={(e) => {
-                        try {
-                          const newRate = Number(e.target.value) / 100;
-                          if (updateFormData && typeof updateFormData === 'function') {
-                            updateFormData({ agency_fee_rate: newRate });
-                          } else {
-                            setLocalFormData(prev => ({ ...prev, agency_fee_rate: newRate }));
-                          }
-                        } catch (error) {
-                          console.error('수수료율 업데이트 실패:', error);
-                        }
+                        const newRate = Number(e.target.value) / 100;
+                        updateFormData({ agency_fee_rate: newRate });
                       }}
                       inputProps={{ min: 0, max: 100, step: 0.1 }}
                       fullWidth
@@ -476,16 +382,8 @@ export default function NewMotionsenseQuotePage() {
                       type="number"
                       value={formData?.discount_amount || 0}
                       onChange={(e) => {
-                        try {
-                          const newAmount = Number(e.target.value);
-                          if (updateFormData && typeof updateFormData === 'function') {
-                            updateFormData({ discount_amount: newAmount });
-                          } else {
-                            setLocalFormData(prev => ({ ...prev, discount_amount: newAmount }));
-                          }
-                        } catch (error) {
-                          console.error('할인 금액 업데이트 실패:', error);
-                        }
+                        const newAmount = Number(e.target.value);
+                        updateFormData({ discount_amount: newAmount });
                       }}
                       inputProps={{ min: 0 }}
                       fullWidth
@@ -503,27 +401,7 @@ export default function NewMotionsenseQuotePage() {
                   <Button
                     variant="contained"
                     startIcon={<Add />}
-                    onClick={() => {
-                      try {
-                        if (addGroup && typeof addGroup === 'function') {
-                          addGroup();
-                        } else {
-                          // Fallback: 로컬 상태로 그룹 추가
-                          const newGroup = {
-                            name: '새 그룹',
-                            sort_order: (formData?.groups || []).length,
-                            include_in_fee: true,
-                            items: [],
-                          };
-                          setLocalFormData(prev => ({
-                            ...prev,
-                            groups: [...(prev.groups || []), newGroup],
-                          }));
-                        }
-                      } catch (error) {
-                        console.error('그룹 추가 실패:', error);
-                      }
-                    }}
+                    onClick={() => addGroup()}
                     size="small"
                   >
                     그룹 추가

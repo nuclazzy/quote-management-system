@@ -26,7 +26,7 @@
 			"args": [
 				"run",
 				"--directory",
-				"/Users/lewis/Desktop/견적서 프로그램/serena",
+				"/Users/lewis/Desktop/견적서 프로그램/work/serena",
 				"serena-mcp-server",
 				"--context",
 				"ide-assistant",
