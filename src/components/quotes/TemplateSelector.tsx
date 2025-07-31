@@ -125,19 +125,20 @@ export default function TemplateSelector({ onApplyTemplate }: TemplateSelectorPr
           <Grid container spacing={2}>
             {DUMMY_TEMPLATES.map((template) => (
               <Grid item xs={12} sm={6} md={3} key={template.id}>
-                <Card 
-                  variant="outlined" 
+                <Box
                   sx={{ 
+                    border: '1px solid #e0e0e0',
+                    borderRadius: 1,
+                    bgcolor: 'white',
                     cursor: 'pointer',
-                    transition: 'all 0.2s',
+                    transition: 'border-color 0.2s',
                     '&:hover': {
-                      transform: 'translateY(-2px)',
-                      boxShadow: theme.shadows[4]
+                      borderColor: 'primary.main'
                     }
                   }}
                   onClick={() => handleTemplateSelect(template)}
                 >
-                  <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                  <Box sx={{ p: 2 }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
                       <Typography variant="subtitle2" fontWeight="bold">
                         {template.name}
@@ -165,8 +166,8 @@ export default function TemplateSelector({ onApplyTemplate }: TemplateSelectorPr
                     <Typography variant="subtitle2" color="primary" fontWeight="bold">
                       예상 금액: {template.estimated_total.toLocaleString()}원
                     </Typography>
-                  </CardContent>
-                </Card>
+                  </Box>
+                </Box>
               </Grid>
             ))}
           </Grid>
@@ -200,10 +201,25 @@ export default function TemplateSelector({ onApplyTemplate }: TemplateSelectorPr
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setConfirmDialog(false)}>
+          <Button 
+            onClick={() => setConfirmDialog(false)}
+            sx={{ 
+              boxShadow: 'none',
+              '&:hover': { boxShadow: 'none' }
+            }}
+          >
             취소
           </Button>
-          <Button onClick={handleConfirmApply} variant="contained">
+          <Button 
+            onClick={handleConfirmApply} 
+            variant="contained"
+            sx={{ 
+              bgcolor: 'primary.main',
+              '&:hover': { bgcolor: 'primary.dark' },
+              boxShadow: 'none',
+              '&:hover': { boxShadow: 'none' }
+            }}
+          >
             적용하기
           </Button>
         </DialogActions>

@@ -155,6 +155,10 @@ export default function QuoteNewPage() {
                   startIcon={<AddIcon />}
                   onClick={() => addGroup?.('새 그룹')}
                   size="small"
+                  sx={{ 
+                    boxShadow: 'none',
+                    '&:hover': { boxShadow: 'none' }
+                  }}
                 >
                   그룹 추가
                 </Button>
@@ -169,8 +173,8 @@ export default function QuoteNewPage() {
               ) : (
                 <Box>
                   {formData?.groups?.map((group, groupIndex) => (
-                    <Card key={groupIndex} variant="outlined" sx={{ mb: 2 }}>
-                      <CardContent>
+                    <Box key={groupIndex} sx={{ border: '1px solid #e0e0e0', borderRadius: 1, mb: 2, bgcolor: 'white' }}>
+                      <Box sx={{ p: 2 }}>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                           <TextField
                             label="그룹명"
@@ -189,7 +193,11 @@ export default function QuoteNewPage() {
                               startIcon={<AddIcon />}
                               onClick={() => addItem?.(groupIndex, '새 항목')}
                               size="small"
-                              sx={{ mr: 1 }}
+                              sx={{ 
+                                mr: 1,
+                                boxShadow: 'none',
+                                '&:hover': { boxShadow: 'none' }
+                              }}
                             >
                               항목 추가
                             </Button>
@@ -198,6 +206,10 @@ export default function QuoteNewPage() {
                               color="error"
                               onClick={() => removeGroup?.(groupIndex)}
                               size="small"
+                              sx={{ 
+                                boxShadow: 'none',
+                                '&:hover': { boxShadow: 'none' }
+                              }}
                             >
                               그룹 삭제
                             </Button>
@@ -215,8 +227,8 @@ export default function QuoteNewPage() {
                               const isExpanded = expandedItems[key];
                               
                               return (
-                                <Card key={itemIndex} variant="outlined" sx={{ mb: 1 }}>
-                                  <CardContent sx={{ pb: 1 }}>
+                                <Box key={itemIndex} sx={{ border: '1px solid #e0e0e0', borderRadius: 1, mb: 1, bgcolor: 'grey.50' }}>
+                                  <Box sx={{ p: 2, pb: 1 }}>
                                     {/* 항목 헤더 */}
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                       <TextField
@@ -231,6 +243,10 @@ export default function QuoteNewPage() {
                                         startIcon={<AddIcon />}
                                         onClick={() => addDetail?.(groupIndex, itemIndex)}
                                         size="small"
+                                        sx={{ 
+                                          boxShadow: 'none',
+                                          '&:hover': { boxShadow: 'none' }
+                                        }}
                                       >
                                         직접입력
                                       </Button>
@@ -238,6 +254,12 @@ export default function QuoteNewPage() {
                                         variant="contained"
                                         onClick={() => openMasterItemDialog(groupIndex, itemIndex)}
                                         size="small"
+                                        sx={{ 
+                                          bgcolor: 'primary.main',
+                                          '&:hover': { bgcolor: 'primary.dark' },
+                                          boxShadow: 'none',
+                                          '&:hover': { boxShadow: 'none' }
+                                        }}
                                       >
                                         품목선택
                                       </Button>
@@ -264,7 +286,7 @@ export default function QuoteNewPage() {
                                             세부항목을 추가하세요.
                                           </Typography>
                                         ) : (
-                                          <TableContainer component={Paper} variant="outlined">
+                                          <TableContainer sx={{ border: '1px solid #e0e0e0', borderRadius: 1, bgcolor: 'white' }}>
                                             <Table size="small">
                                               <TableHead>
                                                 <TableRow>
@@ -392,8 +414,8 @@ export default function QuoteNewPage() {
                                         )}
                                       </Box>
                                     </Collapse>
-                                  </CardContent>
-                                </Card>
+                                  </Box>
+                                </Box>
                               );
                             })}
                           </Box>
@@ -557,13 +579,27 @@ export default function QuoteNewPage() {
               )}
               
               <Box sx={{ mt: 3, display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <Button variant="contained" fullWidth disabled>
+                <Button 
+                  variant="contained" 
+                  fullWidth 
+                  disabled
+                  sx={{ 
+                    bgcolor: 'primary.main',
+                    '&:hover': { bgcolor: 'primary.dark' },
+                    boxShadow: 'none',
+                    '&:hover': { boxShadow: 'none' }
+                  }}
+                >
                   저장하기
                 </Button>
                 <Button 
                   variant="outlined" 
                   fullWidth
                   onClick={() => router.push('/quotes')}
+                  sx={{ 
+                    boxShadow: 'none',
+                    '&:hover': { boxShadow: 'none' }
+                  }}
                 >
                   취소
                 </Button>

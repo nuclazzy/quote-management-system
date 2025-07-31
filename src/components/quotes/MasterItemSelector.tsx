@@ -142,6 +142,12 @@ export default function MasterItemSelector({
                         size="small"
                         variant="contained"
                         onClick={() => handleSelect(item)}
+                        sx={{ 
+                          bgcolor: 'primary.main',
+                          '&:hover': { bgcolor: 'primary.dark' },
+                          boxShadow: 'none',
+                          '&:hover': { boxShadow: 'none' }
+                        }}
                       >
                         선택
                       </Button>
@@ -154,7 +160,13 @@ export default function MasterItemSelector({
         )}
       </DialogContent>
       <DialogActions>
-        <Button onClick={handleClose}>
+        <Button 
+          onClick={handleClose}
+          sx={{ 
+            boxShadow: 'none',
+            '&:hover': { boxShadow: 'none' }
+          }}
+        >
           취소
         </Button>
       </DialogActions>
