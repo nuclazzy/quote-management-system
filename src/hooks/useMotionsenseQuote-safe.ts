@@ -416,8 +416,44 @@ export function useMotionsenseQuoteSafe(initialData?: Partial<MotionsenseQuote>)
     return () => clearTimeout(timeoutId);
   }, [calculateQuote]);
 
-  // 더미 마스터 품목 데이터 로드
+  // 더미 마스터 품목 및 공급업체 데이터 로드
   useEffect(() => {
+    // 더미 공급업체 데이터
+    const dummySuppliers: Supplier[] = [
+      {
+        id: '1',
+        name: '크리에이티브 스튜디오',
+        contact_person: '김영상',
+        phone: '02-1234-5678',
+        email: 'info@creativestudio.co.kr',
+        is_active: true
+      },
+      {
+        id: '2',
+        name: '프로덕션 하우스',
+        contact_person: '이제작',
+        phone: '02-2345-6789',
+        email: 'contact@productionhouse.co.kr',
+        is_active: true
+      },
+      {
+        id: '3',
+        name: '테크 솔루션',
+        contact_person: '박개발',
+        phone: '02-3456-7890',
+        email: 'hello@techsolution.co.kr',
+        is_active: true
+      },
+      {
+        id: '4',
+        name: '디자인 워크스',
+        contact_person: '최디자인',
+        phone: '02-4567-8901',
+        email: 'design@designworks.co.kr',
+        is_active: true
+      }
+    ];
+    
     const dummyMasterItems: MasterItem[] = [
       {
         id: '1',
@@ -494,6 +530,7 @@ export function useMotionsenseQuoteSafe(initialData?: Partial<MotionsenseQuote>)
     ];
     
     setMasterItems(dummyMasterItems);
+    setSuppliers(dummySuppliers);
   }, []);
 
   console.log('useMotionsenseQuoteSafe 훅 반환 준비 완료');

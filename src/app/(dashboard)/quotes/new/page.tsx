@@ -1,7 +1,7 @@
 'use client';
 
-import { Container, Typography, Button, Box, TextField, Card, CardContent, Grid, Divider, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, IconButton, Collapse } from '@mui/material';
-import { Add as AddIcon, Delete as DeleteIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon } from '@mui/icons-material';
+import { Container, Typography, Button, Box, TextField, Card, CardContent, Grid, Divider, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, IconButton, Collapse, Select, MenuItem, FormControl, InputLabel, Switch, FormControlLabel, Autocomplete } from '@mui/material';
+import { Add as AddIcon, Delete as DeleteIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon, Settings as SettingsIcon } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { useMotionsenseQuoteSafe } from '@/hooks/useMotionsenseQuote-safe';
 import { useState } from 'react';
@@ -42,7 +42,8 @@ export default function QuoteNewPage() {
     calculation,
     isCalculating,
     masterItems,
-    applyTemplate
+    applyTemplate,
+    suppliers
   } = useMotionsenseQuoteSafe();
 
   // 항목 펼침/접힘 토글
@@ -272,6 +273,12 @@ export default function QuoteNewPage() {
                                                   <TableCell align="center">일수</TableCell>
                                                   <TableCell align="center">단위</TableCell>
                                                   <TableCell align="right">단가</TableCell>
+                                                  {formData?.show_cost_management && (
+                                                    <>
+                                                      <TableCell align="right">원가</TableCell>
+                                                      <TableCell>공급업체</TableCell>
+                                                    </>
+                                                  )}
                                                   <TableCell align="right">합계</TableCell>
                                                   <TableCell align="center">삭제</TableCell>
                                                 </TableRow>
@@ -327,6 +334,42 @@ export default function QuoteNewPage() {
                                                         inputProps={{ min: 0, step: 1000 }}
                                                       />
                                                     </TableCell>
+                                                    {formData?.show_cost_management && (
+                                                      <>
+                                                        <TableCell>
+                                                          <TextField
+                                                            type="number"
+                                                            value={detail.cost_price || 0}
+                                                            onChange={(e) => updateDetail?.(groupIndex, itemIndex, detailIndex, { cost_price: Number(e.target.value) || 0 })}
+                                                            size="small"
+                                                            sx={{ width: 100 }}
+                                                            inputProps={{ min: 0, step: 1000 }}
+                                                          />
+                                                        </TableCell>
+                                                        <TableCell>
+                                                          <Autocomplete
+                                                            options={suppliers}
+                                                            getOptionLabel={(option) => option.name}
+                                                            value={suppliers.find(s => s.id === detail.supplier_id) || null}
+                                                            onChange={(event, newValue) => {
+                                                              updateDetail?.(groupIndex, itemIndex, detailIndex, {
+                                                                supplier_id: newValue?.id,
+                                                                supplier_name_snapshot: newValue?.name || ''
+                                                              });
+                                                            }}
+                                                            size="small"
+                                                            sx={{ width: 150 }}
+                                                            renderInput={(params) => (
+                                                              <TextField
+                                                                {...params}
+                                                                placeholder="선택"
+                                                                size="small"
+                                                              />
+                                                            )}
+                                                          />
+                                                        </TableCell>
+                                                      </>
+                                                    )}
                                                     <TableCell align="right">
                                                       <Typography variant="body2" fontWeight="medium">
                                                         {(detail.quantity * detail.days * detail.unit_price).toLocaleString()}원
@@ -366,6 +409,72 @@ export default function QuoteNewPage() {
 
         {/* 계산 결과 사이드바 */}
         <Grid item xs={12} md={4}>
+          {/* 고급 설정 패널 */}
+          <Card sx={{ mb: 2 }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                <Typography variant="h6">
+                  고급 설정
+                </Typography>
+                <IconButton size="small">
+                  <SettingsIcon />
+                </IconButton>
+              </Box>
+
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={formData?.show_cost_management || false}
+                        onChange={(e) => updateFormData?.({ show_cost_management: e.target.checked })}
+                      />
+                    }
+                    label="원가 관리 표시"
+                  />
+                </Grid>
+
+                <Grid item xs={12}>
+                  <TextField
+                    label="대행 수수료율 (%)"
+                    type="number"
+                    value={(formData?.agency_fee_rate || 0) * 100}
+                    onChange={(e) => updateFormData?.({ agency_fee_rate: Number(e.target.value) / 100 || 0 })}
+                    fullWidth
+                    size="small"
+                    inputProps={{ min: 0, max: 100, step: 0.1 }}
+                  />
+                </Grid>
+
+                <Grid item xs={12}>
+                  <TextField
+                    label="할인 금액"
+                    type="number"
+                    value={formData?.discount_amount || 0}
+                    onChange={(e) => updateFormData?.({ discount_amount: Number(e.target.value) || 0 })}
+                    fullWidth
+                    size="small"
+                    inputProps={{ min: 0, step: 1000 }}
+                  />
+                </Grid>
+
+                <Grid item xs={12}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>부가세 유형</InputLabel>
+                    <Select
+                      value={formData?.vat_type || 'exclusive'}
+                      label="부가세 유형"
+                      onChange={(e) => updateFormData?.({ vat_type: e.target.value as 'exclusive' | 'inclusive' })}
+                    >
+                      <MenuItem value="exclusive">부가세 별도</MenuItem>
+                      <MenuItem value="inclusive">부가세 포함</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
+
           <Card sx={{ position: 'sticky', top: 20 }}>
             <CardContent>
               <Typography variant="h6" gutterBottom>
@@ -393,6 +502,13 @@ export default function QuoteNewPage() {
                   </Box>
                   
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                    <Typography variant="body2">할인</Typography>
+                    <Typography variant="body2" color="error">
+                      -{(calculation?.discount_amount || 0).toLocaleString()}원
+                    </Typography>
+                  </Box>
+                  
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                     <Typography variant="body2">부가세</Typography>
                     <Typography variant="body2">
                       {(calculation?.vat_amount || 0).toLocaleString()}원
@@ -407,6 +523,36 @@ export default function QuoteNewPage() {
                       {(calculation?.final_total || 0).toLocaleString()}원
                     </Typography>
                   </Box>
+
+                  {formData?.show_cost_management && (
+                    <>
+                      <Divider sx={{ my: 2 }} />
+                      <Typography variant="subtitle2" gutterBottom color="text.secondary">
+                        수익 분석
+                      </Typography>
+                      
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography variant="body2">총 원가</Typography>
+                        <Typography variant="body2" color="warning.main">
+                          {(calculation?.total_cost || 0).toLocaleString()}원
+                        </Typography>
+                      </Box>
+                      
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography variant="body2">총 수익</Typography>
+                        <Typography variant="body2" color="success.main">
+                          {(calculation?.total_profit || 0).toLocaleString()}원
+                        </Typography>
+                      </Box>
+                      
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <Typography variant="body2">수익률</Typography>
+                        <Typography variant="body2" fontWeight="medium" color="success.main">
+                          {(calculation?.profit_margin_percentage || 0).toFixed(1)}%
+                        </Typography>
+                      </Box>
+                    </>
+                  )}
                 </Box>
               )}
               
