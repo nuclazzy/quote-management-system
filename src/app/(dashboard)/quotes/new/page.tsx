@@ -23,7 +23,9 @@ import {
   Delete as DeleteIcon, 
   ExpandMore as ExpandMoreIcon, 
   ExpandLess as ExpandLessIcon, 
-  Settings as SettingsIcon 
+  Settings as SettingsIcon,
+  Save as SaveIcon,
+  PictureAsPdf as PdfIcon
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { useMotionsenseQuoteSafe } from '@/hooks/useMotionsenseQuote-safe';
@@ -48,6 +50,10 @@ export default function QuoteNewPage() {
     groupIndex: -1,
     itemIndex: -1
   });
+
+  // 저장 및 PDF 상태
+  const [isSaving, setIsSaving] = useState(false);
+  const [savedQuoteId, setSavedQuoteId] = useState<string | null>(null);
   
   // 안전한 훅 사용
   const { 
@@ -68,6 +74,88 @@ export default function QuoteNewPage() {
     applyTemplate,
     suppliers
   } = useMotionsenseQuoteSafe();
+
+  // 견적서 저장 함수
+  const handleSaveQuote = async () => {
+    if (!formData?.project_info?.name?.trim()) {
+      alert('프로젝트명을 입력해주세요.');
+      return;
+    }
+
+    if (!formData?.groups?.length || formData.groups.length === 0) {
+      alert('최소 하나 이상의 그룹을 추가해주세요.');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const response = await fetch('/api/quotes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...formData,
+          calculation: calculation,
+          status: 'draft'
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        setSavedQuoteId(result.data.id);
+        alert('견적서가 성공적으로 저장되었습니다.');
+      } else {
+        throw new Error(result.message || '저장에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('견적서 저장 실패:', error);
+      alert(error instanceof Error ? error.message : '견적서 저장에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // PDF 다운로드 함수
+  const handleDownloadPDF = async () => {
+    if (!savedQuoteId) {
+      alert('먼저 견적서를 저장해주세요.');
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/quotes/${savedQuoteId}/pdf`, {
+        method: 'GET',
+        headers: {
+          Accept: 'text/html',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('PDF 생성에 실패했습니다.');
+      }
+
+      const htmlContent = await response.text();
+      const printWindow = window.open('', '_blank');
+      
+      if (!printWindow) {
+        throw new Error('팝업이 차단되었습니다. 팝업을 허용해 주세요.');
+      }
+
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+
+      printWindow.onload = () => {
+        setTimeout(() => {
+          printWindow.print();
+        }, 500);
+      };
+    } catch (error) {
+      console.error('PDF 다운로드 실패:', error);
+      alert(error instanceof Error ? error.message : 'PDF 다운로드에 실패했습니다.');
+    }
+  };
 
   // 항목 펼침/접힘 토글
   const toggleItemExpansion = (groupIndex: number, itemIndex: number) => {
@@ -110,13 +198,52 @@ export default function QuoteNewPage() {
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       {/* 페이지 헤더 */}
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" gutterBottom>
-          새 견적서 작성
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          모션센스 견적서를 작성합니다.
-        </Typography>
+      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <Box>
+          <Typography variant="h4" gutterBottom>
+            새 견적서 작성
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            모션센스 견적서를 작성합니다.
+          </Typography>
+        </Box>
+        
+        {/* 저장 및 PDF 버튼 */}
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button
+            variant="contained"
+            startIcon={<SaveIcon />}
+            onClick={handleSaveQuote}
+            disabled={isSaving || !formData?.project_info?.name?.trim()}
+            sx={{
+              bgcolor: 'primary.main',
+              '&:hover': { bgcolor: 'primary.dark' },
+              boxShadow: 'none',
+              '&:hover': { boxShadow: 'none' }
+            }}
+          >
+            {isSaving ? '저장 중...' : '견적서 저장'}
+          </Button>
+          
+          <Button
+            variant="outlined"
+            startIcon={<PdfIcon />}
+            onClick={handleDownloadPDF}
+            disabled={!savedQuoteId}
+            sx={{
+              borderColor: 'primary.main',
+              color: 'primary.main',
+              '&:hover': { 
+                borderColor: 'primary.dark',
+                color: 'primary.dark',
+                boxShadow: 'none'
+              },
+              boxShadow: 'none'
+            }}
+          >
+            PDF 다운로드
+          </Button>
+        </Box>
       </Box>
 
       {/* 템플릿 선택 섹션 */}
