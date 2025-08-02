@@ -1,5 +1,6 @@
 import { supabase } from '../supabase/client';
 import { Profile, AuthUser } from '@/types/auth';
+import { secureLog } from '@/lib/utils/secure-logger';
 
 export class AuthService {
   /**
@@ -32,12 +33,86 @@ export class AuthService {
   }
 
   /**
-   * 로그아웃
+   * 완전한 로그아웃 프로세스 (보안 강화)
    */
   static async signOut() {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      throw new Error(error.message);
+    try {
+      // 1. Supabase 세션 무효화
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Supabase signOut error:', error);
+        // 에러가 있어도 클라이언트 정리는 계속 진행
+      }
+
+      // 2. 클라이언트 측 완전한 상태 정리
+      if (typeof window !== 'undefined') {
+        // localStorage 정리
+        const keysToRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && (
+            key.startsWith('supabase.') ||
+            key.startsWith('sb-') ||
+            key.includes('auth') ||
+            key.includes('session') ||
+            key.includes('user') ||
+            key.includes('quote') ||
+            key.includes('draft')
+          )) {
+            keysToRemove.push(key);
+          }
+        }
+        keysToRemove.forEach(key => localStorage.removeItem(key));
+
+        // sessionStorage 정리
+        const sessionKeysToRemove = [];
+        for (let i = 0; i < sessionStorage.length; i++) {
+          const key = sessionStorage.key(i);
+          if (key && (
+            key.startsWith('supabase.') ||
+            key.startsWith('sb-') ||
+            key.includes('auth') ||
+            key.includes('session') ||
+            key.includes('user') ||
+            key.includes('quote') ||
+            key.includes('draft')
+          )) {
+            sessionKeysToRemove.push(key);
+          }
+        }
+        sessionKeysToRemove.forEach(key => sessionStorage.removeItem(key));
+
+        // 쿠키 정리 (Supabase 관련)
+        document.cookie.split(';').forEach(cookie => {
+          const eqPos = cookie.indexOf('=');
+          const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
+          if (name.startsWith('sb-') || name.includes('supabase')) {
+            document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=${window.location.hostname}`;
+            document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+          }
+        });
+
+        // 브라우저 캐시 관련 헤더 설정을 위한 페이지 리로드 강제
+        // 이를 통해 메모리상의 임시 데이터도 정리
+        setTimeout(() => {
+          window.location.href = '/auth/login?logout=true';
+        }, 100);
+      }
+
+      // 3. 보안 로깅
+      secureLog.authEvent('logout', {
+        userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : 'server',
+      });
+
+    } catch (error) {
+      secureLog.error('Logout process error', error);
+      // 에러가 발생해도 기본적인 정리는 수행
+      if (typeof window !== 'undefined') {
+        localStorage.clear();
+        sessionStorage.clear();
+        window.location.href = '/auth/login?error=logout_failed';
+      }
+      throw new Error('로그아웃 처리 중 오류가 발생했습니다.');
     }
   }
 
@@ -54,8 +129,13 @@ export class AuthService {
       return null;
     }
 
-    // 도메인 체크
+    // 서버 측 도메인 체크 (보안 강화)
     if (!user.email?.endsWith('@motionsense.co.kr')) {
+      secureLog.authEvent('domain_violation', {
+        email: user.email,
+        userId: user.id,
+      });
+      
       await this.signOut();
       throw new Error(
         '접근이 제한된 도메인입니다. @motionsense.co.kr 계정을 사용해주세요.'
@@ -82,7 +162,7 @@ export class AuthService {
       .single();
 
     if (error) {
-      console.error('Profile fetch error:', error);
+      secureLog.error('Profile fetch error', error);
       return undefined;
     }
 
@@ -97,16 +177,15 @@ export class AuthService {
     email: string,
     fullName?: string
   ): Promise<Profile> {
-    console.log('🔄 AuthService.upsertProfile called with:', {
+    secureLog.debug('AuthService.upsertProfile called', {
       userId,
-      email,
+      email: email?.replace(/(.{2}).*@/, '$1***@'), // 이메일 마스킹
       fullName,
-      timestamp: new Date().toISOString(),
     });
 
     try {
       // 기존 프로필 확인
-      console.log('🔍 Checking for existing profile...');
+      secureLog.debug('Checking for existing profile...');
       const { data: existingProfile, error: fetchError } = await supabase
         .from('profiles')
         .select('*')
@@ -114,7 +193,7 @@ export class AuthService {
         .single();
 
       if (fetchError && fetchError.code !== 'PGRST116') {
-        console.error('❌ Error fetching existing profile:', fetchError);
+        secureLog.error('Error fetching existing profile', fetchError);
         throw new Error(`프로필 조회 실패: ${fetchError.message}`);
       }
 
@@ -122,16 +201,21 @@ export class AuthService {
         id: userId,
         email,
         full_name: fullName || email.split('@')[0],
-        role: email === 'lewis@motionsense.co.kr' ? 'super_admin' : 'user',
+        role: email === 'lewis@motionsense.co.kr' ? 'super_admin' : 'member',
         is_active: true,
         updated_at: new Date().toISOString(),
       };
 
-      console.log('📝 Profile data to upsert:', profileData);
+      secureLog.debug('Profile data to upsert', {
+        id: profileData.id,
+        email: profileData.email?.replace(/(.{2}).*@/, '$1***@'),
+        role: profileData.role,
+        is_active: profileData.is_active,
+      });
 
       if (existingProfile) {
         // 업데이트
-        console.log('🔄 Updating existing profile...');
+        secureLog.debug('Updating existing profile...');
         const { data, error } = await supabase
           .from('profiles')
           .update({
@@ -144,15 +228,15 @@ export class AuthService {
           .single();
 
         if (error) {
-          console.error('❌ Profile update error:', error);
+          secureLog.error('Profile update error', error);
           throw new Error(`프로필 업데이트 실패: ${error.message}`);
         }
 
-        console.log('✅ Profile update successful:', data);
+        secureLog.info('Profile update successful', { userId: data.id });
         return data;
       } else {
         // 새로 생성
-        console.log('🔄 Creating new profile...');
+        secureLog.debug('Creating new profile...');
         const { data, error } = await supabase
           .from('profiles')
           .insert(profileData)
@@ -160,18 +244,15 @@ export class AuthService {
           .single();
 
         if (error) {
-          console.error('❌ Profile insert error:', error);
+          secureLog.error('Profile insert error', error);
           throw new Error(`프로필 생성 실패: ${error.message}`);
         }
 
-        console.log('✅ Profile creation successful:', data);
+        secureLog.info('Profile creation successful', { userId: data.id });
         return data;
       }
     } catch (error) {
-      console.error('❌ upsertProfile failed:', {
-        error,
-        message: error instanceof Error ? error.message : error,
-      });
+      secureLog.error('upsertProfile failed', error);
       throw error;
     }
   }

@@ -16,7 +16,14 @@ import {
   InputLabel, 
   Switch, 
   FormControlLabel, 
-  Autocomplete 
+  Autocomplete,
+  Snackbar,
+  Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Chip
 } from '@mui/material';
 import { 
   Add as AddIcon, 
@@ -25,11 +32,17 @@ import {
   ExpandLess as ExpandLessIcon, 
   Settings as SettingsIcon,
   Save as SaveIcon,
-  PictureAsPdf as PdfIcon
+  PictureAsPdf as PdfIcon,
+  CloudDone as CloudDoneIcon,
+  CloudUpload as CloudUploadIcon,
+  Warning as WarningIcon,
+  Restore as RestoreIcon
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { useMotionsenseQuoteSafe } from '@/hooks/useMotionsenseQuote-safe';
-import { useState } from 'react';
+import { useAutoSave } from '@/hooks/useAutoSave';
+import { useFormProtection } from '@/hooks/useBeforeUnload';
+import { useState, useEffect, useCallback } from 'react';
 import MasterItemSelector from '@/components/quotes/MasterItemSelector';
 import TemplateSelector from '@/components/quotes/TemplateSelector';
 import { MasterItem } from '@/types/motionsense-quote';
@@ -55,6 +68,14 @@ export default function QuoteNewPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [savedQuoteId, setSavedQuoteId] = useState<string | null>(null);
   
+  // 자동 저장 및 페이지 보호 상태
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [showRecoveryDialog, setShowRecoveryDialog] = useState(false);
+  const [recoveredData, setRecoveredData] = useState<any>(null);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'info' | 'warning' | 'error'>('info');
+  
   // 안전한 훅 사용
   const { 
     formData, 
@@ -70,32 +91,64 @@ export default function QuoteNewPage() {
     removeDetail,
     calculation,
     isCalculating,
-    masterItems,
     applyTemplate,
-    suppliers
+    suppliers,
+    isDirty
   } = useMotionsenseQuoteSafe();
 
-  // 견적서 저장 함수
+  // 임시 저장 함수 (자동 저장용)  
+  const handleAutoSave = useCallback(async (data: any) => {
+    setAutoSaveStatus('saving');
+    try {
+      // 실제로는 서버에 저장하지 않고 로컬 스토리지만 사용
+      // 서버 저장은 사용자가 수동으로 저장할 때만 실행
+      await new Promise(resolve => setTimeout(resolve, 500)); // 시뮬레이션
+      setAutoSaveStatus('saved');
+      
+      // 3초 후 상태 초기화
+      setTimeout(() => {
+        setAutoSaveStatus('idle');
+      }, 3000);
+    } catch (error) {
+      console.error('자동 저장 실패:', error);
+      setAutoSaveStatus('error');
+      setTimeout(() => {
+        setAutoSaveStatus('idle');  
+      }, 3000);
+    }
+  }, []);
+
+  // 견적서 저장 함수 (수동 저장)
   const handleSaveQuote = async () => {
-    if (!formData?.project_info?.name?.trim()) {
-      alert('프로젝트명을 입력해주세요.');
+    if (!formData?.project_title?.trim()) {
+      showSnackbar('프로젝트명을 입력해주세요.', 'warning');
       return;
     }
 
     if (!formData?.groups?.length || formData.groups.length === 0) {
-      alert('최소 하나 이상의 그룹을 추가해주세요.');
+      showSnackbar('최소 하나 이상의 그룹을 추가해주세요.', 'warning');
       return;
     }
 
     setIsSaving(true);
     try {
-      const response = await fetch('/api/quotes', {
+      const response = await fetch('/api/motionsense-quotes', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          ...formData,
+          project_info: {
+            name: formData.project_title,
+            client_name: formData.customer_name_snapshot || '',
+            issue_date: formData.issue_date,
+            due_date: formData.issue_date, // 기본값으로 발행일과 동일하게 설정
+          },
+          groups: formData.groups,
+          agency_fee_rate: formData.agency_fee_rate,
+          discount_amount: formData.discount_amount,
+          vat_type: formData.vat_type,
+          show_cost_management: formData.show_cost_management,
           calculation: calculation,
           status: 'draft'
         }),
@@ -105,27 +158,37 @@ export default function QuoteNewPage() {
 
       if (response.ok && result.success) {
         setSavedQuoteId(result.data.id);
-        alert('견적서가 성공적으로 저장되었습니다.');
+        showSnackbar('견적서가 성공적으로 저장되었습니다.', 'success');
+        
+        // 저장 성공 시 임시 데이터 삭제
+        clearTempData?.();
       } else {
         throw new Error(result.message || '저장에 실패했습니다.');
       }
     } catch (error) {
       console.error('견적서 저장 실패:', error);
-      alert(error instanceof Error ? error.message : '견적서 저장에 실패했습니다.');
+      showSnackbar(error instanceof Error ? error.message : '견적서 저장에 실패했습니다.', 'error');
     } finally {
       setIsSaving(false);
     }
   };
 
+  // 스낵바 표시 함수
+  const showSnackbar = useCallback((message: string, severity: 'success' | 'info' | 'warning' | 'error' = 'info') => {
+    setSnackbarMessage(message);
+    setSnackbarSeverity(severity);
+    setSnackbarOpen(true);
+  }, []);
+
   // PDF 다운로드 함수
   const handleDownloadPDF = async () => {
     if (!savedQuoteId) {
-      alert('먼저 견적서를 저장해주세요.');
+      showSnackbar('먼저 견적서를 저장해주세요.', 'warning');
       return;
     }
 
     try {
-      const response = await fetch(`/api/quotes/${savedQuoteId}/pdf`, {
+      const response = await fetch(`/api/motionsense-quotes/${savedQuoteId}/pdf`, {
         method: 'GET',
         headers: {
           Accept: 'text/html',
@@ -149,11 +212,11 @@ export default function QuoteNewPage() {
       printWindow.onload = () => {
         setTimeout(() => {
           printWindow.print();
-        }, 500);
+        }, 1000); // 폰트 로딩을 위해 대기 시간 증가
       };
     } catch (error) {
       console.error('PDF 다운로드 실패:', error);
-      alert(error instanceof Error ? error.message : 'PDF 다운로드에 실패했습니다.');
+      showSnackbar(error instanceof Error ? error.message : 'PDF 다운로드에 실패했습니다.', 'error');
     }
   };
 
@@ -195,31 +258,126 @@ export default function QuoteNewPage() {
     }
   };
 
+  // 데이터 복구 처리
+  const handleRecoverData = useCallback(() => {
+    if (recoveredData) {
+      // 복구된 데이터를 전체적으로 적용
+      updateFormData?.(recoveredData);
+      
+      showSnackbar('임시 저장된 데이터를 복구했습니다.', 'success');
+      setShowRecoveryDialog(false);
+      setRecoveredData(null);
+      clearTempData?.();
+    }
+  }, [recoveredData, updateFormData, showSnackbar, clearTempData]);
+
+  // 데이터 복구 거부 처리
+  const handleDiscardRecovery = useCallback(() => {
+    setShowRecoveryDialog(false);
+    setRecoveredData(null);
+    clearTempData?.();
+    showSnackbar('임시 저장된 데이터를 삭제했습니다.', 'info');
+  }, [showSnackbar, clearTempData]);
+
+  // 자동 저장 훅 사용
+  const { recoverTempData, clearTempData } = useAutoSave({
+    data: formData,
+    onSave: handleAutoSave,
+    enabled: true,
+    delay: 3000, // 3초 후 자동 저장
+    key: 'quote_draft'
+  });
+
+  // 페이지 이탈 방지 훅 사용
+  useFormProtection(isDirty && !savedQuoteId, {
+    message: '변경사항이 저장되지 않았습니다. 정말 페이지를 떠나시겠습니까?'
+  });
+
+  // 컴포넌트 마운트 시 임시 저장된 데이터가 있는지 확인
+  useEffect(() => {
+    const tempData = recoverTempData?.();
+    if (tempData && Object.keys(tempData).length > 0) {
+      // 현재 폼에 데이터가 거의 없는 경우에만 복구 다이얼로그 표시
+      const hasMinimalData = !formData?.project_title && (!formData?.groups || formData.groups.length === 0);
+      
+      if (hasMinimalData) {
+        setRecoveredData(tempData);
+        setShowRecoveryDialog(true);
+      }
+    }
+  }, [recoverTempData, formData?.project_title, formData?.groups]);
+
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      {/* 페이지 헤더 */}
-      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <Box>
-          <Typography variant="h4" gutterBottom>
+    <Container maxWidth="lg" sx={{ py: { xs: 2, sm: 4 }, px: { xs: 2, sm: 3 } }}>
+      {/* 페이지 헤더 - 모바일 최적화 */}
+      <Box sx={{ 
+        mb: 4, 
+        display: 'flex', 
+        flexDirection: { xs: 'column', sm: 'row' },
+        justifyContent: 'space-between', 
+        alignItems: { xs: 'flex-start', sm: 'flex-start' },
+        gap: { xs: 3, sm: 2 }
+      }}>
+        <Box sx={{ flex: 1 }}>
+          <Typography variant="h4" gutterBottom sx={{ fontSize: { xs: '1.75rem', sm: '2.125rem' } }}>
             새 견적서 작성
           </Typography>
-          <Typography variant="body1" color="text.secondary">
-            모션센스 견적서를 작성합니다.
-          </Typography>
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: { xs: 1, sm: 2 },
+            flexDirection: { xs: 'column', sm: 'row' },
+            alignItems: { xs: 'flex-start', sm: 'center' }
+          }}>
+            <Typography variant="body1" color="text.secondary" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+              모션센스 견적서를 작성합니다.
+            </Typography>
+            
+            {/* 자동 저장 상태 표시 */}
+            {autoSaveStatus !== 'idle' && (
+              <Chip
+                size="small"
+                icon={
+                  autoSaveStatus === 'saving' ? <CloudUploadIcon /> :
+                  autoSaveStatus === 'saved' ? <CloudDoneIcon /> :
+                  autoSaveStatus === 'error' ? <WarningIcon /> : undefined
+                }
+                label={
+                  autoSaveStatus === 'saving' ? '저장 중...' :
+                  autoSaveStatus === 'saved' ? '자동 저장됨' :
+                  autoSaveStatus === 'error' ? '저장 실패' : ''
+                }
+                color={
+                  autoSaveStatus === 'saving' ? 'primary' :
+                  autoSaveStatus === 'saved' ? 'success' :
+                  autoSaveStatus === 'error' ? 'error' : 'default'
+                }
+                variant="outlined"
+                sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
+              />
+            )}
+          </Box>
         </Box>
         
-        {/* 저장 및 PDF 버튼 */}
-        <Box sx={{ display: 'flex', gap: 2 }}>
+        {/* 저장 및 PDF 버튼 - 모바일 최적화 */}
+        <Box sx={{ 
+          display: 'flex', 
+          gap: { xs: 1, sm: 2 },
+          flexDirection: { xs: 'column', sm: 'row' },
+          alignItems: { xs: 'stretch', sm: 'center' }
+        }}>
           <Button
             variant="contained"
             startIcon={<SaveIcon />}
             onClick={handleSaveQuote}
-            disabled={isSaving || !formData?.project_info?.name?.trim()}
+            disabled={isSaving || !formData?.project_title?.trim()}
             sx={{
               bgcolor: 'primary.main',
               '&:hover': { bgcolor: 'primary.dark' },
               boxShadow: 'none',
-              '&:hover': { boxShadow: 'none' }
+              '&:hover': { boxShadow: 'none' },
+              minHeight: 44, // 모바일 터치 타겟 크기
+              fontSize: { xs: '0.875rem', sm: '0.875rem' }
             }}
           >
             {isSaving ? '저장 중...' : '견적서 저장'}
@@ -238,7 +396,9 @@ export default function QuoteNewPage() {
                 color: 'primary.dark',
                 boxShadow: 'none'
               },
-              boxShadow: 'none'
+              boxShadow: 'none',
+              minHeight: 44, // 모바일 터치 타겟 크기
+              fontSize: { xs: '0.875rem', sm: '0.875rem' }
             }}
           >
             PDF 다운로드
@@ -265,6 +425,8 @@ export default function QuoteNewPage() {
                   onChange={(e) => updateFormData?.({ project_title: e.target.value })}
                   fullWidth
                   placeholder="프로젝트명을 입력하세요"
+                  error={!formData?.project_title?.trim()}
+                  helperText={!formData?.project_title?.trim() ? '프로젝트명은 필수 입력 항목입니다.' : ''}
                 />
               </Grid>
               
@@ -347,7 +509,11 @@ export default function QuoteNewPage() {
                             />
                           }
                           label="대행수수료 적용"
-                          sx={{ mr: 2, whiteSpace: 'nowrap' }}
+                          sx={{ 
+                            mr: { xs: 0, sm: 2 }, 
+                            mb: { xs: 1, sm: 0 },
+                            whiteSpace: { xs: 'normal', sm: 'nowrap' }
+                          }}
                         />
                         <Box>
                           <Button
@@ -391,8 +557,13 @@ export default function QuoteNewPage() {
                             return (
                               <Box key={itemIndex} sx={{ border: '1px solid #e0e0e0', borderRadius: 1, mb: 1, bgcolor: 'grey.50' }}>
                                 <Box sx={{ p: 2, pb: 1 }}>
-                                  {/* 항목 헤더 */}
-                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  {/* 항목 헤더 - 모바일 최적화 */}
+                                  <Box sx={{ 
+                                    display: 'flex', 
+                                    flexDirection: { xs: 'column', sm: 'row' },
+                                    alignItems: { xs: 'stretch', sm: 'center' }, 
+                                    gap: { xs: 2, sm: 1 }
+                                  }}>
                                     <TextField
                                       label="항목명"
                                       value={item.name}
@@ -400,44 +571,61 @@ export default function QuoteNewPage() {
                                       size="small"
                                       sx={{ flexGrow: 1 }}
                                     />
-                                    <Button
-                                      variant="outlined"
-                                      startIcon={<AddIcon />}
-                                      onClick={() => addDetail?.(groupIndex, itemIndex)}
-                                      size="small"
-                                      sx={{ 
-                                        boxShadow: 'none',
-                                        '&:hover': { boxShadow: 'none' }
-                                      }}
-                                    >
-                                      직접입력
-                                    </Button>
-                                    <Button
-                                      variant="contained"
-                                      onClick={() => openMasterItemDialog(groupIndex, itemIndex)}
-                                      size="small"
-                                      sx={{ 
-                                        bgcolor: 'primary.main',
-                                        '&:hover': { bgcolor: 'primary.dark' },
-                                        boxShadow: 'none',
-                                        '&:hover': { boxShadow: 'none' }
-                                      }}
-                                    >
-                                      품목선택
-                                    </Button>
-                                    <IconButton
-                                      onClick={() => toggleItemExpansion(groupIndex, itemIndex)}
-                                      size="small"
-                                    >
-                                      {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                                    </IconButton>
-                                    <IconButton
-                                      onClick={() => removeItem?.(groupIndex, itemIndex)}
-                                      size="small"
-                                      color="error"
-                                    >
-                                      <DeleteIcon />
-                                    </IconButton>
+                                    
+                                    {/* 모바일에서는 버튼들을 별도 행으로 */}
+                                    <Box sx={{ 
+                                      display: 'flex', 
+                                      gap: 1,
+                                      justifyContent: { xs: 'stretch', sm: 'flex-end' },
+                                      flexWrap: { xs: 'wrap', sm: 'nowrap' }
+                                    }}>
+                                      <Button
+                                        variant="outlined"
+                                        startIcon={<AddIcon />}
+                                        onClick={() => addDetail?.(groupIndex, itemIndex)}
+                                        size="small"
+                                        sx={{ 
+                                          boxShadow: 'none',
+                                          '&:hover': { boxShadow: 'none' },
+                                          minHeight: 36,
+                                          flex: { xs: '1', sm: 'none' }
+                                        }}
+                                      >
+                                        직접입력
+                                      </Button>
+                                      <Button
+                                        variant="contained"
+                                        onClick={() => openMasterItemDialog(groupIndex, itemIndex)}
+                                        size="small"
+                                        sx={{ 
+                                          bgcolor: 'primary.main',
+                                          '&:hover': { bgcolor: 'primary.dark' },
+                                          boxShadow: 'none',
+                                          '&:hover': { boxShadow: 'none' },
+                                          minHeight: 36,
+                                          flex: { xs: '1', sm: 'none' }
+                                        }}
+                                      >
+                                        품목선택
+                                      </Button>
+                                      <IconButton
+                                        onClick={() => toggleItemExpansion(groupIndex, itemIndex)}
+                                        size="small"
+                                        aria-label={isExpanded ? "세부 항목 접기" : "세부 항목 펼치기"}
+                                        sx={{ minWidth: 36, minHeight: 36 }}
+                                      >
+                                        {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                                      </IconButton>
+                                      <IconButton
+                                        onClick={() => removeItem?.(groupIndex, itemIndex)}
+                                        size="small"
+                                        color="error"
+                                        aria-label="항목 삭제"
+                                        sx={{ minWidth: 36, minHeight: 36 }}
+                                      >
+                                        <DeleteIcon />
+                                      </IconButton>
+                                    </Box>
                                   </Box>
 
                                   {/* 세부 항목들 */}
@@ -469,8 +657,8 @@ export default function QuoteNewPage() {
                                                   />
                                                 </Grid>
                                                 
-                                                {/* 첫 번째 행: 수량, 일수, 단위 */}
-                                                <Grid item xs={4}>
+                                                {/* 첫 번째 행: 수량, 일수, 단위 - 모바일 최적화 */}
+                                                <Grid item xs={6} sm={4}>
                                                   <TextField
                                                     label="수량"
                                                     type="number"
@@ -478,10 +666,14 @@ export default function QuoteNewPage() {
                                                     onChange={(e) => updateDetail?.(groupIndex, itemIndex, detailIndex, { quantity: Number(e.target.value) || 0 })}
                                                     size="small"
                                                     fullWidth
-                                                    inputProps={{ min: 0, step: 0.1 }}
+                                                    inputProps={{ 
+                                                      min: 0, 
+                                                      step: 0.1,
+                                                      inputMode: 'decimal' // 모바일 숫자 키보드
+                                                    }}
                                                   />
                                                 </Grid>
-                                                <Grid item xs={4}>
+                                                <Grid item xs={6} sm={4}>
                                                   <TextField
                                                     label="일수"
                                                     type="number"
@@ -489,10 +681,14 @@ export default function QuoteNewPage() {
                                                     onChange={(e) => updateDetail?.(groupIndex, itemIndex, detailIndex, { days: Number(e.target.value) || 0 })}
                                                     size="small"
                                                     fullWidth
-                                                    inputProps={{ min: 0, step: 0.5 }}
+                                                    inputProps={{ 
+                                                      min: 0, 
+                                                      step: 0.5,
+                                                      inputMode: 'decimal' // 모바일 숫자 키보드
+                                                    }}
                                                   />
                                                 </Grid>
-                                                <Grid item xs={4}>
+                                                <Grid item xs={12} sm={4}>
                                                   <TextField
                                                     label="단위"
                                                     value={detail.unit}
@@ -503,8 +699,8 @@ export default function QuoteNewPage() {
                                                   />
                                                 </Grid>
                                                 
-                                                {/* 두 번째 행: 단가, 원가 관리 정보 */}
-                                                <Grid item xs={formData?.show_cost_management ? 6 : 12}>
+                                                {/* 두 번째 행: 단가, 원가 관리 정보 - 모바일 최적화 */}
+                                                <Grid item xs={12} sm={formData?.show_cost_management ? 6 : 12}>
                                                   <TextField
                                                     label="단가"
                                                     type="number"
@@ -512,12 +708,16 @@ export default function QuoteNewPage() {
                                                     onChange={(e) => updateDetail?.(groupIndex, itemIndex, detailIndex, { unit_price: Number(e.target.value) || 0 })}
                                                     size="small"
                                                     fullWidth
-                                                    inputProps={{ min: 0, step: 1000 }}
+                                                    inputProps={{ 
+                                                      min: 0, 
+                                                      step: 1000,
+                                                      inputMode: 'numeric' // 모바일 숫자 키보드
+                                                    }}
                                                   />
                                                 </Grid>
                                                 
                                                 {formData?.show_cost_management && (
-                                                  <Grid item xs={6}>
+                                                  <Grid item xs={12} sm={6}>
                                                     <TextField
                                                       label="원가"
                                                       type="number"
@@ -525,7 +725,11 @@ export default function QuoteNewPage() {
                                                       onChange={(e) => updateDetail?.(groupIndex, itemIndex, detailIndex, { cost_price: Number(e.target.value) || 0 })}
                                                       size="small"
                                                       fullWidth
-                                                      inputProps={{ min: 0, step: 1000 }}
+                                                      inputProps={{ 
+                                                        min: 0, 
+                                                        step: 1000,
+                                                        inputMode: 'numeric' // 모바일 숫자 키보드
+                                                      }}
                                                     />
                                                   </Grid>
                                                 )}
@@ -573,6 +777,7 @@ export default function QuoteNewPage() {
                                                       onClick={() => removeDetail?.(groupIndex, itemIndex, detailIndex)}
                                                       size="small"
                                                       color="error"
+                                                      aria-label="세부 항목 삭제"
                                                       sx={{
                                                         border: '1px solid',
                                                         borderColor: 'error.main',
@@ -641,7 +846,12 @@ export default function QuoteNewPage() {
                   onChange={(e) => updateFormData?.({ agency_fee_rate: Number(e.target.value) / 100 || 0 })}
                   fullWidth
                   size="small"
-                  inputProps={{ min: 0, max: 100, step: 0.1 }}
+                  inputProps={{ 
+                    min: 0, 
+                    max: 100, 
+                    step: 0.1,
+                    inputMode: 'decimal' // 모바일 숫자 키보드
+                  }}
                 />
               </Grid>
 
@@ -653,7 +863,11 @@ export default function QuoteNewPage() {
                   onChange={(e) => updateFormData?.({ discount_amount: Number(e.target.value) || 0 })}
                   fullWidth
                   size="small"
-                  inputProps={{ min: 0, step: 1000 }}
+                  inputProps={{ 
+                    min: 0, 
+                    step: 1000,
+                    inputMode: 'numeric' // 모바일 숫자 키보드
+                  }}
                 />
               </Grid>
 
@@ -673,7 +887,14 @@ export default function QuoteNewPage() {
             </Grid>
           </Box>
 
-          <Box sx={{ border: '1px solid #e0e0e0', borderRadius: 1, bgcolor: 'white', position: 'sticky', top: 20, p: 3 }}>
+          <Box sx={{ 
+            border: '1px solid #e0e0e0', 
+            borderRadius: 1, 
+            bgcolor: 'white', 
+            position: { xs: 'static', md: 'sticky' }, // 모바일에서는 sticky 해제
+            top: { md: 20 }, 
+            p: 3 
+          }}>
             <Typography variant="h6" gutterBottom>
               견적 금액
             </Typography>
@@ -797,19 +1018,6 @@ export default function QuoteNewPage() {
             
             <Box sx={{ mt: 3, display: 'flex', flexDirection: 'column', gap: 1 }}>
               <Button 
-                variant="contained" 
-                fullWidth 
-                disabled
-                sx={{ 
-                  bgcolor: 'primary.main',
-                  '&:hover': { bgcolor: 'primary.dark' },
-                  boxShadow: 'none',
-                  '&:hover': { boxShadow: 'none' }
-                }}
-              >
-                저장하기
-              </Button>
-              <Button 
                 variant="outlined" 
                 fullWidth
                 onClick={() => router.push('/quotes')}
@@ -818,7 +1026,7 @@ export default function QuoteNewPage() {
                   '&:hover': { boxShadow: 'none' }
                 }}
               >
-                취소
+                목록으로 돌아가기
               </Button>
             </Box>
           </Box>
@@ -830,8 +1038,68 @@ export default function QuoteNewPage() {
         open={masterItemDialog.open}
         onClose={closeMasterItemDialog}
         onSelect={handleMasterItemSelect}
-        masterItems={masterItems}
       />
+
+      {/* 데이터 복구 다이얼로그 */}
+      <Dialog
+        open={showRecoveryDialog}
+        onClose={() => {}} // 외부 클릭으로 닫기 방지
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <RestoreIcon color="primary" />
+          임시 저장된 데이터 발견
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" gutterBottom>
+            이전에 작성하던 견적서 데이터가 임시 저장되어 있습니다.
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            복구하시겠습니까? 아니면 새로 시작하시겠습니까?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={handleDiscardRecovery}
+            color="inherit"
+            variant="outlined"
+          >
+            새로 시작
+          </Button>
+          <Button
+            onClick={handleRecoverData}
+            color="primary"
+            variant="contained"
+            startIcon={<RestoreIcon />}
+          >
+            데이터 복구
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 스낵바 */}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={6000}
+        onClose={() => setSnackbarOpen(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        sx={{
+          bottom: { xs: 80, sm: 24 }, // 모바일에서는 하단 네비게이션 고려
+          width: { xs: '90%', sm: 'auto' },
+          left: { xs: '50%', sm: 'auto' },
+          transform: { xs: 'translateX(-50%)', sm: 'none' }
+        }}
+      >
+        <Alert
+          onClose={() => setSnackbarOpen(false)}
+          severity={snackbarSeverity}
+          variant="filled"
+          sx={{ width: '100%' }}
+        >
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 }

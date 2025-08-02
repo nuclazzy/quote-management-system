@@ -16,18 +16,25 @@ export interface MasterItem {
   description?: string;
   default_unit_price: number;
   default_unit: string;
-  category_id?: string;
+  category: string;
   is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+  created_by?: string;
 }
 
 export interface QuoteTemplate {
   id: string;
   name: string;
+  description?: string;
+  category: string;
   template_data: {
     groups: QuoteGroupTemplate[];
   };
+  created_at?: string;
+  updated_at?: string;
   created_by?: string;
-  is_active: boolean;
+  is_active?: boolean;
 }
 
 export interface QuoteGroupTemplate {
@@ -131,7 +138,8 @@ export interface QuoteCalculation {
   // 수익률 정보
   total_cost: number; // 총 원가
   total_profit: number; // 총 수익
-  profit_margin_percentage: number; // 수익률 (%)
+  profit_margin_percentage: number; // 원가 대비 마진율 (%)
+  gross_margin_percentage?: number; // 매출 대비 총마진율 (%)
 }
 
 export interface QuoteFormData extends MotionsenseQuote {

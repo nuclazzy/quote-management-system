@@ -7,6 +7,7 @@ import {
   BugReport as BugReportIcon,
 } from '@mui/icons-material';
 import { trackError } from '@/lib/analytics';
+import GlobalErrorHandler from '@/lib/error/global-handler';
 
 interface Props {
   children: ReactNode;
@@ -19,9 +20,17 @@ interface State {
 }
 
 class GlobalErrorBoundary extends Component<Props, State> {
+  private errorHandler: GlobalErrorHandler;
+
   constructor(props: Props) {
     super(props);
     this.state = { hasError: false };
+    this.errorHandler = GlobalErrorHandler.getInstance();
+    
+    // 전역 에러 핸들러 초기화
+    if (typeof window !== 'undefined') {
+      this.errorHandler.initialize();
+    }
   }
 
   static getDerivedStateFromError(error: Error): State {
@@ -32,6 +41,9 @@ class GlobalErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    // 전역 에러 핸들러에 React 에러 전달
+    this.errorHandler.handleReactError(error, errorInfo);
+
     // 에러 추적
     trackError(error, {
       errorInfo,

@@ -1,6 +1,5 @@
 import { NextRequest } from 'next/server';
 import {
-  withAuth,
   parseSearchParams,
   validateRequestBody,
   extractFilterParams,
@@ -10,6 +9,8 @@ import {
   createPaginatedApiResponse,
   ApiErrors,
 } from '../lib/base';
+import { withAuth, requireRole } from '@/lib/auth/secure-middleware';
+import { secureLog } from '@/lib/utils/secure-logger';
 import { createSuccessResponse } from '../lib/utils/response';
 import {
   BusinessError,
@@ -19,6 +20,7 @@ import {
 // GET /api/quotes - 견적서 목록 조회
 export async function GET(request: NextRequest) {
   return withAuth(request, async ({ user, supabase }) => {
+    secureLog.apiRequest('GET', '/api/quotes', user.id);
     const { page, limit, sortBy, sortOrder, offset } =
       parseSearchParams(request);
 
@@ -109,6 +111,7 @@ export async function GET(request: NextRequest) {
 // POST /api/quotes - 새 견적서 생성
 export async function POST(request: NextRequest) {
   return withAuth(request, async ({ user, supabase }) => {
+    secureLog.apiRequest('POST', '/api/quotes', user.id);
     // 요청 본문 검증
     const quoteData = await validateRequestBody(request, validateQuoteData);
 

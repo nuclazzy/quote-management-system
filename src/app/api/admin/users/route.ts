@@ -1,36 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withAuth, requireRole } from '@/lib/auth/secure-middleware';
+import { secureLog } from '@/lib/utils/secure-logger';
+import { parseSearchParams } from '@/app/api/lib/base';
 import { createServerClient } from '@/lib/supabase/server';
 
 // GET /api/admin/users - 모든 사용자 조회 (관리자 이상)
 export async function GET(request: NextRequest) {
-  try {
-    const supabase = createServerClient();
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // 관리자 권한 확인 (super_admin 또는 admin)
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (!profile || !['super_admin', 'admin'].includes(profile.role)) {
-      return NextResponse.json(
-        { error: 'Admin access required' },
-        { status: 403 }
-      );
-    }
-
+  return withAuth(request, async ({ user, supabase }) => {
+    secureLog.apiRequest('GET', '/api/admin/users', user.id);
+    
+    const { page, limit, offset } = parseSearchParams(request);
     const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = Math.min(parseInt(searchParams.get('limit') || '10'), 100);
     const role = searchParams.get('role');
     const status = searchParams.get('status');
 
@@ -68,14 +48,11 @@ export async function GET(request: NextRequest) {
     const { data: users, error, count } = await query;
 
     if (error) {
-      console.error('Error fetching users:', error);
-      return NextResponse.json(
-        { error: 'Failed to fetch users' },
-        { status: 500 }
-      );
+      secureLog.error('Error fetching users', error);
+      throw new Error('Failed to fetch users');
     }
 
-    return NextResponse.json({
+    return {
       users: users || [],
       pagination: {
         page,
@@ -83,73 +60,34 @@ export async function GET(request: NextRequest) {
         total: count || 0,
         totalPages: Math.ceil((count || 0) / limit),
       },
-    });
-  } catch (error) {
-    console.error('Error in admin users GET:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
+    };
+  }, requireRole('admin'));
 }
 
 // POST /api/admin/users - 사용자 직접 생성 (최고 관리자만)
 export async function POST(request: NextRequest) {
-  try {
-    const supabase = createServerClient();
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // 최고 관리자 권한 확인 (사용자 생성은 super_admin만 가능)
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (!profile || profile.role !== 'super_admin') {
-      return NextResponse.json(
-        { error: 'Super admin access required' },
-        { status: 403 }
-      );
-    }
+  return withAuth(request, async ({ user, supabase }) => {
+    secureLog.apiRequest('POST', '/api/admin/users', user.id);
 
     const body = await request.json();
     const { email, password, full_name, role = 'member' } = body;
 
     // 입력 검증
     if (!email || !email.includes('@')) {
-      return NextResponse.json(
-        { error: 'Valid email is required' },
-        { status: 400 }
-      );
+      throw new Error('Valid email is required');
     }
 
     if (!password || password.length < 6) {
-      return NextResponse.json(
-        { error: 'Password must be at least 6 characters' },
-        { status: 400 }
-      );
+      throw new Error('Password must be at least 6 characters');
     }
 
     if (!['member', 'admin'].includes(role)) {
-      return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
+      throw new Error('Invalid role');
     }
 
     // 도메인 제한 확인
     if (!email.endsWith('@motionsense.co.kr')) {
-      return NextResponse.json(
-        {
-          error: 'Only @motionsense.co.kr email addresses are allowed',
-        },
-        { status: 400 }
-      );
+      throw new Error('Only @motionsense.co.kr email addresses are allowed');
     }
 
     // 이미 존재하는 사용자인지 확인
@@ -160,10 +98,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (existingUser) {
-      return NextResponse.json(
-        { error: 'User already exists' },
-        { status: 400 }
-      );
+      throw new Error('User already exists');
     }
 
     // Supabase Admin API로 새 사용자 생성
@@ -178,11 +113,8 @@ export async function POST(request: NextRequest) {
       });
 
     if (createError) {
-      console.error('Error creating user:', createError);
-      return NextResponse.json(
-        { error: 'Failed to create user' },
-        { status: 500 }
-      );
+      secureLog.error('Error creating user', createError);
+      throw new Error('Failed to create user');
     }
 
     // 프로필 생성
@@ -195,33 +127,28 @@ export async function POST(request: NextRequest) {
     });
 
     if (profileError) {
-      console.error('Error creating profile:', profileError);
+      secureLog.error('Error creating profile', profileError);
       // 프로필 생성 실패 시 인증 사용자도 삭제
       await supabase.auth.admin.deleteUser(newUser.user.id);
-      return NextResponse.json(
-        { error: 'Failed to create user profile' },
-        { status: 500 }
-      );
+      throw new Error('Failed to create user profile');
     }
 
-    return NextResponse.json(
-      {
-        success: true,
-        message: 'User created successfully',
-        user: {
-          id: newUser.user.id,
-          email: newUser.user.email,
-          full_name: full_name || email.split('@')[0],
-          role,
-        },
+    secureLog.info('User created successfully', { 
+      newUserId: newUser.user.id,
+      email: email.replace(/(.{2}).*@/, '$1***@'),
+      role,
+      createdBy: user.id
+    });
+
+    return {
+      success: true,
+      message: 'User created successfully',
+      user: {
+        id: newUser.user.id,
+        email: newUser.user.email,
+        full_name: full_name || email.split('@')[0],
+        role,
       },
-      { status: 201 }
-    );
-  } catch (error) {
-    console.error('Error in admin users POST:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
+    };
+  }, { requireSpecificRole: 'super_admin' });
 }
