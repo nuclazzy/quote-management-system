@@ -204,6 +204,8 @@ export function useMotionsenseQuoteSafe(initialData?: Partial<MotionsenseQuote>)
     });
     setIsDirty(true);
   }, []);
+
+  // 안전한 템플릿 적용
   const applyTemplate = useCallback((template: any) => {
     try {
       console.log('템플릿 적용:', template);
@@ -245,6 +247,8 @@ export function useMotionsenseQuoteSafe(initialData?: Partial<MotionsenseQuote>)
       console.error('템플릿 적용 실패:', error);
     }
   }, []);
+
+  // 폼 초기화
   const resetForm = useCallback(() => {
     setFormData({
       project_title: '',
