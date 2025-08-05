@@ -19,7 +19,8 @@ export interface AuthOptions {
   requireMinimumRole?: UserRole;
   requireSpecificRole?: UserRole;
   requirePermissions?: string[];
-  skipDomainValidation?: boolean; // 테스트 환경용
+  skipDomainValidation?: boolean; // 테스트 환경용 - 서버 측에서만 설정 가능
+  _internalCall?: boolean; // 내부 서버 호출 표시 (보안용)
 }
 
 export interface SecureAuthUser {
@@ -63,6 +64,22 @@ export async function withAuth<T>(
   options: AuthOptions = {}
 ): Promise<NextResponse> {
   try {
+    // 보안 강화: 클라이언트에서 전달된 skipDomainValidation 무시
+    // 오직 서버 측 코드에서 _internalCall로 표시된 경우만 도메인 검증 건너뛰기 허용
+    const sanitizedOptions = {
+      ...options,
+      skipDomainValidation: false // 기본값: 항상 도메인 검증
+    };
+    
+    // 특정 관리자 API 경로에서만 도메인 검증 건너뛰기 허용
+    const isAdminRoute = request.nextUrl.pathname.startsWith('/api/admin/');
+    const isSystemRoute = request.nextUrl.pathname.startsWith('/api/system/');
+    
+    // 서버 측에서 명시적으로 _internalCall을 설정한 경우만 허용
+    if (options._internalCall === true && (isAdminRoute || isSystemRoute)) {
+      sanitizedOptions.skipDomainValidation = true;
+    }
+
     const supabase = createServerClient();
 
     // 1. 세션 검증
@@ -81,7 +98,7 @@ export async function withAuth<T>(
     }
 
     // 2. 서버 측 도메인 재검증 (Critical Security Fix)
-    if (!options.skipDomainValidation && !validateEmailDomain(session.user.email || '')) {
+    if (!sanitizedOptions.skipDomainValidation && !validateEmailDomain(session.user.email || '')) {
       console.warn('[Security] Domain validation failed:', {
         email: session.user.email,
         userId: session.user.id,
