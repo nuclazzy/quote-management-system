@@ -25,7 +25,14 @@ export interface PaginationResponse<T> {
 }
 
 export class BaseService {
-  protected supabase = createClient();
+  private _supabase: ReturnType<typeof createClient> | null = null;
+  
+  protected get supabase() {
+    if (!this._supabase) {
+      this._supabase = createClient();
+    }
+    return this._supabase;
+  }
 
   protected async getUser() {
     const { data: { user }, error } = await this.supabase.auth.getUser();

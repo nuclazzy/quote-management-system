@@ -51,7 +51,7 @@ export const createClient = () => {
   });
 };
 
-export const supabase = createClient();
+// export const supabase = createClient(); // Removed to prevent build-time execution
 
 // 레거시 호환성을 위한 alias
 export const createBrowserClient = createClient;
