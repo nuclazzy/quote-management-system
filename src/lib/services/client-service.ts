@@ -335,5 +335,19 @@ export class ClientService extends BaseService {
   }
 }
 
-// 싱글톤 인스턴스
-export const clientService = new ClientService();
+// 싱글톤 인스턴스 - lazy initialization
+let _clientService: ClientService | null = null;
+
+export const getClientService = () => {
+  if (!_clientService) {
+    _clientService = new ClientService();
+  }
+  return _clientService;
+};
+
+// 레거시 호환성을 위한 getter
+export const clientService = new Proxy({} as ClientService, {
+  get(target, prop) {
+    return getClientService()[prop as keyof ClientService];
+  },
+});

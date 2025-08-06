@@ -1,25 +1,25 @@
 import { NextRequest } from 'next/server';
-import { withAuth } from '../../../lib/middleware/auth';
-import { withErrorHandler } from '../../../lib/middleware/error-handler';
-import { withValidation } from '../../../lib/middleware/validation';
+import { withAuth } from '@/app/api/lib/middleware/auth';
+import { withErrorHandler } from '@/app/api/lib/middleware/error-handler';
+import { withValidation } from '@/app/api/lib/middleware/validation';
 import {
   withRateLimit,
   RateLimitPresets,
-} from '../../../lib/middleware/rate-limit';
+} from '@/app/api/lib/middleware/rate-limit';
 import {
   createUpdatedResponse,
   createNotFoundResponse,
   createForbiddenResponse,
   createMethodNotAllowedResponse,
-} from '../../../lib/utils/response';
-import { QuoteStatusUpdateSchema } from '../../../lib/schemas/quote';
+} from '@/app/api/lib/utils/response';
+import { QuoteStatusUpdateSchema } from '@/app/api/lib/schemas/quote';
 import { QuoteService } from '@/lib/services/quote-service';
-import { extractIdFromPath } from '../../../lib/utils/helpers';
+import { extractIdFromPath } from '@/app/api/lib/utils/helpers';
 import {
   NotFoundError,
   ForbiddenError,
-} from '../../../lib/middleware/error-handler';
-import type { AuthenticatedRequest } from '../../../lib/middleware/auth';
+} from '@/app/api/lib/middleware/error-handler';
+import type { AuthenticatedRequest } from '@/app/api/lib/middleware/auth';
 
 /**
  * PATCH /api/quotes/[id]/status - 견적서 상태 변경

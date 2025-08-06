@@ -369,4 +369,19 @@ export class ProjectAutomationService {
   }
 }
 
-export const projectAutomationService = new ProjectAutomationService();
+// 싱글톤 인스턴스 - lazy initialization
+let _projectAutomationService: ProjectAutomationService | null = null;
+
+export const getProjectAutomationService = () => {
+  if (!_projectAutomationService) {
+    _projectAutomationService = new ProjectAutomationService();
+  }
+  return _projectAutomationService;
+};
+
+// 레거시 호환성을 위한 getter
+export const projectAutomationService = new Proxy({} as ProjectAutomationService, {
+  get(target, prop) {
+    return getProjectAutomationService()[prop as keyof ProjectAutomationService];
+  },
+});

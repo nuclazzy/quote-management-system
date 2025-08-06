@@ -819,5 +819,19 @@ export class QuoteService extends BaseService {
   }
 }
 
-// 싱글톤 인스턴스
-export const quoteService = new QuoteService();
+// 싱글톤 인스턴스 - lazy initialization
+let _quoteService: QuoteService | null = null;
+
+export const getQuoteService = () => {
+  if (!_quoteService) {
+    _quoteService = new QuoteService();
+  }
+  return _quoteService;
+};
+
+// 레거시 호환성을 위한 getter
+export const quoteService = new Proxy({} as QuoteService, {
+  get(target, prop) {
+    return getQuoteService()[prop as keyof QuoteService];
+  },
+});
