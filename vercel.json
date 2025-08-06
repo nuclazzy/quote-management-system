@@ -1,10 +1,4 @@
 {
   "version": 2,
-  "framework": "nextjs",
-  "crons": [
-    {
-      "path": "/api/notifications/background-check",
-      "schedule": "0 9 * * *"
-    }
-  ]
+  "framework": "nextjs"
 }
