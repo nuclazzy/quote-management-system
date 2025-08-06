@@ -50,7 +50,6 @@ import {
   type UpdateItemData,
 } from '@/lib/services/item-service';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
-import { useNotification } from '@/contexts/NotificationContext';
 
 interface ItemListProps {
   items: Item[];
@@ -101,7 +100,10 @@ const units = [
 
 export function ItemList({ items, categories, onRefresh }: ItemListProps) {
   const { handleError } = useErrorHandler();
-  const { showNotification } = useNotification();
+  // Notification removed - using console.log temporarily
+  const showNotification = (message: string, type?: string) => {
+    console.log(`[${type || 'info'}] ${message}`);
+  };
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);

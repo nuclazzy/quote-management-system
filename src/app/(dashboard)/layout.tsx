@@ -2,7 +2,6 @@
 
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { AuthGuard } from '@/components/auth/AuthGuard';
-import { NotificationProvider } from '@/contexts/NotificationContext';
 
 export default function DashboardRootLayout({
   children,
@@ -11,9 +10,7 @@ export default function DashboardRootLayout({
 }) {
   return (
     <AuthGuard>
-      <NotificationProvider>
-        <DashboardLayout>{children}</DashboardLayout>
-      </NotificationProvider>
+      <DashboardLayout>{children}</DashboardLayout>
     </AuthGuard>
   );
 }

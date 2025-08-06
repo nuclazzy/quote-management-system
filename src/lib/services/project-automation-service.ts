@@ -160,13 +160,7 @@ export class ProjectAutomationService {
         );
       }
 
-      // 프로젝트 완료 알림
-      await this.supabase.from('notifications').insert({
-        user_id: project.created_by,
-        message: `프로젝트 "${project.name}"이 완료되었습니다. 최종 수익: ${finalProfit.toLocaleString()}원 (수익률: ${profitMargin.toFixed(1)}%)`,
-        link_url: `/projects/${projectId}`,
-        notification_type: 'general',
-      });
+      // Notification removed - no longer needed
 
       return {
         finalProfit,
@@ -181,10 +175,10 @@ export class ProjectAutomationService {
     }
   }
 
-  /**
-   * 정산 마감일 알림 시스템
-   */
-  async checkAndCreateDueDateNotifications() {
+  // Notification methods removed - no longer needed
+  // Previously: checkAndCreateDueDateNotifications, checkOverdueTransactions, createProjectNotification
+
+  /*
     try {
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
@@ -250,12 +244,9 @@ export class ProjectAutomationService {
       console.error('Due date notification error:', error);
       throw error;
     }
-  }
+  } */
 
-  /**
-   * 연체된 거래 확인 및 알림
-   */
-  async checkOverdueTransactions() {
+  /*
     try {
       const today = new Date().toISOString().split('T')[0];
 
@@ -291,7 +282,7 @@ export class ProjectAutomationService {
       console.error('Overdue transaction check error:', error);
       throw error;
     }
-  }
+  } */
 
   private calculateProjectFinancials(quote: any) {
     let totalRevenue = 0;
@@ -374,24 +365,6 @@ export class ProjectAutomationService {
 
     if (expenseTransactions.length > 0) {
       await this.supabase.from('transactions').insert(expenseTransactions);
-    }
-  }
-
-  private async createProjectNotification(
-    projectId: string,
-    projectTitle: string
-  ) {
-    const {
-      data: { user },
-    } = await this.supabase.auth.getUser();
-
-    if (user) {
-      await this.supabase.from('notifications').insert({
-        user_id: user.id,
-        message: `새 프로젝트가 생성되었습니다: ${projectTitle}`,
-        link_url: `/projects/${projectId}`,
-        notification_type: 'project_created',
-      });
     }
   }
 }

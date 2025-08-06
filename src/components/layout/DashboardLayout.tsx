@@ -31,14 +31,13 @@ import {
   Settings,
   Logout,
   AccountCircle,
-  Notifications,
   AdminPanelSettings,
   ManageAccounts,
   BugReport,
+  Notifications,
 } from '@mui/icons-material';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { NotificationBell } from '@/components/notifications/NotificationBell';
 import ThemeToggle from '@/components/common/ThemeToggle';
 
 const drawerWidth = 240;
@@ -58,7 +57,6 @@ const navItems: NavItem[] = [
   { text: '품목 관리', icon: <Inventory />, path: '/items' },
   { text: '프로젝트', icon: <Analytics />, path: '/projects' },
   { text: '정산 관리', icon: <Analytics />, path: '/revenue' },
-  { text: '알림', icon: <Notifications />, path: '/notifications' },
   { text: 'PDF 테스트', icon: <BugReport />, path: '/pdf-test' },
   {
     text: '사용자 관리',
@@ -166,8 +164,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             {navItems.find((item) => item.path === pathname)?.text ||
               '견적서 관리 시스템'}
           </Typography>
-
-          <NotificationBell />
 
           <ThemeToggle />
 

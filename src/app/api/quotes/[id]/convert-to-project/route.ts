@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/server';
 import { z } from 'zod';
-import { NotificationService } from '@/lib/services/notification-service';
 
 const convertToProjectSchema = z.object({
   start_date: z.string().optional(),
@@ -232,12 +231,8 @@ export async function POST(
       }
     }
 
-    // 알림 생성 (백그라운드에서 실행)
-    NotificationService.notifyProjectCreated(project.id, user.id).catch(
-      (error) => {
-        console.error('Failed to send project created notification:', error);
-      }
-    );
+    // Notification removed - no longer needed
+    // Previously notified on project creation
 
     return NextResponse.json({
       success: true,

@@ -100,23 +100,8 @@ export class DashboardService {
         console.error('New customers error:', newCustomersError);
       }
 
-      // 읽지 않은 알림 수
-      const { data: userData } = await supabase.auth.getUser();
+      // Notification removed - no longer needed
       let unreadCount = 0;
-      
-      if (userData?.user) {
-        const { count: notificationsCount, error: notificationsError } = await supabase
-          .from('notifications')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', userData.user.id)
-          .eq('is_read', false);
-
-        if (notificationsError) {
-          console.error('Unread notifications error:', notificationsError);
-        } else {
-          unreadCount = notificationsCount || 0;
-        }
-      }
 
       // 최근 견적서 목록 (최근 5개)
       const { data: recentQuotes, error: recentError } = await supabase
@@ -154,7 +139,7 @@ export class DashboardService {
         pendingApproval: pendingCount || 0,
         activeProjects: activeProjectsCount || 0,
         newCustomers: newCustomersCount || 0,
-        unreadNotifications: unreadCount,
+        unreadNotifications: 0, // Feature removed
         recentQuotes: recentQuotes || [],
       };
     } catch (error) {

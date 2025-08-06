@@ -35,7 +35,6 @@ import {
   type UpdateCategoryData,
 } from '@/lib/services/item-service';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
-import { useNotification } from '@/contexts/NotificationContext';
 
 interface CategoryManagementProps {
   categories: ItemCategory[];
@@ -52,7 +51,10 @@ export function CategoryManagement({
   onRefresh,
 }: CategoryManagementProps) {
   const { handleError } = useErrorHandler();
-  const { showNotification } = useNotification();
+  // Notification removed - using console.log temporarily
+  const showNotification = (message: string, type?: string) => {
+    console.log(`[${type || 'info'}] ${message}`);
+  };
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);

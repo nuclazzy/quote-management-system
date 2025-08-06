@@ -2,7 +2,7 @@
 export * from './database';
 export * from './auth';
 export * from './quote';
-export * from './notification';
+// export * from './notification'; // Feature removed
 
 // Common utility types
 export interface ApiResponse<T = any> {
@@ -48,21 +48,7 @@ export interface FormState<T = any> {
   dirty: boolean;
 }
 
-// Notification types
-export interface NotificationData {
-  id: string;
-  type: 'success' | 'error' | 'warning' | 'info';
-  title: string;
-  message?: string;
-  duration?: number;
-  actions?: NotificationAction[];
-}
-
-export interface NotificationAction {
-  label: string;
-  onClick: () => void;
-  variant?: 'text' | 'contained' | 'outlined';
-}
+// Notification types - Feature removed
 
 // Theme types
 export interface CustomTheme {

@@ -6,7 +6,6 @@ import {
   validateRequestBody,
 } from '@/lib/api/base';
 import { validateQuote } from '@/lib/api/validation';
-import { NotificationService } from '@/lib/services/notification-service';
 
 // GET /api/quotes/[id] - 특정 견적서 조회
 export async function GET(
@@ -322,19 +321,8 @@ export async function PATCH(
         },
       });
 
-      // 알림 생성 (백그라운드에서 실행)
-      if (existingQuote.status !== status) {
-        NotificationService.notifyQuoteStatusChanged(
-          params.id,
-          status,
-          user.id
-        ).catch((error) => {
-          console.error(
-            'Failed to send quote status changed notification:',
-            error
-          );
-        });
-      }
+      // Notification removed - no longer needed
+      // Previously notified on quote status change
 
       return createApiResponse(
         updatedQuote,
