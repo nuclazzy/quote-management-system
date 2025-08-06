@@ -235,96 +235,39 @@ export interface Database {
           updated_by?: string;
         };
       };
-      items: {
+      master_items: {
         Row: {
           id: string;
-          sku: string;
           name: string;
           description?: string;
+          default_unit_price: number;
+          default_unit: string;
           category_id?: string;
-          supplier_id?: string;
-          unit: string;
-          unit_price: number;
-          cost_price?: number;
-          stock_quantity?: number;
-          minimum_stock?: number;
-          maximum_stock?: number;
-          safety_stock?: number;
-          reorder_point?: number;
-          specifications?: any;
-          image_urls?: string[];
-          barcode?: string;
-          weight?: number;
-          dimensions?: any;
-          warranty_months?: number;
-          hs_code?: string;
-          origin_country?: string;
-          tax_type?: 'taxable' | 'zero_rated' | 'exempt';
           is_active: boolean;
           created_at: string;
           updated_at: string;
-          created_by: string;
-          updated_by?: string;
         };
         Insert: {
           id?: string;
-          sku: string;
           name: string;
           description?: string;
+          default_unit_price?: number;
+          default_unit?: string;
           category_id?: string;
-          supplier_id?: string;
-          unit?: string;
-          unit_price?: number;
-          cost_price?: number;
-          stock_quantity?: number;
-          minimum_stock?: number;
-          maximum_stock?: number;
-          safety_stock?: number;
-          reorder_point?: number;
-          specifications?: any;
-          image_urls?: string[];
-          barcode?: string;
-          weight?: number;
-          dimensions?: any;
-          warranty_months?: number;
-          hs_code?: string;
-          origin_country?: string;
-          tax_type?: 'taxable' | 'zero_rated' | 'exempt';
           is_active?: boolean;
           created_at?: string;
           updated_at?: string;
-          created_by: string;
-          updated_by?: string;
         };
         Update: {
           id?: string;
-          sku?: string;
           name?: string;
           description?: string;
+          default_unit_price?: number;
+          default_unit?: string;
           category_id?: string;
-          supplier_id?: string;
-          unit?: string;
-          unit_price?: number;
-          cost_price?: number;
-          stock_quantity?: number;
-          minimum_stock?: number;
-          maximum_stock?: number;
-          safety_stock?: number;
-          reorder_point?: number;
-          specifications?: any;
-          image_urls?: string[];
-          barcode?: string;
-          weight?: number;
-          dimensions?: any;
-          warranty_months?: number;
-          hs_code?: string;
-          origin_country?: string;
-          tax_type?: 'taxable' | 'zero_rated' | 'exempt';
           is_active?: boolean;
           created_at?: string;
           updated_at?: string;
-          created_by?: string;
-          updated_by?: string;
         };
       };
       quote_templates: {
@@ -358,8 +301,10 @@ export interface Database {
           id: string;
           quote_number: string;
           title: string;
+          project_title?: string;
           description?: string;
           client_id: string;
+          customer_name_snapshot?: string;
           business_registration_number?: string;
           assigned_to?: string;
           status:
@@ -370,12 +315,15 @@ export interface Database {
             | 'rejected'
             | 'expired';
           quote_date: string;
+          issue_date?: string;
           valid_until?: string;
           subtotal_amount: number;
           tax_rate: number;
           tax_amount: number;
           discount_rate: number;
           discount_amount: number;
+          agency_fee_rate?: number;
+          vat_type?: 'exclusive' | 'inclusive';
           total_amount: number;
           currency: string;
           payment_terms?: string;
@@ -407,8 +355,10 @@ export interface Database {
           id?: string;
           quote_number?: string;
           title: string;
+          project_title?: string;
           description?: string;
           client_id: string;
+          customer_name_snapshot?: string;
           business_registration_number?: string;
           assigned_to?: string;
           status?:
@@ -502,83 +452,117 @@ export interface Database {
           updated_by?: string;
         };
       };
-      // 기존 복잡한 4단계 구조 제거 - 단순화된 quote_items로 통합
-      quote_items: {
+      // 4단계 견적서 구조 복원: quotes → quote_groups → quote_items → quote_details
+      quote_groups: {
         Row: {
           id: string;
           quote_id: string;
-          item_id?: string;
-          item_name: string;
-          item_description?: string;
-          item_sku?: string;
-          specifications?: any;
-          quantity: number;
-          unit: string;
-          unit_price: number;
-          cost_price?: number;
-          supplier_id?: string;
-          supplier_name?: string;
-          discount_rate?: number;
-          discount_amount?: number;
-          line_total: number;
-          category?: string;
-          sort_order?: number;
-          is_optional?: boolean;
-          lead_time_days?: number;
-          delivery_terms?: string;
-          notes?: string;
+          name: string;
+          sort_order: number;
+          include_in_fee: boolean;
           created_at: string;
           updated_at: string;
         };
         Insert: {
           id?: string;
           quote_id: string;
-          item_id?: string;
-          item_name: string;
-          item_description?: string;
-          item_sku?: string;
-          specifications?: any;
-          quantity: number;
-          unit?: string;
-          unit_price: number;
-          cost_price?: number;
-          supplier_id?: string;
-          supplier_name?: string;
-          discount_rate?: number;
-          discount_amount?: number;
-          line_total?: number;
-          category?: string;
+          name: string;
           sort_order?: number;
-          is_optional?: boolean;
-          lead_time_days?: number;
-          delivery_terms?: string;
-          notes?: string;
+          include_in_fee?: boolean;
           created_at?: string;
           updated_at?: string;
         };
         Update: {
           id?: string;
           quote_id?: string;
-          item_id?: string;
-          item_name?: string;
-          item_description?: string;
-          item_sku?: string;
-          specifications?: any;
+          name?: string;
+          sort_order?: number;
+          include_in_fee?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      quote_items_motionsense: {
+        Row: {
+          id: string;
+          quote_group_id: string;
+          name: string;
+          sort_order: number;
+          include_in_fee: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          quote_group_id: string;
+          name: string;
+          sort_order?: number;
+          include_in_fee?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          quote_group_id?: string;
+          name?: string;
+          sort_order?: number;
+          include_in_fee?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      quote_details: {
+        Row: {
+          id: string;
+          quote_item_id: string;
+          name: string;
+          description?: string;
+          quantity: number;
+          days: number;
+          unit: string;
+          unit_price: number;
+          is_service: boolean;
+          cost_price: number;
+          supplier_id?: string;
+          supplier_name_snapshot?: string;
+          master_item_id?: string;
+          sort_order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          quote_item_id: string;
+          name: string;
+          description?: string;
           quantity?: number;
+          days?: number;
           unit?: string;
           unit_price?: number;
+          is_service?: boolean;
           cost_price?: number;
           supplier_id?: string;
-          supplier_name?: string;
-          discount_rate?: number;
-          discount_amount?: number;
-          line_total?: number;
-          category?: string;
+          supplier_name_snapshot?: string;
+          master_item_id?: string;
           sort_order?: number;
-          is_optional?: boolean;
-          lead_time_days?: number;
-          delivery_terms?: string;
-          notes?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          quote_item_id?: string;
+          name?: string;
+          description?: string;
+          quantity?: number;
+          days?: number;
+          unit?: string;
+          unit_price?: number;
+          is_service?: boolean;
+          cost_price?: number;
+          supplier_id?: string;
+          supplier_name_snapshot?: string;
+          master_item_id?: string;
+          sort_order?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -586,11 +570,11 @@ export interface Database {
       projects: {
         Row: {
           id: string;
-          project_number: string;
+          project_number?: string;  // Optional since it's not in the actual DB yet
           name: string;
           description?: string;
           client_id: string;
-          quote_id?: string;
+          quote_id?: string;  // Not in actual DB
           project_manager_id?: string;
           status: 'planning' | 'active' | 'on_hold' | 'completed' | 'cancelled';
           progress_percentage?: number;
@@ -598,7 +582,8 @@ export interface Database {
           planned_end_date?: string;
           actual_start_date?: string;
           actual_end_date?: string;
-          contract_amount?: number;
+          actual_amount?: number;  // This is the actual column name in DB
+          contract_amount?: number;  // Keep for backward compatibility but optional
           budget_amount?: number;
           actual_cost?: number;
           priority?: 'low' | 'medium' | 'high' | 'urgent';
@@ -629,7 +614,8 @@ export interface Database {
           planned_end_date?: string;
           actual_start_date?: string;
           actual_end_date?: string;
-          contract_amount?: number;
+          actual_amount?: number;  // Actual column name
+          contract_amount?: number;  // For compatibility
           budget_amount?: number;
           actual_cost?: number;
           priority?: 'low' | 'medium' | 'high' | 'urgent';
@@ -660,7 +646,8 @@ export interface Database {
           planned_end_date?: string;
           actual_start_date?: string;
           actual_end_date?: string;
-          contract_amount?: number;
+          actual_amount?: number;  // Actual column name
+          contract_amount?: number;  // For compatibility
           budget_amount?: number;
           actual_cost?: number;
           priority?: 'low' | 'medium' | 'high' | 'urgent';
@@ -932,13 +919,13 @@ export interface Database {
       project_status_summary: {
         Row: {
           id: string;
-          project_number: string;
+          project_number?: string;  // Optional since might not exist yet
           name: string;
           client_id: string;
           client_name: string;
           status: 'planning' | 'active' | 'on_hold' | 'completed' | 'cancelled';
           progress_percentage?: number;
-          contract_amount?: number;
+          contract_amount?: number;  // This will be actual_amount aliased as contract_amount in the view
           actual_cost?: number;
           remaining_budget?: number;
           planned_start_date?: string;
