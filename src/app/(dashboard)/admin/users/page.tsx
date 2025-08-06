@@ -40,7 +40,9 @@ import {
   MoreVert as MoreVertIcon,
   Security as SecurityIcon,
 } from '@mui/icons-material';
-import { supabase } from '@/lib/supabase/client';
+import { createClient } from '@/lib/supabase/client';
+
+const supabase = createClient();
 import UserPermissionsDialog from '@/components/UserPermissionsDialog';
 
 interface User {

@@ -8,7 +8,9 @@ import {
   Typography,
   Alert,
 } from '@mui/material';
-import { supabase } from '@/lib/supabase/client';
+import { createClient } from '@/lib/supabase/client';
+
+const supabase = createClient();
 
 export default function AuthCallbackPage() {
   const router = useRouter();

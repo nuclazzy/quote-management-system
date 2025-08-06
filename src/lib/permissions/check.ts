@@ -1,4 +1,6 @@
-import { supabase } from '@/lib/supabase/client';
+import { createClient } from '@/lib/supabase/client';
+
+const supabase = createClient();
 
 // 권한 체크 함수
 export async function checkPermission(

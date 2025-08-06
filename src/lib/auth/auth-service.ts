@@ -1,6 +1,9 @@
-import { supabase } from '../supabase/client';
+import { createClient } from '../supabase/client';
 import { Profile, AuthUser } from '@/types/auth';
 import { secureLog } from '@/lib/utils/secure-logger';
+
+// Create supabase client instance
+const supabase = createClient();
 
 export class AuthService {
   /**

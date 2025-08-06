@@ -31,7 +31,9 @@ import {
   Add as AddIcon,
   PhotoCamera as SnapshotIcon
 } from '@mui/icons-material';
-import { supabase } from '@/lib/supabase/client';
+import { createClient } from '@/lib/supabase/client';
+
+const supabase = createClient();
 import { formatCurrency } from '@/utils/format';
 import type { MasterItem } from '@/types/quote-4tier';
 
