@@ -103,9 +103,15 @@ export default function QuoteDetailPage({ params }: QuoteDetailPageProps) {
     router.push(`/quotes/${params.id}/edit`);
   };
 
-  const handleCopy = () => {
-    // TODO: 견적서 복사 기능 구현
-    console.log('견적서 복사');
+  const handleCopy = async () => {
+    try {
+      const newQuoteId = await QuoteService.duplicateQuote(params.id);
+      // 복사된 견적서 편집 페이지로 이동
+      router.push(`/quotes/${newQuoteId}/edit`);
+    } catch (error) {
+      console.error('견적서 복사 실패:', error);
+      setError('견적서 복사 중 오류가 발생했습니다.');
+    }
   };
 
   const handleDownload = () => {

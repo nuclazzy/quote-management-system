@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
   Box,
   Typography,
@@ -33,6 +33,13 @@ import {
   Delete,
   Search,
   Inventory as InventoryIcon,
+  Star,
+  StarBorder,
+  GetApp,
+  FileUpload,
+  QrCode,
+  History,
+  TrendingUp,
 } from '@mui/icons-material';
 import { useForm, Controller } from 'react-hook-form';
 import {
@@ -60,6 +67,19 @@ interface ItemFormData {
   unit_price: number;
   stock_quantity: number;
   minimum_stock_level?: number;
+  item_type: 'product' | 'service';
+  barcode?: string;
+}
+
+interface CSVUploadResult {
+  success: boolean;
+  errors: string[];
+  warnings: string[];
+  summary: {
+    totalRows: number;
+    validRows: number;
+    imported: number;
+  };
 }
 
 const units = [
@@ -89,6 +109,13 @@ export function ItemList({ items, categories, onRefresh }: ItemListProps) {
   const [itemToDelete, setItemToDelete] = useState<Item | null>(null);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [csvUploadDialog, setCsvUploadDialog] = useState(false);
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [csvUploading, setCsvUploading] = useState(false);
+  const [csvResult, setCsvResult] = useState<CSVUploadResult | null>(null);
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [filterItemType, setFilterItemType] = useState<string>('all');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const {
     control,
@@ -105,6 +132,8 @@ export function ItemList({ items, categories, onRefresh }: ItemListProps) {
       unit_price: 0,
       stock_quantity: 0,
       minimum_stock_level: 0,
+      item_type: 'product' as const,
+      barcode: '',
     },
   });
 
@@ -120,6 +149,8 @@ export function ItemList({ items, categories, onRefresh }: ItemListProps) {
       unit_price: 0,
       stock_quantity: 0,
       minimum_stock_level: 0,
+      item_type: 'product' as const,
+      barcode: '',
     });
     setDialogOpen(true);
   };
@@ -136,6 +167,8 @@ export function ItemList({ items, categories, onRefresh }: ItemListProps) {
       unit_price: item.unit_price,
       stock_quantity: item.stock_quantity,
       minimum_stock_level: item.minimum_stock_level || 0,
+      item_type: item.item_type,
+      barcode: item.barcode || '',
     });
     setDialogOpen(true);
   };
@@ -161,6 +194,8 @@ export function ItemList({ items, categories, onRefresh }: ItemListProps) {
           unit_price: data.unit_price,
           stock_quantity: data.stock_quantity,
           minimum_stock_level: data.minimum_stock_level,
+          item_type: data.item_type,
+          barcode: data.barcode,
         });
         showNotification('품목이 수정되었습니다.', 'success');
       } else {
@@ -174,6 +209,8 @@ export function ItemList({ items, categories, onRefresh }: ItemListProps) {
           unit_price: data.unit_price,
           stock_quantity: data.stock_quantity,
           minimum_stock_level: data.minimum_stock_level,
+          item_type: data.item_type,
+          barcode: data.barcode,
         });
         showNotification('품목이 생성되었습니다.', 'success');
       }
@@ -207,6 +244,103 @@ export function ItemList({ items, categories, onRefresh }: ItemListProps) {
     }
   };
 
+  // 즐겨찾기 토글
+  const handleToggleFavorite = async (item: Item) => {
+    try {
+      setLoading(true);
+      await ItemService.toggleFavorite(item.id);
+      showNotification(
+        item.is_favorite ? '즐겨찾기에서 제거되었습니다.' : '즐겨찾기에 추가되었습니다.',
+        'success'
+      );
+      await onRefresh();
+    } catch (err) {
+      const errorMessage = handleError(err);
+      showNotification(errorMessage, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // CSV 템플릿 다운로드
+  const handleDownloadTemplate = async () => {
+    try {
+      const response = await fetch('/api/items/template');
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `품목_업로드_템플릿_${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      } else {
+        throw new Error('템플릿 다운로드에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('Template download error:', error);
+      showNotification('템플릿 다운로드 중 오류가 발생했습니다.', 'error');
+    }
+  };
+
+  // CSV 파일 선택 처리
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setCsvFile(file);
+      setCsvResult(null);
+    }
+  };
+
+  // CSV 업로드 처리
+  const handleCSVUpload = async () => {
+    if (!csvFile) {
+      showNotification('CSV 파일을 선택해주세요.', 'error');
+      return;
+    }
+
+    setCsvUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', csvFile);
+
+      const response = await fetch('/api/items', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+      setCsvResult(result);
+
+      if (result.success) {
+        showNotification(
+          `${result.summary.imported}개 품목이 성공적으로 등록되었습니다.`,
+          'success'
+        );
+        onRefresh(); // 목록 새로고침
+      } else {
+        showNotification('일부 또는 모든 데이터 처리에 오류가 발생했습니다.', 'warning');
+      }
+    } catch (error) {
+      console.error('CSV upload error:', error);
+      showNotification('CSV 업로드 중 오류가 발생했습니다.', 'error');
+    } finally {
+      setCsvUploading(false);
+    }
+  };
+
+  // CSV 업로드 다이얼로그 닫기
+  const handleCloseCsvDialog = () => {
+    setCsvUploadDialog(false);
+    setCsvFile(null);
+    setCsvResult(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   // 재고 상태 계산
   const getStockStatus = (item: Item) => {
     if (
@@ -219,15 +353,23 @@ export function ItemList({ items, categories, onRefresh }: ItemListProps) {
   };
 
   // 품목 필터링
-  const filteredItems = items.filter(
-    (item) =>
+  const filteredItems = items.filter((item) => {
+    // 텍스트 검색 필터
+    const matchesSearch = 
       item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (item.description &&
-        item.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (item.category?.name &&
-        item.category.name.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+      (item.description && item.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (item.category?.name && item.category.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (item.barcode && item.barcode.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    // 즐겨찾기 필터
+    const matchesFavorites = !showFavoritesOnly || item.is_favorite;
+
+    // 품목 유형 필터
+    const matchesItemType = filterItemType === 'all' || item.item_type === filterItemType;
+
+    return matchesSearch && matchesFavorites && matchesItemType;
+  });
 
   return (
     <Box>
@@ -248,14 +390,30 @@ export function ItemList({ items, categories, onRefresh }: ItemListProps) {
             품목을 생성, 수정, 삭제하고 재고를 관리할 수 있습니다
           </Typography>
         </Box>
-        <Button
-          variant='contained'
-          startIcon={<Add />}
-          onClick={handleCreateItem}
-          disabled={categories.length === 0}
-        >
-          품목 추가
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button
+            variant='outlined'
+            startIcon={<GetApp />}
+            onClick={handleDownloadTemplate}
+          >
+            템플릿
+          </Button>
+          <Button
+            variant='outlined'
+            startIcon={<FileUpload />}
+            onClick={() => setCsvUploadDialog(true)}
+          >
+            CSV 업로드
+          </Button>
+          <Button
+            variant='contained'
+            startIcon={<Add />}
+            onClick={handleCreateItem}
+            disabled={categories.length === 0}
+          >
+            품목 추가
+          </Button>
+        </Box>
       </Box>
 
       {/* 카테고리 없음 경고 */}
@@ -265,21 +423,49 @@ export function ItemList({ items, categories, onRefresh }: ItemListProps) {
         </Alert>
       )}
 
-      {/* 검색 */}
+      {/* 검색 및 필터 */}
       <Box sx={{ mb: 3 }}>
-        <TextField
-          fullWidth
-          placeholder='품목명, SKU, 설명으로 검색...'
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position='start'>
-                <Search />
-              </InputAdornment>
-            ),
-          }}
-        />
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} md={6}>
+            <TextField
+              fullWidth
+              placeholder='품목명, SKU, 설명, 바코드로 검색...'
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position='start'>
+                    <Search />
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+              <Button
+                variant={showFavoritesOnly ? 'contained' : 'outlined'}
+                startIcon={showFavoritesOnly ? <Star /> : <StarBorder />}
+                onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+                size="small"
+              >
+                즐겨찾기
+              </Button>
+              <FormControl size="small" sx={{ minWidth: 120 }}>
+                <InputLabel>유형</InputLabel>
+                <Select
+                  value={filterItemType}
+                  label="유형"
+                  onChange={(e) => setFilterItemType(e.target.value)}
+                >
+                  <MenuItem value="all">전체</MenuItem>
+                  <MenuItem value="product">물품</MenuItem>
+                  <MenuItem value="service">서비스</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
+          </Grid>
+        </Grid>
       </Box>
 
       {/* 품목 없음 상태 */}
@@ -314,11 +500,13 @@ export function ItemList({ items, categories, onRefresh }: ItemListProps) {
               <TableRow>
                 <TableCell>품목명</TableCell>
                 <TableCell>SKU</TableCell>
+                <TableCell>유형</TableCell>
                 <TableCell>카테고리</TableCell>
                 <TableCell>단위</TableCell>
                 <TableCell align='right'>단가</TableCell>
                 <TableCell align='right'>재고</TableCell>
                 <TableCell>재고상태</TableCell>
+                <TableCell align='center'>사용횟수</TableCell>
                 <TableCell align='center'>작업</TableCell>
               </TableRow>
             </TableHead>
@@ -344,6 +532,14 @@ export function ItemList({ items, categories, onRefresh }: ItemListProps) {
                     </TableCell>
                     <TableCell>
                       <Chip
+                        label={item.item_type === 'product' ? '물품' : '서비스'}
+                        size='small'
+                        color={item.item_type === 'product' ? 'primary' : 'secondary'}
+                        variant='outlined'
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Chip
                         label={item.category?.name || '미분류'}
                         size='small'
                         variant='outlined'
@@ -364,6 +560,22 @@ export function ItemList({ items, categories, onRefresh }: ItemListProps) {
                       />
                     </TableCell>
                     <TableCell align='center'>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <TrendingUp fontSize="small" />
+                        <Typography variant='body2'>
+                          {item.usage_count || 0}
+                        </Typography>
+                      </Box>
+                    </TableCell>
+                    <TableCell align='center'>
+                      <IconButton
+                        size='small'
+                        onClick={() => handleToggleFavorite(item)}
+                        disabled={loading}
+                        color={item.is_favorite ? 'warning' : 'default'}
+                      >
+                        {item.is_favorite ? <Star /> : <StarBorder />}
+                      </IconButton>
                       <IconButton
                         size='small'
                         onClick={() => handleEditItem(item)}
@@ -478,6 +690,26 @@ export function ItemList({ items, categories, onRefresh }: ItemListProps) {
                 </Grid>
                 <Grid item xs={12} sm={6}>
                   <Controller
+                    name='item_type'
+                    control={control}
+                    rules={{ required: '유형은 필수입니다.' }}
+                    render={({ field }) => (
+                      <FormControl
+                        fullWidth
+                        margin='normal'
+                        error={!!errors.item_type}
+                      >
+                        <InputLabel>유형</InputLabel>
+                        <Select {...field} label='유형'>
+                          <MenuItem value='product'>물품</MenuItem>
+                          <MenuItem value='service'>서비스</MenuItem>
+                        </Select>
+                      </FormControl>
+                    )}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Controller
                     name='unit'
                     control={control}
                     rules={{ required: '단위는 필수입니다.' }}
@@ -569,6 +801,29 @@ export function ItemList({ items, categories, onRefresh }: ItemListProps) {
                     )}
                   />
                 </Grid>
+                <Grid item xs={12}>
+                  <Controller
+                    name='barcode'
+                    control={control}
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        fullWidth
+                        label='바코드 (선택)'
+                        error={!!errors.barcode}
+                        helperText={errors.barcode?.message || '바코드를 입력하거나 스캔하세요'}
+                        margin='normal'
+                        InputProps={{
+                          startAdornment: (
+                            <InputAdornment position='start'>
+                              <QrCode />
+                            </InputAdornment>
+                          ),
+                        }}
+                      />
+                    )}
+                  />
+                </Grid>
               </Grid>
             </Box>
           </DialogContent>
@@ -610,6 +865,123 @@ export function ItemList({ items, categories, onRefresh }: ItemListProps) {
             disabled={loading}
           >
             삭제
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* CSV 업로드 다이얼로그 */}
+      <Dialog open={csvUploadDialog} onClose={handleCloseCsvDialog} maxWidth='md' fullWidth>
+        <DialogTitle>CSV 파일로 품목 일괄 등록</DialogTitle>
+        <DialogContent>
+          <Box sx={{ mb: 2 }}>
+            <Typography variant='body2' color='text.secondary' gutterBottom>
+              1. 먼저 '템플릿 다운로드' 버튼으로 예시 파일을 내려받으세요.<br/>
+              2. 다운로드한 템플릿에 품목 정보를 입력하세요.<br/>
+              3. 완성된 CSV 파일을 업로드하세요.
+            </Typography>
+          </Box>
+          
+          <Box sx={{ mb: 2 }}>
+            <input
+              type='file'
+              accept='.csv'
+              onChange={handleFileSelect}
+              ref={fileInputRef}
+              style={{ marginBottom: 16 }}
+            />
+          </Box>
+          
+          {csvFile && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant='body2'>
+                선택된 파일: <strong>{csvFile.name}</strong>
+              </Typography>
+            </Box>
+          )}
+          
+          {csvUploading && (
+            <Box sx={{ mb: 2 }}>
+              <LinearProgress />
+              <Typography variant='body2' sx={{ mt: 1 }}>
+                CSV 파일을 처리하고 있습니다...
+              </Typography>
+            </Box>
+          )}
+          
+          {csvResult && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant='h6' gutterBottom>
+                처리 결과
+              </Typography>
+              
+              <Box sx={{ mb: 2 }}>
+                <Typography variant='body2'>
+                  전체 행수: {csvResult.summary.totalRows} | 
+                  유효 행수: {csvResult.summary.validRows} | 
+                  등록된 품목: {csvResult.summary.imported}
+                </Typography>
+              </Box>
+              
+              {csvResult.errors.length > 0 && (
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant='subtitle2' color='error' gutterBottom>
+                    오류 ({csvResult.errors.length}개)
+                  </Typography>
+                  <List dense>
+                    {csvResult.errors.map((error, index) => (
+                      <ListItem key={index}>
+                        <ListItemIcon>
+                          <ErrorIcon color='error' fontSize='small' />
+                        </ListItemIcon>
+                        <ListItemText primary={error} />
+                      </ListItem>
+                    ))}
+                  </List>
+                </Box>
+              )}
+              
+              {csvResult.warnings.length > 0 && (
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant='subtitle2' color='warning.main' gutterBottom>
+                    경고 ({csvResult.warnings.length}개)
+                  </Typography>
+                  <List dense>
+                    {csvResult.warnings.map((warning, index) => (
+                      <ListItem key={index}>
+                        <ListItemIcon>
+                          <Warning color='warning' fontSize='small' />
+                        </ListItemIcon>
+                        <ListItemText primary={warning} />
+                      </ListItem>
+                    ))}
+                  </List>
+                </Box>
+              )}
+              
+              {csvResult.success && csvResult.summary.imported > 0 && (
+                <Alert severity='success'>
+                  {csvResult.summary.imported}개의 품목이 성공적으로 등록되었습니다.
+                </Alert>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseCsvDialog}>닫기</Button>
+          <Button 
+            onClick={handleDownloadTemplate} 
+            startIcon={<GetApp />}
+            variant='outlined'
+          >
+            템플릿 다운로드
+          </Button>
+          <Button 
+            onClick={handleCSVUpload} 
+            disabled={!csvFile || csvUploading}
+            variant='contained'
+            startIcon={csvUploading ? <CircularProgress size={16} /> : <FileUpload />}
+          >
+            업로드
           </Button>
         </DialogActions>
       </Dialog>

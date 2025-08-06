@@ -43,6 +43,8 @@ import {
 import { createBrowserClient } from '@/lib/supabase/client';
 import LoadingState from '@/components/common/LoadingState';
 import ErrorAlert from '@/components/common/ErrorAlert';
+import ProjectTimeline from '@/components/projects/ProjectTimeline';
+import ProjectDocuments from '@/components/projects/ProjectDocuments';
 
 interface Project {
   id: string;
@@ -52,6 +54,8 @@ interface Project {
   status: 'active' | 'completed' | 'on_hold' | 'canceled';
   start_date?: string;
   end_date?: string;
+  assignee_name?: string;
+  assignee_email?: string;
   created_at: string;
   quotes: {
     id: string;
@@ -97,6 +101,11 @@ export default function ProjectDetailPage({
   const [tabValue, setTabValue] = useState(0);
   const [addTransactionDialog, setAddTransactionDialog] = useState(false);
   const [addExpenseDialog, setAddExpenseDialog] = useState(false);
+  const [editAssigneeDialog, setEditAssigneeDialog] = useState(false);
+  const [assigneeForm, setAssigneeForm] = useState({
+    name: '',
+    email: '',
+  });
   const [newTransaction, setNewTransaction] = useState({
     type: 'income' as 'income' | 'expense',
     partner_name: '',
@@ -211,6 +220,33 @@ export default function ProjectDetailPage({
     }
   };
 
+  const handleEditAssignee = () => {
+    setAssigneeForm({
+      name: project?.assignee_name || '',
+      email: project?.assignee_email || '',
+    });
+    setEditAssigneeDialog(true);
+  };
+
+  const handleUpdateAssignee = async () => {
+    try {
+      const { error } = await supabase
+        .from('projects')
+        .update({
+          assignee_name: assigneeForm.name || null,
+          assignee_email: assigneeForm.email || null,
+        })
+        .eq('id', params.id);
+
+      if (error) throw error;
+
+      setEditAssigneeDialog(false);
+      fetchProjectData();
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
   const updateTransactionStatus = async (
     transactionId: string,
     status: Transaction['status']
@@ -320,6 +356,26 @@ export default function ProjectDetailPage({
                   {project.end_date || '미정'}
                 </Typography>
               )}
+              <Box display='flex' justifyContent='space-between' alignItems='center' mt={2}>
+                <Box>
+                  <Typography variant='body2' gutterBottom>
+                    <strong>담당자:</strong> {project.assignee_name || '미지정'}
+                  </Typography>
+                  {project.assignee_email && (
+                    <Typography variant='body2' color='text.secondary'>
+                      {project.assignee_email}
+                    </Typography>
+                  )}
+                </Box>
+                <Button
+                  size='small'
+                  variant='outlined'
+                  startIcon={<EditIcon />}
+                  onClick={handleEditAssignee}
+                >
+                  담당자 편집
+                </Button>
+              </Box>
             </CardContent>
           </Card>
         </Grid>
@@ -392,6 +448,8 @@ export default function ProjectDetailPage({
         >
           <Tab label='정산 관리' />
           <Tab label='기타 경비' />
+          <Tab label='타임라인' />
+          <Tab label='문서' />
         </Tabs>
 
         {/* 정산 관리 탭 */}
@@ -549,6 +607,26 @@ export default function ProjectDetailPage({
             </TableContainer>
           </CardContent>
         )}
+
+        {/* 타임라인 탭 */}
+        {tabValue === 2 && (
+          <CardContent>
+            <ProjectTimeline 
+              projectId={params.id} 
+              onUpdate={fetchProjectData}
+            />
+          </CardContent>
+        )}
+
+        {/* 문서 탭 */}
+        {tabValue === 3 && (
+          <CardContent>
+            <ProjectDocuments 
+              projectId={params.id}
+              onUpdate={fetchProjectData}
+            />
+          </CardContent>
+        )}
       </Card>
 
       {/* 거래 추가 다이얼로그 */}
@@ -699,6 +777,49 @@ export default function ProjectDetailPage({
           <Button onClick={() => setAddExpenseDialog(false)}>취소</Button>
           <Button onClick={handleAddExpense} variant='contained'>
             추가
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 담당자 편집 다이얼로그 */}
+      <Dialog
+        open={editAssigneeDialog}
+        onClose={() => setEditAssigneeDialog(false)}
+        maxWidth='sm'
+        fullWidth
+      >
+        <DialogTitle>담당자 편집</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+            <TextField
+              fullWidth
+              label='담당자명'
+              value={assigneeForm.name}
+              onChange={(e) =>
+                setAssigneeForm((prev) => ({
+                  ...prev,
+                  name: e.target.value,
+                }))
+              }
+            />
+            <TextField
+              fullWidth
+              label='이메일'
+              type='email'
+              value={assigneeForm.email}
+              onChange={(e) =>
+                setAssigneeForm((prev) => ({
+                  ...prev,
+                  email: e.target.value,
+                }))
+              }
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditAssigneeDialog(false)}>취소</Button>
+          <Button onClick={handleUpdateAssignee} variant='contained'>
+            저장
           </Button>
         </DialogActions>
       </Dialog>

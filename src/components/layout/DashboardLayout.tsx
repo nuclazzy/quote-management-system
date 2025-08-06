@@ -34,6 +34,7 @@ import {
   Notifications,
   AdminPanelSettings,
   ManageAccounts,
+  BugReport,
 } from '@mui/icons-material';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
@@ -52,13 +53,13 @@ interface NavItem {
 const navItems: NavItem[] = [
   { text: '대시보드', icon: <Dashboard />, path: '/dashboard' },
   { text: '견적서', icon: <Description />, path: '/quotes' },
-  { text: '고객사', icon: <People />, path: '/customers' },
-  { text: '고객사 (신규)', icon: <People />, path: '/clients' },
+  { text: '클라이언트', icon: <People />, path: '/clients' },
   { text: '공급처', icon: <Business />, path: '/suppliers' },
   { text: '품목 관리', icon: <Inventory />, path: '/items' },
   { text: '프로젝트', icon: <Analytics />, path: '/projects' },
   { text: '정산 관리', icon: <Analytics />, path: '/revenue' },
   { text: '알림', icon: <Notifications />, path: '/notifications' },
+  { text: 'PDF 테스트', icon: <BugReport />, path: '/pdf-test' },
   {
     text: '사용자 관리',
     icon: <ManageAccounts />,

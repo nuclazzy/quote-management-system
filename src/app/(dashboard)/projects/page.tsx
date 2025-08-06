@@ -37,6 +37,9 @@ import { createBrowserClient } from '@/lib/supabase/client';
 import LoadingState from '@/components/common/LoadingState';
 import ErrorAlert from '@/components/common/ErrorAlert';
 import ProjectKanbanBoard from '@/components/projects/ProjectKanbanBoard';
+import AdvancedFilter from '@/components/common/AdvancedFilter';
+import EnhancedFilter, { FilterField } from '@/components/common/EnhancedFilter';
+import type { QuoteFilter } from '@/types';
 
 interface Project {
   id: string;
@@ -71,6 +74,7 @@ export default function ProjectsPage() {
   const [statusUpdateDialog, setStatusUpdateDialog] = useState(false);
   const [newStatus, setNewStatus] = useState<Project['status']>('active');
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
+  const [filters, setFilters] = useState<QuoteFilter>({});
 
   const supabase = createBrowserClient();
 
@@ -191,9 +195,116 @@ export default function ProjectsPage() {
     }
   };
 
-  const filteredProjects = projects.filter(
-    (project) => statusFilter === 'all' || project.status === statusFilter
-  );
+  // 프로젝트용 필터 필드 정의
+  const projectFilterFields: FilterField[] = [
+    {
+      id: 'status',
+      label: '상태',
+      type: 'multiselect',
+      options: [
+        { label: '진행중', value: 'active', color: 'primary' },
+        { label: '완료', value: 'completed', color: 'success' },
+        { label: '보류', value: 'on_hold', color: 'warning' },
+        { label: '취소', value: 'canceled', color: 'error' }
+      ]
+    },
+    {
+      id: 'revenue_min',
+      label: '최소 매출',
+      type: 'number',
+      min: 0,
+      step: 1000000
+    },
+    {
+      id: 'revenue_max',
+      label: '최대 매출',
+      type: 'number',
+      min: 0,
+      step: 1000000
+    },
+    {
+      id: 'profit_min',
+      label: '최소 순이익',
+      type: 'number',
+      step: 100000
+    },
+    {
+      id: 'profit_margin_min',
+      label: '최소 수익률(%)',
+      type: 'number',
+      min: 0,
+      max: 100,
+      step: 1
+    },
+    {
+      id: 'date_from',
+      label: '시작일 이후',
+      type: 'date'
+    },
+    {
+      id: 'date_to',
+      label: '종료일 이전',
+      type: 'date'
+    }
+  ];
+
+  // 고급 필터 적용
+  const filteredProjects = projects.filter((project) => {
+    // 검색어 필터
+    if (filters.search) {
+      const searchLower = filters.search.toLowerCase();
+      const matchSearch = 
+        project.name.toLowerCase().includes(searchLower) ||
+        project.quotes?.customer_name_snapshot?.toLowerCase().includes(searchLower) ||
+        project.quotes?.quote_number?.toLowerCase().includes(searchLower);
+      if (!matchSearch) return false;
+    }
+
+    // 상태 필터
+    if (filters.status?.length) {
+      if (!filters.status.includes(project.status)) return false;
+    }
+
+    // 매출 범위 필터
+    if (filters.revenue_min && project.total_revenue < filters.revenue_min) {
+      return false;
+    }
+
+    if (filters.revenue_max && project.total_revenue > filters.revenue_max) {
+      return false;
+    }
+
+    // 순이익 필터
+    if (filters.profit_min && project.net_profit < filters.profit_min) {
+      return false;
+    }
+
+    // 수익률 필터
+    if (filters.profit_margin_min && project.profit_margin < filters.profit_margin_min) {
+      return false;
+    }
+
+    // 기간 필터
+    if (filters.date_from && project.start_date) {
+      const startDate = new Date(project.start_date);
+      const fromDate = new Date(filters.date_from);
+      if (startDate < fromDate) return false;
+    }
+
+    if (filters.date_to && project.end_date) {
+      const endDate = new Date(project.end_date);
+      const toDate = new Date(filters.date_to);
+      toDate.setHours(23, 59, 59, 999);
+      if (endDate > toDate) return false;
+    }
+
+    // 기존 statusFilter도 유지 (호환성)
+    if (statusFilter !== 'all' && project.status !== statusFilter) {
+      return false;
+    }
+
+    return true;
+  });
 
   if (loading) return <LoadingState />;
 
@@ -248,6 +359,24 @@ export default function ProjectsPage() {
           </Button>
         </Box>
       </Box>
+
+      {/* 향상된 필터 시스템 */}
+      <EnhancedFilter
+        fields={projectFilterFields}
+        onFilterChange={setFilters}
+        onSearch={() => {
+          // 필터는 실시간으로 적용됨
+        }}
+        onExport={(filter, format) => {
+          console.log('Export requested:', format, filter);
+          // TODO: 프로젝트 내보내기 구현
+        }}
+        searchPlaceholder='프로젝트명, 견적서 번호, 고객사명으로 검색...'
+        initialFilter={filters}
+        enablePresets={true}
+        enableExport={true}
+        enableHistory={true}
+      />
 
       {error && <ErrorAlert message={error} onClose={() => setError(null)} />}
 

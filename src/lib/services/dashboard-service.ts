@@ -5,6 +5,10 @@ export interface DashboardStats {
   totalAmount: number;
   acceptedQuotes: number;
   activeCustomers: number;
+  pendingApproval: number; // 승인 대기 견적서
+  activeProjects: number; // 진행 중인 프로젝트
+  newCustomers: number; // 이번 달 신규 고객
+  unreadNotifications: number; // 읽지 않은 알림
   recentQuotes: Array<{
     id: string;
     project_title: string;
@@ -54,15 +58,64 @@ export class DashboardService {
         console.error('Accepted quotes error:', acceptedError);
       }
 
+      // 승인 대기 견적서 수
+      const { count: pendingCount, error: pendingError } = await supabase
+        .from('quotes')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'submitted');
+
+      if (pendingError) {
+        console.error('Pending approval error:', pendingError);
+      }
+
       // 활성 고객사 수
       const { count: activeCustomersCount, error: customersError } =
         await supabase
-          .from('customers')
+          .from('clients')
           .select('*', { count: 'exact', head: true })
           .eq('is_active', true);
 
       if (customersError) {
         console.error('Active customers error:', customersError);
+      }
+
+      // 진행 중인 프로젝트 수
+      const { count: activeProjectsCount, error: projectsError } = await supabase
+        .from('projects')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'active');
+
+      if (projectsError) {
+        console.error('Active projects error:', projectsError);
+      }
+
+      // 이번 달 신규 고객 수
+      const { count: newCustomersCount, error: newCustomersError } = await supabase
+        .from('clients')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', firstDay.toISOString())
+        .lte('created_at', lastDay.toISOString());
+
+      if (newCustomersError) {
+        console.error('New customers error:', newCustomersError);
+      }
+
+      // 읽지 않은 알림 수
+      const { data: userData } = await supabase.auth.getUser();
+      let unreadCount = 0;
+      
+      if (userData?.user) {
+        const { count: notificationsCount, error: notificationsError } = await supabase
+          .from('notifications')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', userData.user.id)
+          .eq('is_read', false);
+
+        if (notificationsError) {
+          console.error('Unread notifications error:', notificationsError);
+        } else {
+          unreadCount = notificationsCount || 0;
+        }
       }
 
       // 최근 견적서 목록 (최근 5개)
@@ -71,8 +124,8 @@ export class DashboardService {
         .select(
           `
           id,
-          project_title,
-          customer_name_snapshot,
+          title,
+          business_registration_number,
           total_amount,
           status,
           created_at
@@ -98,6 +151,10 @@ export class DashboardService {
         totalAmount,
         acceptedQuotes: acceptedCount || 0,
         activeCustomers: activeCustomersCount || 0,
+        pendingApproval: pendingCount || 0,
+        activeProjects: activeProjectsCount || 0,
+        newCustomers: newCustomersCount || 0,
+        unreadNotifications: unreadCount,
         recentQuotes: recentQuotes || [],
       };
     } catch (error) {
@@ -108,6 +165,10 @@ export class DashboardService {
         totalAmount: 0,
         acceptedQuotes: 0,
         activeCustomers: 0,
+        pendingApproval: 0,
+        activeProjects: 0,
+        newCustomers: 0,
+        unreadNotifications: 0,
         recentQuotes: [],
       };
     }
@@ -130,7 +191,7 @@ export class DashboardService {
         status,
         total_amount,
         created_at,
-        customer_name_snapshot
+        business_registration_number
       `
       )
       .gte('created_at', firstDay.toISOString())

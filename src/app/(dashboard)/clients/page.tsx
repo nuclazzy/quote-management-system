@@ -27,52 +27,16 @@ import {
   FileUpload,
   FileDownload,
   Search,
-  Business,
-  Language,
 } from '@mui/icons-material';
 import { DataGrid, GridColDef, GridActionsCellItem } from '@mui/x-data-grid';
 import { useForm, Controller } from 'react-hook-form';
 import { useAuth } from '@/contexts/AuthContext';
+import { clientService, type Client, type ClientFormData } from '@/lib/services/client-service';
 
-interface Client {
-  id: string;
-  name: string;
-  business_registration_number?: string;
-  contact_person?: string;
-  email?: string;
-  phone?: string;
-  address?: string;
-  postal_code?: string;
-  website?: string;
-  notes?: string;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-  created_by: string;
-  updated_by?: string;
-  created_by_profile?: {
-    id: string;
-    full_name: string;
-    email: string;
-  };
-  updated_by_profile?: {
-    id: string;
-    full_name: string;
-    email: string;
-  };
-}
-
-interface ClientFormData {
-  name: string;
-  business_registration_number?: string;
-  contact_person?: string;
-  email?: string;
-  phone?: string;
-  address?: string;
-  postal_code?: string;
-  website?: string;
-  notes?: string;
-  is_active?: boolean;
+// 컴포넌트용 폼 타입 (서비스 타입과 호환)
+interface ClientFormInput extends ClientFormData {
+  business_number?: string;
+  status?: 'active' | 'inactive';
 }
 
 export default function ClientsPage() {
@@ -96,18 +60,15 @@ export default function ClientsPage() {
     handleSubmit,
     reset,
     formState: { errors },
-  } = useForm<ClientFormData>({
+  } = useForm<ClientFormInput>({
     defaultValues: {
       name: '',
-      business_registration_number: '',
+      business_number: '',
       contact_person: '',
-      email: '',
       phone: '',
+      email: '',
       address: '',
-      postal_code: '',
-      website: '',
-      notes: '',
-      is_active: true,
+      status: 'active',
     },
   });
 
@@ -117,18 +78,19 @@ export default function ClientsPage() {
 
   const fetchClients = async () => {
     try {
-      const response = await fetch('/api/clients');
-      if (response.ok) {
-        const data = await response.json();
-        setClients(data.clients || []);
-      } else {
-        throw new Error('고객사 정보를 불러오는데 실패했습니다.');
+      setLoading(true);
+      const response = await clientService.getAllClients();
+      
+      if (response.error) {
+        throw new Error(response.error as string);
       }
+      
+      setClients(response.data || []);
     } catch (error) {
       console.error('Error fetching clients:', error);
       setSnackbar({
         open: true,
-        message: '고객사 정보를 불러오는데 실패했습니다.',
+        message: '클라이언트 정보를 불러오는데 실패했습니다.',
         severity: 'error',
       });
     } finally {
@@ -140,15 +102,12 @@ export default function ClientsPage() {
     setEditingClient(null);
     reset({
       name: '',
-      business_registration_number: '',
+      business_number: '',
       contact_person: '',
-      email: '',
       phone: '',
+      email: '',
       address: '',
-      postal_code: '',
-      website: '',
-      notes: '',
-      is_active: true,
+      status: 'active',
     });
     setDialogOpen(true);
   };
@@ -157,15 +116,12 @@ export default function ClientsPage() {
     setEditingClient(client);
     reset({
       name: client.name,
-      business_registration_number: client.business_registration_number || '',
-      contact_person: client.contact_person || '',
-      email: client.email || '',
+      business_number: client.business_registration_number || '',
+      contact_person: client.contact_person,
       phone: client.phone || '',
+      email: client.email || '',
       address: client.address || '',
-      postal_code: client.postal_code || '',
-      website: client.website || '',
-      notes: client.notes || '',
-      is_active: client.is_active,
+      status: client.is_active ? 'active' : 'inactive',
     });
     setDialogOpen(true);
   };
@@ -175,43 +131,41 @@ export default function ClientsPage() {
     setDeleteDialogOpen(true);
   };
 
-  const onSubmit = async (data: ClientFormData) => {
+  const onSubmit = async (data: ClientFormInput) => {
     try {
-      const url = editingClient
-        ? `/api/clients/${editingClient.id}`
-        : '/api/clients';
-      const method = editingClient ? 'PUT' : 'POST';
+      // 폼 데이터를 서비스 타입으로 변환
+      const formData: ClientFormData = {
+        name: data.name,
+        business_registration_number: data.business_number || undefined,
+        contact_person: data.contact_person,
+        phone: data.phone || undefined,
+        email: data.email || undefined,
+        address: data.address || undefined,
+        is_active: data.status === 'active',
+      };
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
+      const response = editingClient
+        ? await clientService.updateClient(editingClient.id, formData)
+        : await clientService.createClient(formData);
 
-      if (response.ok) {
-        setSnackbar({
-          open: true,
-          message: editingClient
-            ? '고객사가 수정되었습니다.'
-            : '고객사가 생성되었습니다.',
-          severity: 'success',
-        });
-        setDialogOpen(false);
-        fetchClients();
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.error || '고객사 저장에 실패했습니다.');
+      if (response.error) {
+        throw new Error(response.error as string);
       }
+
+      setSnackbar({
+        open: true,
+        message: editingClient
+          ? '클라이언트가 수정되었습니다.'
+          : '클라이언트가 생성되었습니다.',
+        severity: 'success',
+      });
+      setDialogOpen(false);
+      fetchClients();
     } catch (error) {
       console.error('Error saving client:', error);
       setSnackbar({
         open: true,
-        message:
-          error instanceof Error
-            ? error.message
-            : '고객사 저장에 실패했습니다.',
+        message: '클라이언트 저장에 실패했습니다.',
         severity: 'error',
       });
     }
@@ -221,32 +175,25 @@ export default function ClientsPage() {
     if (!clientToDelete) return;
 
     try {
-      const response = await fetch(`/api/clients/${clientToDelete.id}`, {
-        method: 'DELETE',
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setSnackbar({
-          open: true,
-          message: data.message || '고객사가 삭제되었습니다.',
-          severity: 'success',
-        });
-        setDeleteDialogOpen(false);
-        setClientToDelete(null);
-        fetchClients();
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.error || '고객사 삭제에 실패했습니다.');
+      const response = await clientService.deleteClient(clientToDelete.id);
+      
+      if (response.error) {
+        throw new Error(response.error as string);
       }
+
+      setSnackbar({
+        open: true,
+        message: '클라이언트가 삭제되었습니다.',
+        severity: 'success',
+      });
+      setDeleteDialogOpen(false);
+      setClientToDelete(null);
+      fetchClients();
     } catch (error) {
       console.error('Error deleting client:', error);
       setSnackbar({
         open: true,
-        message:
-          error instanceof Error
-            ? error.message
-            : '고객사 삭제에 실패했습니다.',
+        message: '클라이언트 삭제에 실패했습니다.',
         severity: 'error',
       });
     }
@@ -256,12 +203,10 @@ export default function ClientsPage() {
     const csvData = clients.map((client) => ({
       회사명: client.name,
       사업자번호: client.business_registration_number || '',
-      담당자: client.contact_person || '',
+      담당자: client.contact_person,
       전화번호: client.phone || '',
       이메일: client.email || '',
       주소: client.address || '',
-      우편번호: client.postal_code || '',
-      웹사이트: client.website || '',
       상태: client.is_active ? '활성' : '비활성',
       생성일: new Date(client.created_at).toLocaleDateString('ko-KR'),
     }));
@@ -274,92 +219,40 @@ export default function ClientsPage() {
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `고객사_목록_${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `클라이언트_목록_${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
   };
 
   const filteredClients = clients.filter(
     (client) =>
       client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (client.contact_person &&
-        client.contact_person
-          .toLowerCase()
-          .includes(searchTerm.toLowerCase())) ||
-      (client.email &&
-        client.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (client.business_registration_number &&
-        client.business_registration_number
-          .toLowerCase()
-          .includes(searchTerm.toLowerCase()))
+      client.contact_person
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      (client.email || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const columns: GridColDef[] = [
-    {
-      field: 'name',
-      headerName: '회사명',
-      width: 200,
-      flex: 1,
-      renderCell: (params) => (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Business fontSize='small' color='primary' />
-          <Typography variant='body2' fontWeight='medium'>
-            {params.value}
-          </Typography>
-        </Box>
-      ),
-    },
-    {
-      field: 'business_registration_number',
-      headerName: '사업자번호',
+    { field: 'name', headerName: '회사명', width: 200, flex: 1 },
+    { 
+      field: 'business_registration_number', 
+      headerName: '사업자번호', 
       width: 150,
-      valueFormatter: (params) => params.value || '-',
+      valueFormatter: (params) => params.value || '-'
     },
-    {
-      field: 'contact_person',
-      headerName: '담당자',
-      width: 120,
-      valueFormatter: (params) => params.value || '-',
-    },
-    {
-      field: 'phone',
-      headerName: '전화번호',
+    { field: 'contact_person', headerName: '담당자', width: 120 },
+    { 
+      field: 'phone', 
+      headerName: '전화번호', 
       width: 130,
-      valueFormatter: (params) => params.value || '-',
+      valueFormatter: (params) => params.value || '-'
     },
-    {
-      field: 'email',
-      headerName: '이메일',
-      width: 200,
+    { 
+      field: 'email', 
+      headerName: '이메일', 
+      width: 200, 
       flex: 1,
-      valueFormatter: (params) => params.value || '-',
-    },
-    {
-      field: 'website',
-      headerName: '웹사이트',
-      width: 150,
-      renderCell: (params) =>
-        params.value ? (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <Language fontSize='small' color='action' />
-            <Typography
-              variant='body2'
-              color='primary'
-              sx={{ cursor: 'pointer' }}
-              onClick={() =>
-                window.open(
-                  params.value.startsWith('http')
-                    ? params.value
-                    : `https://${params.value}`,
-                  '_blank'
-                )
-              }
-            >
-              {params.value}
-            </Typography>
-          </Box>
-        ) : (
-          '-'
-        ),
+      valueFormatter: (params) => params.value || '-'
     },
     {
       field: 'is_active',
@@ -413,13 +306,15 @@ export default function ClientsPage() {
         }}
       >
         <Typography variant='h4' component='h1'>
-          고객사 관리
+          클라이언트 관리
         </Typography>
         <Box sx={{ display: 'flex', gap: 1 }}>
           <Button
             variant='outlined'
             startIcon={<FileUpload />}
-            onClick={(e) => setMenuAnchorEl(e.currentTarget)}
+            onClick={() =>
+              setMenuAnchorEl(document.getElementById('bulk-menu'))
+            }
           >
             일괄 작업
           </Button>
@@ -428,7 +323,7 @@ export default function ClientsPage() {
             startIcon={<Add />}
             onClick={handleCreateClient}
           >
-            고객사 추가
+            클라이언트 추가
           </Button>
         </Box>
       </Box>
@@ -436,7 +331,7 @@ export default function ClientsPage() {
       <Paper sx={{ mb: 3, p: 2 }}>
         <TextField
           fullWidth
-          placeholder='고객사명, 담당자, 이메일, 사업자번호로 검색...'
+          placeholder='클라이언트명, 담당자, 이메일로 검색...'
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           InputProps={{
@@ -461,7 +356,7 @@ export default function ClientsPage() {
         />
       </Paper>
 
-      {/* 고객사 생성/수정 다이얼로그 */}
+      {/* 클라이언트 생성/수정 다이얼로그 */}
       <Dialog
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
@@ -469,7 +364,7 @@ export default function ClientsPage() {
         fullWidth
       >
         <DialogTitle>
-          {editingClient ? '고객사 수정' : '고객사 추가'}
+          {editingClient ? '클라이언트 수정' : '클라이언트 추가'}
         </DialogTitle>
         <form onSubmit={handleSubmit(onSubmit)}>
           <DialogContent>
@@ -493,15 +388,13 @@ export default function ClientsPage() {
               </Grid>
               <Grid item xs={12} sm={6}>
                 <Controller
-                  name='business_registration_number'
+                  name='business_number'
                   control={control}
                   render={({ field }) => (
                     <TextField
                       {...field}
                       fullWidth
                       label='사업자번호'
-                      error={!!errors.business_registration_number}
-                      helperText={errors.business_registration_number?.message}
                       margin='normal'
                     />
                   )}
@@ -538,7 +431,7 @@ export default function ClientsPage() {
                   )}
                 />
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid item xs={12}>
                 <Controller
                   name='email'
                   control={control}
@@ -561,22 +454,7 @@ export default function ClientsPage() {
                   )}
                 />
               </Grid>
-              <Grid item xs={12} sm={6}>
-                <Controller
-                  name='website'
-                  control={control}
-                  render={({ field }) => (
-                    <TextField
-                      {...field}
-                      fullWidth
-                      label='웹사이트'
-                      placeholder='예: company.com 또는 https://company.com'
-                      margin='normal'
-                    />
-                  )}
-                />
-              </Grid>
-              <Grid item xs={12} sm={8}>
+              <Grid item xs={12}>
                 <Controller
                   name='address'
                   control={control}
@@ -587,37 +465,6 @@ export default function ClientsPage() {
                       label='주소'
                       multiline
                       rows={2}
-                      margin='normal'
-                    />
-                  )}
-                />
-              </Grid>
-              <Grid item xs={12} sm={4}>
-                <Controller
-                  name='postal_code'
-                  control={control}
-                  render={({ field }) => (
-                    <TextField
-                      {...field}
-                      fullWidth
-                      label='우편번호'
-                      margin='normal'
-                    />
-                  )}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <Controller
-                  name='notes'
-                  control={control}
-                  render={({ field }) => (
-                    <TextField
-                      {...field}
-                      fullWidth
-                      label='메모'
-                      multiline
-                      rows={3}
-                      placeholder='고객사 관련 메모를 입력하세요...'
                       margin='normal'
                     />
                   )}
@@ -639,14 +486,11 @@ export default function ClientsPage() {
         open={deleteDialogOpen}
         onClose={() => setDeleteDialogOpen(false)}
       >
-        <DialogTitle>고객사 삭제</DialogTitle>
+        <DialogTitle>클라이언트 삭제</DialogTitle>
         <DialogContent>
           <Typography>
-            '{clientToDelete?.name}' 고객사를 정말 삭제하시겠습니까?
-          </Typography>
-          <Typography variant='body2' color='text.secondary' sx={{ mt: 1 }}>
-            견적서에서 사용 중인 고객사는 비활성화되며, 사용하지 않는 고객사는
-            완전히 삭제됩니다.
+            '{clientToDelete?.name}' 클라이언트를 정말 삭제하시겠습니까? 이 작업은
+            되돌릴 수 없습니다.
           </Typography>
         </DialogContent>
         <DialogActions>

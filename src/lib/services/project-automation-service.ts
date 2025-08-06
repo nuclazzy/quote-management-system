@@ -24,28 +24,8 @@ export class ProjectAutomationService {
         .select(
           `
           *,
-          customers!inner(id, name),
-          quote_groups(
-            id,
-            name,
-            include_in_fee,
-            quote_items(
-              id,
-              name,
-              include_in_fee,
-              quote_details(
-                id,
-                name,
-                quantity,
-                days,
-                unit_price,
-                cost_price,
-                is_service,
-                supplier_id,
-                supplier_name_snapshot
-              )
-            )
-          )
+          client:clients!inner(id, name),
+          items:quote_items(*)
         `
         )
         .eq('id', quoteId)
@@ -56,7 +36,7 @@ export class ProjectAutomationService {
       }
 
       // 견적서 상태 확인
-      if (quote.status !== 'accepted') {
+      if (quote.status !== 'approved') {
         throw new Error('승인된 견적서만 프로젝트로 전환할 수 있습니다.');
       }
 
@@ -80,12 +60,15 @@ export class ProjectAutomationService {
         .from('projects')
         .insert({
           quote_id: quoteId,
-          name: quote.project_title,
-          total_revenue: totalRevenue,
-          total_cost: totalCost,
+          name: quote.title,
+          client_id: quote.client_id,
+          contract_amount: totalRevenue,
+          budget_amount: totalRevenue,
+          actual_cost: totalCost,
           status: 'active',
-          start_date: options.start_date,
-          end_date: options.end_date,
+          planned_start_date: options.start_date,
+          planned_end_date: options.end_date,
+          created_by: quote.created_by,
         })
         .select()
         .single();
@@ -99,8 +82,8 @@ export class ProjectAutomationService {
         await this.createAutoSettlementSchedule(
           project.id,
           totalRevenue,
-          quote.customers.name,
-          quote.project_title,
+          quote.client.name,
+          quote.title,
           options
         );
       }
@@ -109,7 +92,7 @@ export class ProjectAutomationService {
       await this.createExpenseTransactions(project.id, quote);
 
       // 알림 생성
-      await this.createProjectNotification(project.id, quote.project_title);
+      await this.createProjectNotification(project.id, quote.title);
 
       return project;
     } catch (error) {

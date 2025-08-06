@@ -16,6 +16,7 @@ import {
   BusinessError,
   ValidationError,
 } from '../lib/middleware/error-handler';
+import { NotificationService } from '@/lib/services/notification-service';
 
 // GET /api/quotes - 견적서 목록 조회
 export async function GET(request: NextRequest) {
@@ -182,7 +183,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 알림 생성 (백그라운드 실행)
-    sendQuoteCreatedNotification(createResult.quote_id, user.id).catch(
+    NotificationService.notifyQuoteCreated(createResult.quote_id, user.id).catch(
       (error) => {
         console.error('Failed to send quote created notification:', error);
       }
@@ -352,14 +353,3 @@ function validateQuoteItemDetails(
   });
 }
 
-/**
- * 견적서 생성 알림 전송 (백그라운드)
- */
-async function sendQuoteCreatedNotification(quoteId: string, userId: string) {
-  try {
-    // TODO: 실제 알림 서비스 구현
-    console.log(`Quote created notification: ${quoteId} by ${userId}`);
-  } catch (error) {
-    console.error('Failed to send notification:', error);
-  }
-}

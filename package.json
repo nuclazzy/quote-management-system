@@ -19,8 +19,9 @@
     "db:migrate": "node scripts/run-migration.js",
     "db:reset": "echo 'Reset database using Supabase dashboard'",
     "db:seed": "node scripts/seed.js",
-    "test": "echo 'No tests specified yet'",
-    "test:watch": "echo 'No tests specified yet'",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
     "prepare": "husky install || true"
   },
   "dependencies": {
@@ -66,6 +67,12 @@
     "lint-staged": "^15.2.2",
     "prettier": "^3.2.5",
     "typescript": "^5.3.3",
-    "webpack-bundle-analyzer": "^4.10.1"
+    "webpack-bundle-analyzer": "^4.10.1",
+    "@testing-library/jest-dom": "^6.1.6",
+    "@testing-library/react": "^14.1.2",
+    "@testing-library/user-event": "^14.5.2",
+    "@types/jest": "^29.5.11",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0"
   }
 }

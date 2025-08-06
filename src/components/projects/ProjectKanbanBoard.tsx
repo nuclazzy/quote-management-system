@@ -25,7 +25,7 @@ import {
   Edit as EditIcon,
   DragIndicator as DragIcon,
 } from '@mui/icons-material';
-// import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
+// 드래그 앤 드롭 패키지 없이 클릭으로 상태 변경 구현
 import { createBrowserClient } from '@/lib/supabase/client';
 
 interface Project {
@@ -195,6 +195,30 @@ export default function ProjectKanbanBoard({
     return '#f44336'; // 빨간색
   };
 
+  const getDaysUntilDeadline = (endDate?: string) => {
+    if (!endDate) return null;
+    const today = new Date();
+    const deadline = new Date(endDate);
+    const diffTime = deadline.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
+  const getDDayColor = (daysLeft: number | null) => {
+    if (daysLeft === null) return '#9e9e9e';
+    if (daysLeft < 0) return '#f44336'; // 빨간색 - 지났음
+    if (daysLeft <= 3) return '#ff9800'; // 주황색 - 임박
+    if (daysLeft <= 7) return '#ffeb3b'; // 노란색 - 주의
+    return '#4caf50'; // 녹색 - 여유
+  };
+
+  const formatDDay = (daysLeft: number | null) => {
+    if (daysLeft === null) return '마감일 미정';
+    if (daysLeft < 0) return `D+${Math.abs(daysLeft)}`;
+    if (daysLeft === 0) return 'D-Day';
+    return `D-${daysLeft}`;
+  };
+
   if (loading) {
     return (
       <Box
@@ -293,14 +317,25 @@ export default function ProjectKanbanBoard({
                           {project.quotes.customer_name_snapshot}
                         </Typography>
 
-                        <Typography
-                          variant='caption'
-                          color='text.secondary'
-                          display='block'
-                          gutterBottom
-                        >
-                          {project.quotes.quote_number}
-                        </Typography>
+                        <Box display='flex' justifyContent='space-between' alignItems='center' mb={1}>
+                          <Typography
+                            variant='caption'
+                            color='text.secondary'
+                          >
+                            {project.quotes.quote_number}
+                          </Typography>
+                          {/* D-Day 표시 */}
+                          <Chip
+                            size='small'
+                            label={formatDDay(getDaysUntilDeadline(project.end_date))}
+                            sx={{
+                              backgroundColor: getDDayColor(getDaysUntilDeadline(project.end_date)),
+                              color: 'white',
+                              fontSize: '0.65rem',
+                              height: 20,
+                            }}
+                          />
+                        </Box>
 
                         <Box mt={1}>
                           <Typography

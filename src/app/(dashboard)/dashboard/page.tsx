@@ -20,6 +20,10 @@ import {
   Add,
   ViewList,
   People,
+  PendingActions,
+  Folder,
+  PersonAdd,
+  NotificationsActive,
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import {
@@ -66,19 +70,9 @@ export default function DashboardPage() {
     }
   };
 
-  // 초기 로드 - 임시로 비활성화
+  // 초기 로드
   useEffect(() => {
-    // fetchDashboardData() // 임시 비활성화
-
-    // 테스트용 더미 데이터 설정
-    setStats({
-      totalQuotes: 0,
-      totalAmount: 0,
-      acceptedQuotes: 0,
-      activeCustomers: 0,
-      recentQuotes: [],
-    });
-    setLoading(false);
+    fetchDashboardData(); // API 활성화
   }, []);
 
   // 네비게이션 핸들러
@@ -124,6 +118,30 @@ export default function DashboardPage() {
       icon: <Business />,
       color: 'info',
     },
+    {
+      title: '승인 대기',
+      value: `${stats?.pendingApproval || 0}건`,
+      icon: <PendingActions />,
+      color: 'warning',
+    },
+    {
+      title: '진행 중 프로젝트',
+      value: `${stats?.activeProjects || 0}개`,
+      icon: <Folder />,
+      color: 'primary',
+    },
+    {
+      title: '신규 고객',
+      value: `${stats?.newCustomers || 0}명`,
+      icon: <PersonAdd />,
+      color: 'success',
+    },
+    {
+      title: '읽지 않은 알림',
+      value: `${stats?.unreadNotifications || 0}개`,
+      icon: <NotificationsActive />,
+      color: 'error',
+    },
   ];
 
   // 빠른 작업 버튼 데이터
@@ -141,8 +159,14 @@ export default function DashboardPage() {
       icon: <ViewList />,
     },
     {
+      label: '프로젝트 관리',
+      path: '/projects',
+      color: 'info' as const,
+      icon: <Business />,
+    },
+    {
       label: '고객사 관리',
-      path: '/customers',
+      path: '/clients',
       color: 'warning' as const,
       icon: <People />,
     },
@@ -183,7 +207,7 @@ export default function DashboardPage() {
         </Typography>
 
         <Grid container spacing={3} sx={{ mb: 5 }}>
-          {statCards.map((card, index) => (
+          {statCards.slice(0, 4).map((card, index) => (
             <Grid item xs={12} sm={6} md={3} key={index}>
               <StatCard
                 title={card.title}
@@ -191,6 +215,21 @@ export default function DashboardPage() {
                 icon={card.icon}
                 color={card.color}
                 delay={index * 100}
+              />
+            </Grid>
+          ))}
+        </Grid>
+
+        {/* 추가 통계 카드 */}
+        <Grid container spacing={3} sx={{ mb: 5 }}>
+          {statCards.slice(4).map((card, index) => (
+            <Grid item xs={12} sm={6} md={3} key={index + 4}>
+              <StatCard
+                title={card.title}
+                value={card.value}
+                icon={card.icon}
+                color={card.color}
+                delay={(index + 4) * 100}
               />
             </Grid>
           ))}
