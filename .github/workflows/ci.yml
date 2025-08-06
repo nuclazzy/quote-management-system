@@ -89,40 +89,40 @@ jobs:
       - name: Check for vulnerable dependencies
         run: npx audit-ci --config audit-ci.json || true
 
-  # 배포 (main 브랜치에서만)
-  deploy:
-    name: Deploy to Vercel
-    runs-on: ubuntu-latest
-    needs: [build, security]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        
-      - name: Deploy to Vercel
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-args: '--prod'
+  # 배포 (main 브랜치에서만) - Vercel token이 설정될 때까지 비활성화
+  # deploy:
+  #   name: Deploy to Vercel
+  #   runs-on: ubuntu-latest
+  #   needs: [build, security]
+  #   if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+  #   
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
+  #       
+  #     - name: Deploy to Vercel
+  #       uses: amondnet/vercel-action@v25
+  #       with:
+  #         vercel-token: ${{ secrets.VERCEL_TOKEN }}
+  #         vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+  #         vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+  #         vercel-args: '--prod'
           
-  # 프리뷰 배포 (PR에서만)
-  preview-deploy:
-    name: Preview Deploy
-    runs-on: ubuntu-latest
-    needs: [build]
-    if: github.event_name == 'pull_request'
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        
-      - name: Deploy Preview to Vercel
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          github-comment: true
+  # 프리뷰 배포 (PR에서만) - Vercel token이 설정될 때까지 비활성화
+  # preview-deploy:
+  #   name: Preview Deploy
+  #   runs-on: ubuntu-latest
+  #   needs: [build]
+  #   if: github.event_name == 'pull_request'
+  #   
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
+  #       
+  #     - name: Deploy Preview to Vercel
+  #       uses: amondnet/vercel-action@v25
+  #       with:
+  #         vercel-token: ${{ secrets.VERCEL_TOKEN }}
+  #         vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+  #         vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+  #         github-comment: true
