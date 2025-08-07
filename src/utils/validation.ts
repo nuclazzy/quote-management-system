@@ -262,7 +262,7 @@ export function validateField(
 
   // 커스텀 검증
   if (rule.custom) {
-    const customError = rule.custom(value, data);
+    const customError = rule.custom(value);
     if (customError) {
       return customError;
     }

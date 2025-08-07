@@ -1,290 +1,176 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@/lib/supabase/server';
+import {
+  createDirectApi,
+  DirectQueryBuilder,
+} from '@/lib/api/direct-integration';
 
-// GET /api/clients/[id] - 고객사 상세 조회
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const supabase = createServerClient();
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const clientId = params.id;
-
-    const { data: client, error } = await supabase
-      .from('clients')
-      .select(
-        `
-        *,
-        created_by_profile:profiles!clients_created_by_fkey(id, full_name, email),
-        updated_by_profile:profiles!clients_updated_by_fkey(id, full_name, email)
-      `
-      )
-      .eq('id', clientId)
-      .single();
-
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return NextResponse.json(
-          { error: 'Client not found' },
-          { status: 404 }
-        );
-      }
-      console.error('Error fetching client:', error);
-      return NextResponse.json(
-        { error: 'Failed to fetch client' },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json(client);
-  } catch (error) {
-    console.error('GET /api/clients/[id] error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
+interface Client {
+  id: string;
+  name: string;
+  business_registration_number?: string;
+  contact_person?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  postal_code?: string;
+  website?: string;
+  notes?: string;
+  tax_invoice_email?: string;
+  industry_type?: string;
+  company_size?: 'startup' | 'small' | 'medium' | 'large';
+  credit_rating?: number;
+  payment_terms_days?: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  created_by: string;
+  updated_by?: string;
 }
 
-// PUT /api/clients/[id] - 고객사 수정
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const supabase = createServerClient();
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+// GET /api/clients/[id] - 최적화된 고객사 상세 조회
+export const GET = createDirectApi(
+  async ({ supabase }, { params }: { params: { id: string } }) => {
+    const queryBuilder = new DirectQueryBuilder(supabase, 'clients');
+    
+    const client = await queryBuilder.findOne<Client>(params.id, `
+      *,
+      created_by_profile:profiles!clients_created_by_fkey(id, full_name, email),
+      updated_by_profile:profiles!clients_updated_by_fkey(id, full_name, email)
+    `);
+    
+    if (!client) {
+      throw new Error('고객사를 찾을 수 없습니다.');
     }
 
-    const clientId = params.id;
-    const body = await request.json();
-    const {
-      name,
-      business_registration_number,
-      contact_person,
-      email,
-      phone,
-      address,
-      postal_code,
-      website,
-      notes,
-      is_active,
-    } = body;
+    return client;
+  },
+  { requireAuth: true, enableLogging: true }
+);
 
-    // 필수 필드 검증
-    if (!name || !contact_person) {
-      return NextResponse.json(
-        { error: 'Missing required fields: name, contact_person' },
-        { status: 400 }
-      );
+// PUT /api/clients/[id] - 최적화된 고객사 수정
+export const PUT = createDirectApi(
+  async ({ supabase, user, body }, { params }: { params: { id: string } }) => {
+    const queryBuilder = new DirectQueryBuilder(supabase, 'clients');
+    
+    // 입력 검증
+    if (!body?.name?.trim()) {
+      throw new Error('회사명은 필수 항목입니다.');
+    }
+    
+    if (!body?.contact_person?.trim()) {
+      throw new Error('담당자명은 필수 항목입니다.');
     }
 
-    // 사업자번호 중복 검사 (사업자번호가 변경된 경우)
-    if (business_registration_number) {
-      const { data: existingClient } = await supabase
-        .from('clients')
-        .select('id')
-        .eq('business_registration_number', business_registration_number)
-        .neq('id', clientId)
-        .single();
+    // 이메일 형식 검증 (제공된 경우)
+    if (body.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)) {
+      throw new Error('올바른 이메일 형식이 아닙니다.');
+    }
 
-      if (existingClient) {
-        return NextResponse.json(
-          {
-            error:
-              'Another client with this business registration number already exists',
+    // 기존 고객사 확인
+    const existingClient = await queryBuilder.findOne<Client>(params.id);
+    if (!existingClient) {
+      throw new Error('고객사를 찾을 수 없습니다.');
+    }
+
+    // 사업자번호 중복 검사 (변경된 경우만)
+    if (body.business_registration_number?.trim()) {
+      const cleanBusinessNumber = body.business_registration_number.trim().replace(/[^0-9]/g, '');
+      if (cleanBusinessNumber.length !== 10) {
+        throw new Error('사업자등록번호는 10자리 숫자여야 합니다.');
+      }
+
+      if (cleanBusinessNumber !== existingClient.business_registration_number) {
+        const existing = await queryBuilder.findMany<Client>({
+          select: 'id',
+          where: {
+            business_registration_number: cleanBusinessNumber
           },
-          { status: 400 }
-        );
+          pagination: { page: 1, limit: 1 }
+        });
+        
+        if (existing.count > 0) {
+          throw new Error('이미 등록된 사업자등록번호입니다.');
+        }
       }
     }
+
+    // 데이터 정리 및 검증
+    const clientData = {
+      name: body.name.trim(),
+      business_registration_number: body.business_registration_number?.trim().replace(/[^0-9]/g, '') || null,
+      contact_person: body.contact_person.trim(),
+      email: body.email?.trim() || null,
+      phone: body.phone?.trim() || null,
+      address: body.address?.trim() || null,
+      postal_code: body.postal_code?.trim() || null,
+      website: body.website?.trim() || null,
+      notes: body.notes?.trim() || null,
+      tax_invoice_email: body.tax_invoice_email?.trim() || null,
+      industry_type: body.industry_type?.trim() || null,
+      company_size: body.company_size && ['startup', 'small', 'medium', 'large'].includes(body.company_size) 
+        ? body.company_size : null,
+      credit_rating: body.credit_rating ? Math.max(0, Math.min(100, Number(body.credit_rating))) : null,
+      payment_terms_days: body.payment_terms_days ? Math.max(0, Number(body.payment_terms_days)) : null,
+      is_active: body.is_active !== undefined ? body.is_active : true,
+      updated_by: user.id,
+    };
 
     // 고객사 수정
-    const { data: client, error } = await supabase
-      .from('clients')
-      .update({
-        name,
-        business_registration_number: business_registration_number || null,
-        contact_person,
-        email: email || null,
-        phone: phone || null,
-        address: address || null,
-        postal_code: postal_code || null,
-        website: website || null,
-        notes: notes || null,
-        is_active: is_active !== undefined ? is_active : true,
+    const client = await queryBuilder.update<Client>(params.id, clientData, `
+      *,
+      created_by_profile:profiles!clients_created_by_fkey(id, full_name, email),
+      updated_by_profile:profiles!clients_updated_by_fkey(id, full_name, email)
+    `);
+
+    return {
+      message: '고객사 정보가 성공적으로 수정되었습니다.',
+      client,
+    };
+  },
+  { requireAuth: true, requiredRole: 'member', enableLogging: true }
+);
+
+// DELETE /api/clients/[id] - 최적화된 고객사 삭제 (논리/물리 삭제)
+export const DELETE = createDirectApi(
+  async ({ supabase, user }, { params }: { params: { id: string } }) => {
+    const queryBuilder = new DirectQueryBuilder(supabase, 'clients');
+    
+    // 기존 고객사 확인
+    const existingClient = await queryBuilder.findOne<Client>(params.id);
+    if (!existingClient) {
+      throw new Error('고객사를 찾을 수 없습니다.');
+    }
+
+    // 해당 고객사를 사용하는 견적서가 있는지 확인
+    const quotesQuery = new DirectQueryBuilder(supabase, 'quotes');
+    const { count: quotesCount } = await quotesQuery.findMany({
+      select: 'id',
+      where: { client_id: params.id },
+      pagination: { page: 1, limit: 1 }
+    });
+
+    if (quotesCount > 0) {
+      // 사용 중인 고객사는 비활성화만 가능 (논리 삭제)
+      const client = await queryBuilder.update<Client>(params.id, {
+        is_active: false,
         updated_by: user.id,
-      })
-      .eq('id', clientId)
-      .select(
-        `
+      }, `
         *,
         created_by_profile:profiles!clients_created_by_fkey(id, full_name, email),
         updated_by_profile:profiles!clients_updated_by_fkey(id, full_name, email)
-      `
-      )
-      .single();
+      `);
 
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return NextResponse.json(
-          { error: 'Client not found' },
-          { status: 404 }
-        );
-      }
-      console.error('Error updating client:', error);
-      return NextResponse.json(
-        { error: 'Failed to update client' },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json(client);
-  } catch (error) {
-    console.error('PUT /api/clients/[id] error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
-
-// DELETE /api/clients/[id] - 고객사 삭제 (논리/물리 삭제)
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const supabase = createServerClient();
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // 사용자 권한 확인 (삭제는 관리자만 가능하다고 가정)
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (profileError || !profile) {
-      return NextResponse.json(
-        { error: 'User profile not found' },
-        { status: 404 }
-      );
-    }
-
-    if (!['super_admin', 'admin'].includes(profile.role)) {
-      return NextResponse.json(
-        { error: 'Insufficient permissions' },
-        { status: 403 }
-      );
-    }
-
-    const clientId = params.id;
-
-    // 해당 고객사를 사용하는 견적서가 있는지 확인
-    const { data: quotes, error: quotesError } = await supabase
-      .from('quotes')
-      .select('id')
-      .eq('client_id', clientId)
-      .limit(1);
-
-    if (quotesError) {
-      console.error('Error checking client usage:', quotesError);
-      return NextResponse.json(
-        { error: 'Failed to check client usage' },
-        { status: 500 }
-      );
-    }
-
-    if (quotes && quotes.length > 0) {
-      // 사용 중인 고객사는 비활성화만 가능 (논리 삭제)
-      const { data: client, error } = await supabase
-        .from('clients')
-        .update({
-          is_active: false,
-          updated_by: user.id,
-        })
-        .eq('id', clientId)
-        .select(
-          `
-          *,
-          created_by_profile:profiles!clients_created_by_fkey(id, full_name, email),
-          updated_by_profile:profiles!clients_updated_by_fkey(id, full_name, email)
-        `
-        )
-        .single();
-
-      if (error) {
-        if (error.code === 'PGRST116') {
-          return NextResponse.json(
-            { error: 'Client not found' },
-            { status: 404 }
-          );
-        }
-        console.error('Error deactivating client:', error);
-        return NextResponse.json(
-          { error: 'Failed to deactivate client' },
-          { status: 500 }
-        );
-      }
-
-      return NextResponse.json({
+      return {
         client,
-        message:
-          'Client has been deactivated because it is referenced by existing quotes. It cannot be permanently deleted.',
-      });
+        message: '견적서에서 참조되고 있어 고객사를 비활성화했습니다. 완전 삭제는 불가능합니다.',
+      };
     } else {
       // 사용하지 않는 고객사는 완전 삭제 (물리 삭제)
-      const { error } = await supabase
-        .from('clients')
-        .delete()
-        .eq('id', clientId);
+      await queryBuilder.delete(params.id);
 
-      if (error) {
-        if (error.code === 'PGRST116') {
-          return NextResponse.json(
-            { error: 'Client not found' },
-            { status: 404 }
-          );
-        }
-        console.error('Error deleting client:', error);
-        return NextResponse.json(
-          { error: 'Failed to delete client' },
-          { status: 500 }
-        );
-      }
-
-      return NextResponse.json({
-        message: 'Client has been permanently deleted.',
-      });
+      return {
+        message: '고객사가 완전히 삭제되었습니다.',
+      };
     }
-  } catch (error) {
-    console.error('DELETE /api/clients/[id] error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
+  },
+  { requireAuth: true, requiredRole: 'admin', enableLogging: true }
+);

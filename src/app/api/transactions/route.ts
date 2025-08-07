@@ -1,5 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@/lib/supabase/server';
+import {
+  createDirectApi,
+  DirectQueryBuilder,
+} from '@/lib/api/direct-integration';
 import { z } from 'zod';
 
 const createTransactionSchema = z.object({
@@ -12,158 +14,131 @@ const createTransactionSchema = z.object({
   notes: z.string().optional(),
 });
 
-const updateTransactionSchema = z.object({
-  status: z.enum(['pending', 'processing', 'completed', 'issue']).optional(),
-  tax_invoice_status: z.enum(['not_issued', 'issued', 'received']).optional(),
-  notes: z.string().optional(),
-});
+interface Transaction {
+  id: string;
+  project_id: string;
+  type: 'income' | 'expense';
+  partner_name: string;
+  item_name: string;
+  amount: number;
+  due_date?: string;
+  status: 'pending' | 'processing' | 'completed' | 'issue';
+  tax_invoice_status: 'not_issued' | 'issued' | 'received';
+  notes?: string;
+  created_at: string;
+  created_by: string;
+}
 
-export async function GET(request: NextRequest) {
-  try {
-    const supabase = createServerClient();
-    const { searchParams } = new URL(request.url);
-
-    // 현재 사용자 확인
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+// GET /api/transactions - 최적화된 거래 목록 조회
+export const GET = createDirectApi(
+  async ({ supabase, searchParams }) => {
+    const queryBuilder = new DirectQueryBuilder(supabase, 'transactions');
+    
+    // 필터링
+    const filters: Record<string, any> = {};
+    
+    const projectId = searchParams.get('project_id');
+    if (projectId) {
+      filters.project_id = projectId;
+    }
+    
+    const status = searchParams.get('status');
+    if (status && ['pending', 'processing', 'completed', 'issue'].includes(status)) {
+      filters.status = status;
+    }
+    
+    const type = searchParams.get('type');
+    if (type && ['income', 'expense'].includes(type)) {
+      filters.type = type;
     }
 
-    const projectId = searchParams.get('project_id');
-    const status = searchParams.get('status');
-    const type = searchParams.get('type');
+    // 날짜 범위 필터는 별도 처리
     const dueDateFrom = searchParams.get('due_date_from');
     const dueDateTo = searchParams.get('due_date_to');
 
-    let query = supabase
-      .from('transactions')
-      .select(
-        `
+    // 최적화된 단일 쿼리
+    const { data: transactions } = await queryBuilder.findMany<Transaction>({
+      select: `
         *,
         projects!inner(id, name, quotes!inner(customer_name_snapshot))
-      `
-      )
-      .order('created_at', { ascending: false });
+      `,
+      where: filters,
+      sort: { field: 'created_at', direction: 'desc' },
+      pagination: { page: 1, limit: 1000 }, // 거래 내역은 많지 않을 것으로 예상
+    });
 
-    // 필터 적용
-    if (projectId) {
-      query = query.eq('project_id', projectId);
-    }
-    if (status) {
-      query = query.eq('status', status);
-    }
-    if (type) {
-      query = query.eq('type', type);
-    }
-    if (dueDateFrom) {
-      query = query.gte('due_date', dueDateFrom);
-    }
-    if (dueDateTo) {
-      query = query.lte('due_date', dueDateTo);
+    // 날짜 범위 필터링 (후처리)
+    let filteredTransactions = transactions;
+    if (dueDateFrom || dueDateTo) {
+      filteredTransactions = transactions.filter((transaction) => {
+        if (!transaction.due_date) return false;
+        const dueDate = new Date(transaction.due_date);
+        if (dueDateFrom && dueDate < new Date(dueDateFrom)) return false;
+        if (dueDateTo && dueDate > new Date(dueDateTo)) return false;
+        return true;
+      });
     }
 
-    const { data, error } = await query;
+    return { transactions: filteredTransactions };
+  },
+  { requireAuth: true, enableLogging: true, enableCaching: true }
+);
 
-    if (error) {
-      console.error('Error fetching transactions:', error);
-      return NextResponse.json(
-        { error: 'Failed to fetch transactions' },
-        { status: 500 }
-      );
+// POST /api/transactions - 최적화된 거래 생성
+export const POST = createDirectApi(
+  async ({ supabase, user, body }) => {
+    const queryBuilder = new DirectQueryBuilder(supabase, 'transactions');
+    
+    // 스키마 검증
+    let validatedData;
+    try {
+      validatedData = createTransactionSchema.parse(body);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        throw new Error(`입력 데이터가 유효하지 않습니다: ${error.errors.map(e => e.message).join(', ')}`);
+      }
+      throw error;
     }
-
-    return NextResponse.json({ transactions: data });
-  } catch (error) {
-    console.error('Transactions GET error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
-
-export async function POST(request: NextRequest) {
-  try {
-    const supabase = createServerClient();
-
-    // 현재 사용자 확인
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // 요청 데이터 검증
-    const body = await request.json();
-    const validatedData = createTransactionSchema.parse(body);
 
     // 프로젝트 존재 확인
-    const { data: project, error: projectError } = await supabase
-      .from('projects')
-      .select('id')
-      .eq('id', validatedData.project_id)
-      .single();
-
-    if (projectError || !project) {
-      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+    const projectQuery = new DirectQueryBuilder(supabase, 'projects');
+    const project = await projectQuery.findOne(validatedData.project_id);
+    
+    if (!project) {
+      throw new Error('존재하지 않는 프로젝트입니다.');
     }
+
+    // 거래 데이터 준비
+    const transactionData = {
+      ...validatedData,
+      status: 'pending' as const,
+      tax_invoice_status: 'not_issued' as const,
+      created_by: user.id,
+    };
 
     // 거래 생성
-    const { data: transaction, error: transactionError } = await supabase
-      .from('transactions')
-      .insert({
-        ...validatedData,
-        status: 'pending',
-        tax_invoice_status: 'not_issued',
-        created_by: user.id,
-      })
-      .select()
-      .single();
+    const transaction = await queryBuilder.create<Transaction>(transactionData);
 
-    if (transactionError) {
-      console.error('Transaction creation error:', transactionError);
-      return NextResponse.json(
-        { error: 'Failed to create transaction' },
-        { status: 500 }
-      );
-    }
-
-    // 알림 생성
-    const { error: notificationError } = await supabase
-      .from('notifications')
-      .insert({
+    // 알림 생성 (비동기, 실패해도 거래 생성은 성공으로 처리)
+    const notificationQuery = new DirectQueryBuilder(supabase, 'notifications');
+    try {
+      await notificationQuery.create({
         user_id: user.id,
         message: `새로운 ${validatedData.type === 'income' ? '수입' : '지출'} 거래가 등록되었습니다: ${validatedData.item_name}`,
         link_url: `/projects/${validatedData.project_id}`,
         notification_type: 'general',
+        is_read: false,
       });
-
-    if (notificationError) {
+    } catch (notificationError) {
       console.error('Notification creation error:', notificationError);
+      // 알림 생성 실패는 무시하고 계속 진행
     }
 
-    return NextResponse.json({
+    return {
       success: true,
+      message: '거래가 성공적으로 등록되었습니다.',
       transaction,
-    });
-  } catch (error) {
-    console.error('Transactions POST error:', error);
-
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: 'Invalid request data', details: error.errors },
-        { status: 400 }
-      );
-    }
-
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  { requireAuth: true, requiredRole: 'member', enableLogging: true }
+);

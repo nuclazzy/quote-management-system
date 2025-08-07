@@ -1,9 +1,12 @@
+// 직접 연동 최적화된 클라이언트 API
 import {
   createDirectApi,
   DirectQueryBuilder,
   parsePagination,
   parseSort,
+  parseSearch,
   createPaginatedResponse,
+  createErrorResponse,
 } from '@/lib/api/direct-integration';
 
 interface Client {
@@ -29,6 +32,23 @@ interface Client {
   updated_by?: string;
 }
 
+interface ClientCreateInput {
+  name: string;
+  business_registration_number?: string;
+  contact_person?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  postal_code?: string;
+  website?: string;
+  notes?: string;
+  tax_invoice_email?: string;
+  industry_type?: string;
+  company_size?: 'startup' | 'small' | 'medium' | 'large';
+  credit_rating?: number;
+  payment_terms_days?: number;
+}
+
 // GET /api/clients - 최적화된 클라이언트 목록 조회
 export const GET = createDirectApi(
   async ({ supabase, searchParams }) => {
@@ -37,7 +57,7 @@ export const GET = createDirectApi(
     // 파라미터 파싱 (한 번만)
     const pagination = parsePagination(searchParams);
     const sort = parseSort(searchParams, [
-      'name', 'created_at', 'updated_at', 'contact_person', 'company_size'
+      'name', 'created_at', 'updated_at', 'contact_person'
     ]);
     
     // 필터링
@@ -47,15 +67,10 @@ export const GET = createDirectApi(
       filters.is_active = isActive === 'true';
     }
     
-    const companySize = searchParams.get('company_size');
-    if (companySize && ['startup', 'small', 'medium', 'large'].includes(companySize)) {
-      filters.company_size = companySize;
-    }
-    
     // 검색 조건
     const searchTerm = searchParams.get('search');
     const search = searchTerm ? {
-      fields: ['name', 'email', 'contact_person', 'business_registration_number', 'industry_type'],
+      fields: ['name', 'email', 'contact_person', 'business_registration_number'],
       term: searchTerm.trim().slice(0, 100) // 보안: 길이 제한
     } : undefined;
 
@@ -117,22 +132,12 @@ export const POST = createDirectApi(
       throw new Error('담당자명은 필수 항목입니다.');
     }
 
-    // 이메일 형식 검증 (제공된 경우)
-    if (body.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)) {
-      throw new Error('올바른 이메일 형식이 아닙니다.');
-    }
-
     // 사업자번호 중복 검사 (제공된 경우만)
     if (body.business_registration_number?.trim()) {
-      const cleanBusinessNumber = body.business_registration_number.trim().replace(/[^0-9]/g, '');
-      if (cleanBusinessNumber.length !== 10) {
-        throw new Error('사업자등록번호는 10자리 숫자여야 합니다.');
-      }
-
       const existing = await queryBuilder.findMany<Client>({
         select: 'id',
         where: {
-          business_registration_number: cleanBusinessNumber
+          business_registration_number: body.business_registration_number.trim()
         },
         pagination: { page: 1, limit: 1 }
       });
@@ -142,10 +147,10 @@ export const POST = createDirectApi(
       }
     }
 
-    // 데이터 정리 및 검증
-    const clientData = {
+    // 데이터 정리 및 생성
+    const clientData: ClientCreateInput = {
       name: body.name.trim(),
-      business_registration_number: body.business_registration_number?.trim().replace(/[^0-9]/g, '') || null,
+      business_registration_number: body.business_registration_number?.trim() || null,
       contact_person: body.contact_person.trim(),
       email: body.email?.trim() || null,
       phone: body.phone?.trim() || null,
@@ -155,17 +160,18 @@ export const POST = createDirectApi(
       notes: body.notes?.trim() || null,
       tax_invoice_email: body.tax_invoice_email?.trim() || null,
       industry_type: body.industry_type?.trim() || null,
-      company_size: body.company_size && ['startup', 'small', 'medium', 'large'].includes(body.company_size) 
-        ? body.company_size : null,
+      company_size: body.company_size || null,
       credit_rating: body.credit_rating ? Math.max(0, Math.min(100, Number(body.credit_rating))) : null,
       payment_terms_days: body.payment_terms_days ? Math.max(0, Number(body.payment_terms_days)) : null,
+    };
+
+    // 생성 (created_by, updated_by, is_active는 자동 설정)
+    const client = await queryBuilder.create<Client>({
+      ...clientData,
       is_active: true,
       created_by: user.id,
       updated_by: user.id,
-    };
-
-    // 생성
-    const client = await queryBuilder.create<Client>(clientData, `
+    }, `
       *,
       created_by_profile:profiles!clients_created_by_fkey(id, full_name, email)
     `);
@@ -181,3 +187,38 @@ export const POST = createDirectApi(
     enableLogging: true,
   }
 );
+
+// 에러 처리를 위한 래퍼 함수들
+const wrapHandler = (handler: any) => async (request: any) => {
+  try {
+    return await handler(request);
+  } catch (error: any) {
+    console.error('API Error:', error);
+    
+    // 비즈니스 로직 에러
+    if (error.message) {
+      return createErrorResponse(error.message, 'BUSINESS_ERROR', 400);
+    }
+    
+    // Supabase 에러
+    if (error.code) {
+      return createErrorResponse(
+        '데이터베이스 오류가 발생했습니다.',
+        error.code,
+        500
+      );
+    }
+    
+    // 기타 에러
+    return createErrorResponse(
+      '서버 내부 오류가 발생했습니다.',
+      'INTERNAL_ERROR',
+      500
+    );
+  }
+};
+
+// 최종 export (에러 처리 포함)
+export { GET as _GET, POST as _POST };
+export const GET_WITH_ERROR_HANDLING = wrapHandler(GET);
+export const POST_WITH_ERROR_HANDLING = wrapHandler(POST);

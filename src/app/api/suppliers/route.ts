@@ -1,212 +1,162 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { getUser } from '@/lib/auth/get-user';
+import {
+  createDirectApi,
+  DirectQueryBuilder,
+  parsePagination,
+  parseSort,
+  createPaginatedResponse,
+} from '@/lib/api/direct-integration';
 
-export async function GET(request: NextRequest) {
-  try {
-    const supabase = await createClient();
-    const user = await getUser();
+interface Supplier {
+  id: string;
+  name: string;
+  business_registration_number?: string;
+  contact_person?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  postal_code?: string;
+  website?: string;
+  payment_terms?: string;
+  lead_time_days?: number;
+  quality_rating?: number;
+  notes?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  created_by: string;
+  updated_by?: string;
+}
 
-    if (!user) {
-      return NextResponse.json(
-        { error: '인증이 필요합니다.' },
-        { status: 401 }
-      );
-    }
-
-    const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '25');
-    const search = searchParams.get('search') || '';
-    const sortBy = searchParams.get('sortBy') || 'created_at';
-    const sortOrder = searchParams.get('sortOrder') || 'desc';
+// GET /api/suppliers - 최적화된 공급업체 목록 조회
+export const GET = createDirectApi(
+  async ({ supabase, searchParams }) => {
+    const queryBuilder = new DirectQueryBuilder(supabase, 'suppliers');
+    
+    // 파라미터 파싱
+    const pagination = parsePagination(searchParams);
+    const sort = parseSort(searchParams, [
+      'name', 'contact_person', 'quality_rating', 'lead_time_days', 'created_at'
+    ]);
+    
+    // 필터링
+    const filters: Record<string, any> = {};
     const isActive = searchParams.get('isActive');
+    if (isActive !== null && isActive !== '') {
+      filters.is_active = isActive === 'true';
+    }
+    
+    // 검색 조건
+    const searchTerm = searchParams.get('search');
+    const search = searchTerm ? {
+      fields: ['name', 'contact_person', 'email', 'business_registration_number'],
+      term: searchTerm.trim().slice(0, 100)
+    } : undefined;
 
-    const offset = (page - 1) * limit;
-
-    // 기본 쿼리 구성
-    let query = supabase.from('suppliers').select(`
+    // 최적화된 단일 쿼리
+    const { data: suppliers, count } = await queryBuilder.findMany<Supplier>({
+      select: `
         *,
         created_by_profile:profiles!suppliers_created_by_fkey(id, full_name, email),
         updated_by_profile:profiles!suppliers_updated_by_fkey(id, full_name, email)
-      `);
-
-    // 검색 조건 추가
-    if (search) {
-      query = query.or(
-        `name.ilike.%${search}%,contact_person.ilike.%${search}%,email.ilike.%${search}%,business_registration_number.ilike.%${search}%`
-      );
-    }
-
-    // 상태 필터 추가
-    if (isActive !== null && isActive !== undefined && isActive !== '') {
-      query = query.eq('is_active', isActive === 'true');
-    }
-
-    // 정렬 추가
-    query = query.order(sortBy, { ascending: sortOrder === 'asc' });
-
-    // 페이지네이션 추가
-    query = query.range(offset, offset + limit - 1);
-
-    const { data: suppliers, error, count } = await query;
-
-    if (error) {
-      console.error('Suppliers fetch error:', error);
-      return NextResponse.json(
-        { error: '공급업체 정보를 불러오는데 실패했습니다.' },
-        { status: 500 }
-      );
-    }
-
-    // 전체 개수 조회 (페이지네이션용)
-    let countQuery = supabase
-      .from('suppliers')
-      .select('*', { count: 'exact', head: true });
-
-    if (search) {
-      countQuery = countQuery.or(
-        `name.ilike.%${search}%,contact_person.ilike.%${search}%,email.ilike.%${search}%,business_registration_number.ilike.%${search}%`
-      );
-    }
-
-    if (isActive !== null && isActive !== undefined && isActive !== '') {
-      countQuery = countQuery.eq('is_active', isActive === 'true');
-    }
-
-    const { count: totalCount } = await countQuery;
-
-    return NextResponse.json({
-      suppliers: suppliers || [],
-      pagination: {
-        page,
-        limit,
-        total: totalCount || 0,
-        totalPages: Math.ceil((totalCount || 0) / limit),
-      },
+      `,
+      where: filters,
+      search,
+      sort,
+      pagination,
     });
-  } catch (error) {
-    console.error('Suppliers API error:', error);
-    return NextResponse.json(
-      { error: '서버 오류가 발생했습니다.' },
-      { status: 500 }
+
+    return createPaginatedResponse(
+      suppliers,
+      count,
+      pagination.page,
+      pagination.limit
     );
+  },
+  {
+    requireAuth: true,
+    enableLogging: true,
+    enableCaching: true,
   }
-}
+);
 
-export async function POST(request: NextRequest) {
-  try {
-    const supabase = await createClient();
-    const user = await getUser();
-
-    if (!user) {
-      return NextResponse.json(
-        { error: '인증이 필요합니다.' },
-        { status: 401 }
-      );
+// POST /api/suppliers - 최적화된 공급업체 생성
+export const POST = createDirectApi(
+  async ({ supabase, user, body }) => {
+    const queryBuilder = new DirectQueryBuilder(supabase, 'suppliers');
+    
+    // 입력 검증
+    if (!body?.name?.trim()) {
+      throw new Error('공급업체명은 필수입니다.');
     }
 
-    const body = await request.json();
-    const {
-      name,
-      business_registration_number,
-      contact_person,
-      email,
-      phone,
-      address,
-      postal_code,
-      website,
-      payment_terms,
-      lead_time_days,
-      quality_rating,
-      notes,
-      is_active = true,
-    } = body;
-
-    // 필수 필드 검증
-    if (!name) {
-      return NextResponse.json(
-        { error: '공급업체명은 필수입니다.' },
-        { status: 400 }
-      );
-    }
-
-    // 이메일 형식 검증
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return NextResponse.json(
-        { error: '올바른 이메일 형식이 아닙니다.' },
-        { status: 400 }
-      );
+    // 이메일 형식 검증 (제공된 경우)
+    if (body.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)) {
+      throw new Error('올바른 이메일 형식이 아닙니다.');
     }
 
     // 품질 평가 검증
-    if (quality_rating && (quality_rating < 1 || quality_rating > 5)) {
-      return NextResponse.json(
-        { error: '품질 평가는 1-5 사이의 값이어야 합니다.' },
-        { status: 400 }
-      );
+    if (body.quality_rating && (body.quality_rating < 1 || body.quality_rating > 5)) {
+      throw new Error('품질 평가는 1-5 사이의 값이어야 합니다.');
     }
 
     // 납기일수 검증
-    if (lead_time_days && lead_time_days < 0) {
-      return NextResponse.json(
-        { error: '납기일수는 0 이상이어야 합니다.' },
-        { status: 400 }
-      );
+    if (body.lead_time_days && body.lead_time_days < 0) {
+      throw new Error('납기일수는 0 이상이어야 합니다.');
     }
 
-    // 사업자번호 중복 체크
-    if (business_registration_number) {
-      const { data: existingSupplier } = await supabase
-        .from('suppliers')
-        .select('id')
-        .eq('business_registration_number', business_registration_number)
-        .single();
+    // 사업자번호 중복 검사 (제공된 경우만)
+    if (body.business_registration_number?.trim()) {
+      const cleanBusinessNumber = body.business_registration_number.trim().replace(/[^0-9]/g, '');
+      if (cleanBusinessNumber.length !== 10) {
+        throw new Error('사업자등록번호는 10자리 숫자여야 합니다.');
+      }
 
-      if (existingSupplier) {
-        return NextResponse.json(
-          { error: '이미 등록된 사업자번호입니다.' },
-          { status: 400 }
-        );
+      const existing = await queryBuilder.findMany<Supplier>({
+        select: 'id',
+        where: {
+          business_registration_number: cleanBusinessNumber
+        },
+        pagination: { page: 1, limit: 1 }
+      });
+      
+      if (existing.count > 0) {
+        throw new Error('이미 등록된 사업자등록번호입니다.');
       }
     }
 
-    const { data: supplier, error } = await supabase
-      .from('suppliers')
-      .insert({
-        name,
-        business_registration_number: business_registration_number || null,
-        contact_person: contact_person || null,
-        email: email || null,
-        phone: phone || null,
-        address: address || null,
-        postal_code: postal_code || null,
-        website: website || null,
-        payment_terms: payment_terms || null,
-        lead_time_days: lead_time_days || 0,
-        quality_rating: quality_rating || null,
-        notes: notes || null,
-        is_active,
-        created_by: user.id,
-        updated_by: user.id,
-      })
-      .select()
-      .single();
+    // 데이터 정리 및 검증
+    const supplierData = {
+      name: body.name.trim(),
+      business_registration_number: body.business_registration_number?.trim().replace(/[^0-9]/g, '') || null,
+      contact_person: body.contact_person?.trim() || null,
+      email: body.email?.trim() || null,
+      phone: body.phone?.trim() || null,
+      address: body.address?.trim() || null,
+      postal_code: body.postal_code?.trim() || null,
+      website: body.website?.trim() || null,
+      payment_terms: body.payment_terms?.trim() || null,
+      lead_time_days: body.lead_time_days ? Math.max(0, Number(body.lead_time_days)) : 0,
+      quality_rating: body.quality_rating ? Math.max(1, Math.min(5, Number(body.quality_rating))) : null,
+      notes: body.notes?.trim() || null,
+      is_active: body.is_active !== false,
+      created_by: user.id,
+      updated_by: user.id,
+    };
 
-    if (error) {
-      console.error('Supplier creation error:', error);
-      return NextResponse.json(
-        { error: '공급업체 생성에 실패했습니다.' },
-        { status: 500 }
-      );
-    }
+    // 생성
+    const supplier = await queryBuilder.create<Supplier>(supplierData, `
+      *,
+      created_by_profile:profiles!suppliers_created_by_fkey(id, full_name, email)
+    `);
 
-    return NextResponse.json({ supplier }, { status: 201 });
-  } catch (error) {
-    console.error('Supplier creation API error:', error);
-    return NextResponse.json(
-      { error: '서버 오류가 발생했습니다.' },
-      { status: 500 }
-    );
+    return {
+      message: '공급업체가 성공적으로 생성되었습니다.',
+      supplier,
+    };
+  },
+  {
+    requireAuth: true,
+    requiredRole: 'member',
+    enableLogging: true,
   }
-}
+);

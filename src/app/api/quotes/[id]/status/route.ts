@@ -1,126 +1,108 @@
-import { NextRequest } from 'next/server';
-import { withAuth } from '@/app/api/lib/middleware/auth';
-import { withErrorHandler } from '@/app/api/lib/middleware/error-handler';
-import { withValidation } from '@/app/api/lib/middleware/validation';
 import {
-  withRateLimit,
-  RateLimitPresets,
-} from '@/app/api/lib/middleware/rate-limit';
-import {
-  createUpdatedResponse,
-  createNotFoundResponse,
-  createForbiddenResponse,
-  createMethodNotAllowedResponse,
-} from '@/app/api/lib/utils/response';
-import { QuoteStatusUpdateSchema } from '@/app/api/lib/schemas/quote';
-import { QuoteService } from '@/lib/services/quote-service';
-import { extractIdFromPath } from '@/app/api/lib/utils/helpers';
-import {
-  NotFoundError,
-  ForbiddenError,
-} from '@/app/api/lib/middleware/error-handler';
-import type { AuthenticatedRequest } from '@/app/api/lib/middleware/auth';
+  createDirectApi,
+  DirectQueryBuilder,
+} from '@/lib/api/direct-integration';
 
-/**
- * PATCH /api/quotes/[id]/status - 견적서 상태 변경
- */
-async function handlePatch(req: AuthenticatedRequest, validatedData: any) {
-  const quoteId = extractIdFromPath(req);
+interface Quote {
+  id: string;
+  quote_number: string;
+  title: string;
+  status: 'draft' | 'submitted' | 'under_review' | 'approved' | 'rejected' | 'expired';
+  created_by: string;
+  approved_at?: string;
+  approved_by?: string;
+  rejected_at?: string;
+  rejected_by?: string;
+  rejection_reason?: string;
+}
 
-  // 기존 견적서 조회 및 권한 확인
-  try {
-    const existingQuote = await QuoteService.getQuoteWithDetails(quoteId);
-
-    if (
-      req.user.role === 'member' &&
-      existingQuote.created_by !== req.user.id
-    ) {
-      throw new ForbiddenError('해당 견적서의 상태를 변경할 권한이 없습니다.');
+// PATCH /api/quotes/[id]/status - 최적화된 견적서 상태 변경
+export const PATCH = createDirectApi(
+  async ({ supabase, user, body }, { params }: { params: { id: string } }) => {
+    const queryBuilder = new DirectQueryBuilder(supabase, 'quotes');
+    
+    if (!body?.status) {
+      throw new Error('변경할 상태를 지정해주세요.');
     }
 
-    // 상태 변경 비즈니스 로직 검증
-    const { status, notes } = validatedData;
-
-    // 상태 변경 규칙 검증
-    if (!isValidStatusTransition(existingQuote.status, status)) {
-      throw new ForbiddenError(
-        `${existingQuote.status}에서 ${status}로 상태 변경이 불가능합니다.`
-      );
+    // 상태 유효성 검사
+    const validStatuses = ['draft', 'submitted', 'under_review', 'approved', 'rejected', 'expired'];
+    if (!validStatuses.includes(body.status)) {
+      throw new Error('유효하지 않은 상태입니다.');
     }
 
-    // 데이터베이스 함수를 통한 상태 변경
-    const { data, error } = await req.supabase.rpc('update_quote_status', {
-      p_quote_id: quoteId,
-      p_new_status: status,
-      p_notes: notes,
+    // 기존 견적서 확인
+    const existingQuote = await queryBuilder.findOne<Quote>(params.id);
+    if (!existingQuote) {
+      throw new Error('견적서를 찾을 수 없습니다.');
+    }
+
+    // 권한 확인
+    const { data: userProfile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (userProfile?.role === 'member' && existingQuote.created_by !== user.id) {
+      throw new Error('해당 견적서의 상태를 변경할 권한이 없습니다.');
+    }
+
+    // 상태 변경 규칙 검증 (단순화된 3단계)
+    const statusTransitions: Record<string, string[]> = {
+      'draft': ['submitted', 'approved', 'rejected'], // 임시저장 → 제출/승인/거부
+      'submitted': ['under_review', 'approved', 'rejected'], // 제출 → 검토중/승인/거부
+      'under_review': ['approved', 'rejected'], // 검토중 → 승인/거부
+      'approved': ['expired'], // 승인 → 만료
+      'rejected': ['draft'], // 거부 → 임시저장 (재검토)
+      'expired': [], // 만료된 견적서는 상태 변경 불가
+    };
+
+    const allowedNextStatuses = statusTransitions[existingQuote.status] || [];
+    if (!allowedNextStatuses.includes(body.status)) {
+      throw new Error(`현재 상태(${existingQuote.status})에서 ${body.status}로 변경할 수 없습니다.`);
+    }
+
+    // 상태별 추가 데이터 준비
+    const updateData: Partial<Quote> = {
+      status: body.status,
+    };
+
+    // 승인 시 추가 정보
+    if (body.status === 'approved') {
+      updateData.approved_at = new Date().toISOString();
+      updateData.approved_by = user.id;
+    }
+
+    // 거부 시 추가 정보
+    if (body.status === 'rejected') {
+      updateData.rejected_at = new Date().toISOString();
+      updateData.rejected_by = user.id;
+      updateData.rejection_reason = body.rejection_reason?.trim() || null;
+    }
+
+    // 상태 업데이트 (RPC 함수 사용)
+    const { data: result, error } = await supabase.rpc('update_quote_status', {
+      p_quote_id: params.id,
+      p_new_status: body.status,
+      p_notes: body.notes || null,
+      p_updated_by: user.id
     });
 
-    if (error || !data || data.length === 0 || !data[0].success) {
-      const errorMessage =
-        data && data.length > 0 ? data[0].message : error.message;
-      throw new Error(errorMessage);
+    if (error) {
+      console.error('Quote status update error:', error);
+      throw new Error('견적서 상태 변경 중 오류가 발생했습니다.');
     }
 
-    // 변경된 견적서 조회
-    const updatedQuote = await QuoteService.getQuoteWithDetails(quoteId);
+    // 업데이트된 견적서 조회
+    const updatedQuote = await queryBuilder.findOne<Quote>(params.id, `
+      id, quote_number, title, status, approved_at, rejected_at, rejection_reason
+    `);
 
-    return createUpdatedResponse(
-      updatedQuote,
-      `견적서 상태가 ${status}로 변경되었습니다.`
-    );
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('찾을 수 없습니다')) {
-      throw new NotFoundError('견적서');
-    }
-    throw error;
-  }
-}
-
-/**
- * 상태 변경 유효성 검사 (단순화된 3단계)
- */
-function isValidStatusTransition(
-  currentStatus: string,
-  newStatus: string
-): boolean {
-  // 단순화된 3단계 상태: draft(임시저장), accepted(수주확정), rejected(수주실패)
-  const transitions: Record<string, string[]> = {
-    draft: ['accepted', 'rejected'], // 임시저장 → 수주확정 or 수주실패
-    accepted: ['draft'], // 수주확정 → 임시저장 (재검토 위해)
-    rejected: ['draft'], // 수주실패 → 임시저장 (재검토 위해)
-  };
-
-  return transitions[currentStatus]?.includes(newStatus) || false;
-}
-
-/**
- * 메서드별 핸들러 래핑
- */
-const patchHandler = withAuth(
-  withRateLimit(
-    RateLimitPresets.standard,
-    withValidation(QuoteStatusUpdateSchema, handlePatch)
-  )
+    return {
+      message: `견적서 ${updatedQuote.quote_number}의 상태가 ${body.status}로 변경되었습니다.`,
+      quote: updatedQuote,
+    };
+  },
+  { requireAuth: true, requiredRole: 'member', enableLogging: true }
 );
-
-/**
- * 라우트 핸들러
- */
-export const PATCH = withErrorHandler(patchHandler);
-
-// 허용되지 않는 메서드에 대한 응답
-export async function GET() {
-  return createMethodNotAllowedResponse(['PATCH']);
-}
-
-export async function POST() {
-  return createMethodNotAllowedResponse(['PATCH']);
-}
-
-export async function PUT() {
-  return createMethodNotAllowedResponse(['PATCH']);
-}
-
-export async function DELETE() {
-  return createMethodNotAllowedResponse(['PATCH']);
-}

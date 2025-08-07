@@ -1,77 +1,90 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@/lib/supabase/server';
+import {
+  createDirectApi,
+  DirectQueryBuilder,
+} from '@/lib/api/direct-integration';
 import { parseAndValidateItemCSV, parseItemsFromCSV } from '@/lib/csv-item-template';
 
-// GET /api/items - 품목 목록 조회
-export async function GET(request: NextRequest) {
-  try {
-    const supabase = createServerClient();
+interface Item {
+  id: string;
+  name: string;
+  description?: string;
+  category_id: string;
+  sku: string;
+  unit: string;
+  unit_price: number;
+  stock_quantity: number;
+  minimum_stock_level: number;
+  item_type: 'product' | 'service';
+  barcode?: string;
+  is_active: boolean;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string;
+  updated_by?: string;
+}
 
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { searchParams } = new URL(request.url);
+// GET /api/items - 최적화된 품목 목록 조회
+export const GET = createDirectApi(
+  async ({ supabase, user, searchParams }) => {
+    const queryBuilder = new DirectQueryBuilder(supabase, 'items');
+    
+    // 필터링
+    const filters: Record<string, any> = {
+      is_active: true,
+      user_id: user.id,
+    };
+    
     const categoryId = searchParams.get('category_id');
+    if (categoryId) {
+      filters.category_id = categoryId;
+    }
+    
     const itemType = searchParams.get('item_type');
+    if (itemType && ['product', 'service'].includes(itemType)) {
+      filters.item_type = itemType;
+    }
+    
     const favorites = searchParams.get('favorites') === 'true';
-
-    let query = supabase
-      .from('items')
-      .select(
-        `
+    
+    // 쿼리 선택자 구성
+    let selectQuery = `
+      *,
+      category:item_categories(*),
+      usage_stats:item_usage_stats(quote_count, unique_quotes, total_quantity_used, last_used_at)
+    `;
+    
+    if (favorites) {
+      selectQuery = `
         *,
         category:item_categories(*),
-        ${favorites ? 'favorites:item_favorites!inner(id),' : ''}
+        favorites:item_favorites!inner(id),
         usage_stats:item_usage_stats(quote_count, unique_quotes, total_quantity_used, last_used_at)
-      `
-      )
-      .eq('is_active', true)
-      .eq('user_id', user.id);
-
-    if (categoryId) {
-      query = query.eq('category_id', categoryId);
+      `;
+      filters['favorites.user_id'] = user.id;
     }
 
-    if (itemType) {
-      query = query.eq('item_type', itemType);
-    }
-
-    if (favorites) {
-      query = query.eq('favorites.user_id', user.id);
-    }
-
-    const { data: items, error } = await query.order('name');
-
-    if (error) {
-      console.error('Error fetching items:', error);
-      return NextResponse.json(
-        { error: 'Failed to fetch items' },
-        { status: 500 }
-      );
-    }
+    // 최적화된 단일 쿼리
+    const { data: items } = await queryBuilder.findMany<Item>({
+      select: selectQuery,
+      where: filters,
+      sort: { field: 'name', direction: 'asc' },
+      pagination: { page: 1, limit: 1000 }, // 품목은 보통 많지 않으므로
+    });
 
     // 데이터 포맷 정리
-    const formattedItems = (items || []).map(item => ({
+    const formattedItems = (items || []).map((item: any) => ({
       ...item,
       is_favorite: favorites || (item.favorites && item.favorites.length > 0),
       usage_count: item.usage_stats?.[0]?.quote_count || 0,
       last_used_at: item.usage_stats?.[0]?.last_used_at
     }));
 
-    return NextResponse.json(formattedItems);
-  } catch (error) {
-    console.error('Error in items GET:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
+    return formattedItems;
+  },
+  { requireAuth: true, enableLogging: true, enableCaching: true }
+);
 
 // CSV 업로드 처리 함수
 async function handleCSVUpload(request: NextRequest, supabase: any, user: any) {
@@ -221,80 +234,8 @@ export async function POST(request: NextRequest) {
       return handleCSVUpload(request, supabase, user);
     }
 
-    // 일반 JSON 요청 처리 (단일 품목 생성)
-    const body = await request.json();
-    const {
-      name,
-      description,
-      category_id,
-      sku,
-      unit,
-      unit_price,
-      stock_quantity,
-      minimum_stock_level,
-      item_type,
-      barcode,
-    } = body;
-
-    // 필수 필드 검증
-    if (!name || !category_id || !sku || !unit || unit_price === undefined || !item_type) {
-      return NextResponse.json(
-        {
-          error: 'Missing required fields: name, category_id, sku, unit, unit_price, item_type',
-        },
-        { status: 400 }
-      );
-    }
-
-    // SKU 중복 검사
-    const { data: existingSku } = await supabase
-      .from('items')
-      .select('id')
-      .eq('sku', sku)
-      .eq('user_id', user.id)
-      .single();
-
-    if (existingSku) {
-      return NextResponse.json(
-        { error: 'SKU already exists' },
-        { status: 400 }
-      );
-    }
-
-    // 품목 생성
-    const { data: item, error } = await supabase
-      .from('items')
-      .insert({
-        name,
-        description: description || null,
-        category_id,
-        sku,
-        unit,
-        unit_price: Number(unit_price),
-        stock_quantity: Number(stock_quantity) || 0,
-        minimum_stock_level: Number(minimum_stock_level) || 0,
-        item_type,
-        barcode: barcode || null,
-        is_active: true,
-        user_id: user.id,
-        created_by: user.id,
-        updated_by: user.id,
-      })
-      .select(`
-        *,
-        category:item_categories(*)
-      `)
-      .single();
-
-    if (error) {
-      console.error('Error creating item:', error);
-      return NextResponse.json(
-        { error: 'Failed to create item' },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json(item, { status: 201 });
+    // 일반 JSON 요청 처리 (단일 품목 생성) - 직접 연동 적용
+    return createDirectItemHandler(request);
   } catch (error) {
     console.error('Error in items POST:', error);
     return NextResponse.json(
@@ -303,3 +244,86 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+// 최적화된 단일 품목 생성 핸들러
+const createDirectItemHandler = createDirectApi(
+  async ({ supabase, user, body }) => {
+    const queryBuilder = new DirectQueryBuilder(supabase, 'items');
+    
+    // 입력 검증
+    if (!body?.name?.trim()) {
+      throw new Error('품목명은 필수 항목입니다.');
+    }
+    
+    if (!body?.category_id) {
+      throw new Error('카테고리 선택은 필수입니다.');
+    }
+    
+    if (!body?.sku?.trim()) {
+      throw new Error('SKU는 필수 항목입니다.');
+    }
+    
+    if (!body?.unit?.trim()) {
+      throw new Error('단위는 필수 항목입니다.');
+    }
+    
+    if (body?.unit_price === undefined || body.unit_price < 0) {
+      throw new Error('단가는 필수이며 0 이상이어야 합니다.');
+    }
+    
+    if (!body?.item_type || !['product', 'service'].includes(body.item_type)) {
+      throw new Error('유효한 품목 유형을 선택해주세요.');
+    }
+
+    // SKU 중복 검사
+    const existing = await queryBuilder.findMany<Item>({
+      select: 'id',
+      where: {
+        sku: body.sku.trim(),
+        user_id: user.id
+      },
+      pagination: { page: 1, limit: 1 }
+    });
+    
+    if (existing.count > 0) {
+      throw new Error('이미 사용 중인 SKU입니다.');
+    }
+
+    // 카테고리 존재 확인
+    const categoryQuery = new DirectQueryBuilder(supabase, 'item_categories');
+    const category = await categoryQuery.findOne(body.category_id);
+    if (!category) {
+      throw new Error('존재하지 않는 카테고리입니다.');
+    }
+
+    // 데이터 정리 및 검증
+    const itemData = {
+      name: body.name.trim(),
+      description: body.description?.trim() || null,
+      category_id: body.category_id,
+      sku: body.sku.trim(),
+      unit: body.unit.trim(),
+      unit_price: Math.max(0, Number(body.unit_price)),
+      stock_quantity: Math.max(0, Number(body.stock_quantity) || 0),
+      minimum_stock_level: Math.max(0, Number(body.minimum_stock_level) || 0),
+      item_type: body.item_type,
+      barcode: body.barcode?.trim() || null,
+      is_active: true,
+      user_id: user.id,
+      created_by: user.id,
+      updated_by: user.id,
+    };
+
+    // 생성
+    const item = await queryBuilder.create<Item>(itemData, `
+      *,
+      category:item_categories(*)
+    `);
+
+    return {
+      message: '품목이 성공적으로 생성되었습니다.',
+      item,
+    };
+  },
+  { requireAuth: true, requiredRole: 'member', enableLogging: true }
+);
