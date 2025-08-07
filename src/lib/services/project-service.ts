@@ -1,4 +1,6 @@
-import { supabase } from '../supabase/client';
+import { createBrowserClient } from '../supabase/client';
+
+const supabase = createBrowserClient();
 import type { Project, ProjectInsert, ProjectUpdate } from '@/types';
 
 export interface ProjectFilter {

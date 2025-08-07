@@ -1,4 +1,6 @@
-import { supabase } from '../supabase/client';
+import { createBrowserClient } from '../supabase/client';
+
+const supabase = createBrowserClient();
 
 export interface DashboardStats {
   totalQuotes: number;
