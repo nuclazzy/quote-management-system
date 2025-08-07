@@ -88,7 +88,7 @@ export default function ProjectsPage() {
         .select(
           `
           *,
-          quotes!inner(id, quote_number, customer_name_snapshot)
+          quotes!projects_quote_id_fkey(id, quote_number, customer_name_snapshot)
         `
         )
         .order('created_at', { ascending: false });
