@@ -33,6 +33,31 @@ export default function AuthCallbackPage() {
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
+        // URL 해시에서 토큰 추출 시도
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const accessToken = hashParams.get('access_token');
+        
+        if (accessToken) {
+          // 토큰이 있으면 세션 설정 시도
+          const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: hashParams.get('refresh_token') || '',
+          });
+          
+          if (sessionError) {
+            console.error('세션 설정 에러:', sessionError.message);
+            // 세션 설정 실패 시 현재 세션 확인
+            const { data, error } = await supabase.auth.getSession();
+            if (data.session?.user) {
+              await processUser(data.session.user);
+              return;
+            }
+          } else if (sessionData.session?.user) {
+            await processUser(sessionData.session.user);
+            return;
+          }
+        }
+        
         // 현재 세션 확인
         const { data, error } = await supabase.auth.getSession();
 
@@ -47,7 +72,7 @@ export default function AuthCallbackPage() {
           await processUser(data.session.user);
         } else {
           setStatus('error');
-          setErrorMessage('인증 정보를 찾을 수 없습니다.');
+          setErrorMessage('인증 정보를 찾을 수 없습니다. Supabase 대시보드에서 Redirect URL 설정을 확인해주세요.');
           
           setTimeout(() => {
             router.push('/auth/login');
