@@ -23,7 +23,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // 현재 세션 확인
         const {
           data: { session },
+          error
         } = await supabase.auth.getSession();
+
+        if (error) {
+          console.error('Session error:', error);
+          setAuthState({
+            user: null,
+            loading: false,
+            initialized: true,
+          });
+          return;
+        }
 
         if (session?.user) {
           // 간단한 사용자 객체 생성 (프로필 생성 스킵)
@@ -54,6 +65,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (error) {
         console.error('Auth initialization error:', error);
+        // More detailed error logging
+        if (error instanceof Error) {
+          console.error('Error message:', error.message);
+          console.error('Error stack:', error.stack);
+        }
         setAuthState({
           user: null,
           loading: false,

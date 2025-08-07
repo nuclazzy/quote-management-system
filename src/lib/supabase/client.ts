@@ -9,42 +9,56 @@ export const createClient = () => {
     throw new Error('Missing Supabase environment variables');
   }
 
+  // Only use custom storage on the client side
+  if (typeof window === 'undefined') {
+    // Server-side: Use default storage
+    return createSupabaseClient<Database>(supabaseUrl, supabaseKey);
+  }
+
+  // Client-side: Use custom storage with localStorage and cookies
   return createSupabaseClient<Database>(supabaseUrl, supabaseKey, {
     auth: {
       storage: {
         getItem: (key: string) => {
-          if (typeof window === 'undefined') return null;
+          try {
+            // Try localStorage first
+            const localStorageValue = localStorage.getItem(key);
+            if (localStorageValue) {
+              // Also set as cookie for server-side access
+              document.cookie = `${key}=${localStorageValue}; path=/; max-age=86400; SameSite=Lax`;
+              return localStorageValue;
+            }
 
-          // Try localStorage first
-          const localStorageValue = localStorage.getItem(key);
-          if (localStorageValue) {
-            // Also set as cookie for server-side access
-            document.cookie = `${key}=${localStorageValue}; path=/; max-age=86400; SameSite=Lax`;
-            return localStorageValue;
+            // Fall back to cookies
+            const cookies = document.cookie.split(';');
+            const cookie = cookies.find((c) => c.trim().startsWith(`${key}=`));
+            return cookie ? cookie.split('=')[1] : null;
+          } catch (error) {
+            console.error('Error accessing storage:', error);
+            return null;
           }
-
-          // Fall back to cookies
-          const cookies = document.cookie.split(';');
-          const cookie = cookies.find((c) => c.trim().startsWith(`${key}=`));
-          return cookie ? cookie.split('=')[1] : null;
         },
         setItem: (key: string, value: string) => {
-          if (typeof window === 'undefined') return;
+          try {
+            // Set in localStorage
+            localStorage.setItem(key, value);
 
-          // Set in localStorage
-          localStorage.setItem(key, value);
-
-          // Also set as cookie for server-side access
-          document.cookie = `${key}=${value}; path=/; max-age=86400; SameSite=Lax`;
+            // Also set as cookie for server-side access
+            document.cookie = `${key}=${value}; path=/; max-age=86400; SameSite=Lax`;
+          } catch (error) {
+            console.error('Error setting storage:', error);
+          }
         },
         removeItem: (key: string) => {
-          if (typeof window === 'undefined') return;
+          try {
+            // Remove from localStorage
+            localStorage.removeItem(key);
 
-          // Remove from localStorage
-          localStorage.removeItem(key);
-
-          // Remove cookie
-          document.cookie = `${key}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+            // Remove cookie
+            document.cookie = `${key}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+          } catch (error) {
+            console.error('Error removing from storage:', error);
+          }
         },
       },
     },
