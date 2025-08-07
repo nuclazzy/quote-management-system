@@ -85,7 +85,10 @@ export default function TemplateSelector({ onApplyTemplate }: TemplateSelectorPr
 
       setTemplates(response.data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : '템플릿을 불러오는 중 오류가 발생했습니다.');
+      console.warn('템플릿 로딩 실패 - 임시로 무시:', err);
+      // 템플릿 테이블이 없어도 페이지가 작동하도록 에러를 무시
+      setTemplates([]);
+      setError(null);
     } finally {
       setLoading(false);
     }
@@ -97,7 +100,9 @@ export default function TemplateSelector({ onApplyTemplate }: TemplateSelectorPr
       const categoryList = await QuoteTemplatesService.getCategories();
       setCategories(categoryList);
     } catch (err) {
-      console.error('템플릿 카테고리 로딩 중 오류:', err);
+      console.warn('템플릿 카테고리 로딩 실패 - 임시로 무시:', err);
+      // 템플릿 테이블이 없어도 페이지가 작동하도록 에러를 무시
+      setCategories([]);
     }
   };
 

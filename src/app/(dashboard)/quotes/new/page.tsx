@@ -697,9 +697,38 @@ export default function QuoteNewPage() {
                                   <Collapse in={isExpanded}>
                                     <Box sx={{ mt: 2 }}>
                                       {item.details?.length === 0 ? (
-                                        <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
-                                          세부항목을 추가하세요.
-                                        </Typography>
+                                        <Box sx={{ textAlign: 'center', py: 2 }}>
+                                          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                                            세부항목을 추가하세요.
+                                          </Typography>
+                                          <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+                                            <Button
+                                              variant="outlined"
+                                              startIcon={<AddIcon />}
+                                              onClick={() => addDetail?.(groupIndex, itemIndex)}
+                                              size="small"
+                                              sx={{ 
+                                                boxShadow: 'none',
+                                                '&:hover': { boxShadow: 'none' }
+                                              }}
+                                            >
+                                              직접입력
+                                            </Button>
+                                            <Button
+                                              variant="contained"
+                                              onClick={() => openMasterItemDialog(groupIndex, itemIndex)}
+                                              size="small"
+                                              sx={{ 
+                                                bgcolor: 'primary.main',
+                                                '&:hover': { bgcolor: 'primary.dark' },
+                                                boxShadow: 'none',
+                                                '&:hover': { boxShadow: 'none' }
+                                              }}
+                                            >
+                                              품목선택
+                                            </Button>
+                                          </Box>
+                                        </Box>
                                       ) : (
                                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                                           {item.details?.map((detail, detailIndex) => (
