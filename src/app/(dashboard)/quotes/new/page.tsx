@@ -148,49 +148,43 @@ export default function QuoteNewPage() {
   // 안전한 훅 사용
   let hookData;
   try {
-    addDebugStep({
-      id: `hook-init-${Date.now()}`,
-      name: 'Hook Initialization',
-      status: 'loading',
-      message: 'useMotionsenseQuoteSafe 훅 초기화 시작',
-      timestamp: new Date()
-    });
-    
     hookData = useMotionsenseQuoteSafe();
-    
-    addDebugStep({
-      id: `hook-success-${Date.now()}`,
-      name: 'Hook Initialization',
-      status: 'success',
-      message: 'useMotionsenseQuoteSafe 훅 초기화 성공',
-      details: {
-        hasFormData: !!hookData?.formData,
-        hasUpdateFormData: !!hookData?.updateFormData,
-        hasCalculation: !!hookData?.calculation,
-        projectTitle: hookData?.formData?.project_title || 'empty',
-        groupsCount: hookData?.formData?.groups?.length || 0
-      },
-      timestamp: new Date()
-    });
   } catch (error) {
     console.error('Hook initialization error:', error);
-    
-    addDebugStep({
-      id: `hook-error-${Date.now()}`,
-      name: 'Hook Initialization',
-      status: 'error',
-      message: 'useMotionsenseQuoteSafe 훅 초기화 실패',
-      details: {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        errorType: error?.constructor?.name || 'Unknown'
-      },
-      timestamp: new Date()
-    });
-    
     setHasError(true);
     setErrorMessage('견적서 시스템 초기화 중 오류가 발생했습니다. 페이지를 새로고침해주세요.');
   }
+
+  // 훅 초기화 후 디버그 로그 추가
+  useEffect(() => {
+    if (hookData) {
+      addDebugStep({
+        id: `hook-success-${Date.now()}`,
+        name: 'Hook Initialization',
+        status: 'success',
+        message: 'useMotionsenseQuoteSafe 훅 초기화 성공',
+        details: {
+          hasFormData: !!hookData?.formData,
+          hasUpdateFormData: !!hookData?.updateFormData,
+          hasCalculation: !!hookData?.calculation,
+          projectTitle: hookData?.formData?.project_title || 'empty',
+          groupsCount: hookData?.formData?.groups?.length || 0
+        },
+        timestamp: new Date()
+      });
+    } else if (hasError) {
+      addDebugStep({
+        id: `hook-error-${Date.now()}`,
+        name: 'Hook Initialization',
+        status: 'error',
+        message: 'useMotionsenseQuoteSafe 훅 초기화 실패',
+        details: {
+          errorMessage: errorMessage
+        },
+        timestamp: new Date()
+      });
+    }
+  }, [hookData, hasError, errorMessage, addDebugStep]);
   
   const { 
     formData, 
