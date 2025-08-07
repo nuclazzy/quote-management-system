@@ -29,34 +29,77 @@ export class BaseService {
   
   protected get supabase() {
     if (!this._supabase) {
-      this._supabase = createClient();
+      try {
+        this._supabase = createClient();
+        console.log('Supabase client created successfully in BaseService');
+      } catch (error) {
+        console.error('Failed to create Supabase client in BaseService:', error);
+        throw new Error('Supabase client initialization failed');
+      }
     }
     return this._supabase;
   }
 
   protected async getUser() {
-    const { data: { user }, error } = await this.supabase.auth.getUser();
-    if (error || !user) {
-      throw new Error('Unauthorized');
+    try {
+      const { data: { user }, error } = await this.supabase.auth.getUser();
+      if (error) {
+        console.error('Auth error in BaseService:', error);
+        throw new Error(`Authentication failed: ${error.message}`);
+      }
+      if (!user) {
+        throw new Error('No authenticated user found');
+      }
+      console.log('User authenticated successfully:', user.id);
+      return user;
+    } catch (error) {
+      console.error('getUser failed in BaseService:', error);
+      throw error;
     }
-    return user;
   }
 
   protected async getUserProfile(userId: string) {
-    const { data: profile, error } = await this.supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
+    try {
+      const { data: profile, error } = await this.supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
 
-    if (error || !profile) {
-      throw new Error('User profile not found');
+      if (error) {
+        console.error('Profile fetch error:', error);
+        throw new Error(`Profile fetch failed: ${error.message}`);
+      }
+      
+      if (!profile) {
+        throw new Error('User profile not found');
+      }
+      
+      return profile;
+    } catch (error) {
+      console.error('getUserProfile failed:', error);
+      throw error;
     }
-    return profile;
   }
 
   protected handleError(error: any): ServiceResponse<null> {
     console.error('Service error:', error);
+    
+    // Supabase client initialization errors
+    if (error?.message?.includes('Supabase client initialization failed')) {
+      return {
+        error: 'Database connection failed. Please check your internet connection and try again.',
+        status: 503
+      };
+    }
+    
+    // Authentication errors
+    if (error?.message?.includes('Authentication failed')) {
+      return {
+        error: 'Authentication failed. Please log in again.',
+        status: 401
+      };
+    }
     
     if (error instanceof Error) {
       return {
@@ -73,7 +116,7 @@ export class BaseService {
     }
     
     return {
-      error: error?.message || 'An error occurred',
+      error: error?.message || 'An unexpected error occurred',
       status: 500
     };
   }

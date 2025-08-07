@@ -50,6 +50,10 @@ import { MasterItem } from '@/types/motionsense-quote';
 export default function QuoteNewPage() {
   const router = useRouter();
   
+  // 에러 상태 관리
+  const [hasError, setHasError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  
   // 펼침/접힘 상태 관리 (기본값: 모든 항목 펼침)
   const [expandedItems, setExpandedItems] = useState<{[key: string]: boolean}>({});
   
@@ -77,6 +81,15 @@ export default function QuoteNewPage() {
   const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'info' | 'warning' | 'error'>('info');
   
   // 안전한 훅 사용
+  let hookData;
+  try {
+    hookData = useMotionsenseQuoteSafe();
+  } catch (error) {
+    console.error('Hook initialization error:', error);
+    setHasError(true);
+    setErrorMessage('견적서 시스템 초기화 중 오류가 발생했습니다. 페이지를 새로고침해주세요.');
+  }
+  
   const { 
     formData, 
     updateFormData, 
@@ -94,7 +107,7 @@ export default function QuoteNewPage() {
     applyTemplate,
     suppliers,
     isDirty
-  } = useMotionsenseQuoteSafe();
+  } = hookData || {};
 
   // 임시 저장 함수 (자동 저장용)  
   const handleAutoSave = useCallback(async (data: any) => {
@@ -306,6 +319,38 @@ export default function QuoteNewPage() {
       }
     }
   }, [recoverTempData, formData?.project_title, formData?.groups]);
+
+  // 에러가 있거나 훅이 초기화되지 않았을 때 로딩/에러 처리
+  if (hasError || !hookData) {
+    return (
+      <Container maxWidth="lg" sx={{ py: 4 }}>
+        <Box sx={{ textAlign: 'center', py: 8 }}>
+          <WarningIcon sx={{ fontSize: 64, color: 'error.main', mb: 2 }} />
+          <Typography variant="h5" gutterBottom>
+            견적서 시스템 오류
+          </Typography>
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+            {errorMessage || '시스템 초기화 중 문제가 발생했습니다.'}
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
+            <Button 
+              variant="contained" 
+              onClick={() => window.location.reload()}
+              startIcon={<RestoreIcon />}
+            >
+              페이지 새로고침
+            </Button>
+            <Button 
+              variant="outlined" 
+              onClick={() => router.push('/quotes')}
+            >
+              견적서 목록으로
+            </Button>
+          </Box>
+        </Box>
+      </Container>
+    );
+  }
 
   return (
     <Container maxWidth="lg" sx={{ py: { xs: 2, sm: 4 }, px: { xs: 2, sm: 3 } }}>
@@ -1100,6 +1145,34 @@ export default function QuoteNewPage() {
           {snackbarMessage}
         </Alert>
       </Snackbar>
+
+      {/* 에러 상태 다이얼로그 */}
+      <Dialog open={hasError} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <WarningIcon color="error" />
+          시스템 오류
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" gutterBottom>
+            견적서 시스템 초기화 중 문제가 발생했습니다.
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            {errorMessage || '알 수 없는 오류가 발생했습니다.'}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            페이지를 새로고침하거나 잠시 후 다시 시도해주세요.
+            문제가 계속되면 관리자에게 문의하세요.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => window.location.reload()} variant="contained">
+            페이지 새로고침
+          </Button>
+          <Button onClick={() => router.push('/quotes')} variant="outlined">
+            견적서 목록으로
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 }
