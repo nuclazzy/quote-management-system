@@ -1,7 +1,27 @@
 // 4단계 견적서 구조 서비스
 // quotes → quote_groups → quote_items → quote_details
 
-import { supabase } from '../supabase/client';
+import { createClient } from '../supabase/client';
+const supabase = createClient();
+
+// Visual debug logger
+const debugLog = (message: string, details?: any, status: 'success' | 'error' | 'warning' | 'loading' = 'loading') => {
+  const logData = {
+    id: `quote4tier-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    name: 'Quote4TierService',
+    status,
+    message,
+    details,
+    timestamp: new Date()
+  };
+  
+  console.log(`[Quote4TierService Debug] ${message}`, details);
+  
+  // Visual debug logger
+  if (typeof window !== 'undefined' && window.debugLogger) {
+    window.debugLogger.addStep(logData);
+  }
+};
 import type { 
   QuoteWithStructure,
   QuoteFormData,
@@ -106,13 +126,36 @@ export class Quote4TierService {
    * 견적서 생성 (4단계 구조)
    */
   static async createQuote(formData: QuoteFormData): Promise<CreateQuoteResponse> {
-    const { data: user } = await supabase.auth.getUser();
-    if (!user.user) {
-      throw new Error('로그인이 필요합니다.');
-    }
-
+    debugLog('견적서 생성 시작', {
+      projectTitle: formData.project_title,
+      customerName: formData.customer_name_snapshot,
+      groupsCount: formData.groups?.length || 0,
+      totalItems: formData.groups?.reduce((sum, g) => sum + (g.items?.length || 0), 0) || 0
+    });
+    
     try {
+      debugLog('사용자 인증 확인');
+      const { data: user } = await supabase.auth.getUser();
+      
+      if (!user.user) {
+        debugLog('사용자 인증 실패: 로그인 필요', null, 'error');
+        throw new Error('로그인이 필요합니다.');
+      }
+      
+      debugLog('사용자 인증 성공', {
+        userId: user.user.id,
+        email: user.user.email
+      }, 'success');
+
       // 1. 견적서 기본 정보 생성
+      debugLog('견적서 기본 정보 생성 시작', {
+        project_title: formData.project_title,
+        customer_name_snapshot: formData.customer_name_snapshot,
+        issue_date: formData.issue_date,
+        agency_fee_rate: formData.agency_fee_rate,
+        discount_amount: formData.discount_amount,
+        vat_type: formData.vat_type
+      });
       const { data: quote, error: quoteError } = await supabase
         .from('quotes')
         .insert({
@@ -129,8 +172,18 @@ export class Quote4TierService {
         .single();
 
       if (quoteError) {
+        debugLog('견적서 기본 정보 생성 실패', {
+          error: quoteError.message,
+          code: quoteError.code,
+          details: quoteError.details
+        }, 'error');
         throw new Error(`견적서 생성 실패: ${quoteError.message}`);
       }
+      
+      debugLog('견적서 기본 정보 생성 성공', {
+        quoteId: quote.id,
+        quoteNumber: quote.quote_number
+      }, 'success');
 
       // 2. 그룹 생성
       for (const groupData of formData.groups) {
@@ -212,6 +265,13 @@ export class Quote4TierService {
       };
 
     } catch (error) {
+      debugLog('견적서 생성 중 치명적 오류 발생', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        projectTitle: formData.project_title,
+        groupsCount: formData.groups?.length
+      }, 'error');
+      
       console.error('견적서 생성 중 오류:', error);
       return {
         success: false,

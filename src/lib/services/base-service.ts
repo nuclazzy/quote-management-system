@@ -27,13 +27,38 @@ export interface PaginationResponse<T> {
 export class BaseService {
   private _supabase: ReturnType<typeof createClient> | null = null;
   
+  private debugLog(message: string, details?: any, status: 'success' | 'error' | 'warning' | 'loading' = 'loading') {
+    const logData = {
+      id: `base-service-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      name: 'BaseService',
+      status,
+      message,
+      details,
+      timestamp: new Date()
+    };
+    
+    console.log(`[BaseService Debug] ${message}`, details);
+    
+    // Visual debug logger
+    if (typeof window !== 'undefined' && window.debugLogger) {
+      window.debugLogger.addStep(logData);
+    }
+  }
+  
   protected get supabase() {
     if (!this._supabase) {
       try {
+        this.debugLog('BaseService에서 Supabase 클라이언트 생성 시작');
         this._supabase = createClient();
-        console.log('Supabase client created successfully in BaseService');
+        this.debugLog('BaseService에서 Supabase 클라이언트 생성 성공', {
+          hasClient: !!this._supabase,
+          hasAuth: !!this._supabase?.auth
+        }, 'success');
       } catch (error) {
-        console.error('Failed to create Supabase client in BaseService:', error);
+        this.debugLog('BaseService에서 Supabase 클라이언트 생성 실패', {
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined
+        }, 'error');
         throw new Error('Supabase client initialization failed');
       }
     }
@@ -42,18 +67,37 @@ export class BaseService {
 
   protected async getUser() {
     try {
+      this.debugLog('사용자 인증 정보 확인 시작');
+      
       const { data: { user }, error } = await this.supabase.auth.getUser();
+      
       if (error) {
-        console.error('Auth error in BaseService:', error);
+        this.debugLog('사용자 인증 오류', {
+          errorMessage: error.message,
+          errorCode: error.name,
+          status: error.status
+        }, 'error');
         throw new Error(`Authentication failed: ${error.message}`);
       }
+      
       if (!user) {
+        this.debugLog('인증된 사용자 없음', null, 'warning');
         throw new Error('No authenticated user found');
       }
-      console.log('User authenticated successfully:', user.id);
+      
+      this.debugLog('사용자 인증 성공', {
+        userId: user.id,
+        email: user.email,
+        emailConfirmed: user.email_confirmed_at ? 'Yes' : 'No',
+        lastSignIn: user.last_sign_in_at
+      }, 'success');
+      
       return user;
     } catch (error) {
-      console.error('getUser failed in BaseService:', error);
+      this.debugLog('getUser 함수 실패', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      }, 'error');
       throw error;
     }
   }
