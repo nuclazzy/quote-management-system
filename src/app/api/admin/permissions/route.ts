@@ -1,55 +1,35 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@/lib/supabase/server';
+import {
+  createDirectApi,
+  DirectQueryBuilder,
+} from '@/lib/api/direct-integration';
 
-// GET /api/admin/permissions - 모든 권한 조회
-export async function GET(request: NextRequest) {
-  try {
-    const supabase = createServerClient();
+interface Permission {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  created_at: string;
+  updated_at: string;
+}
 
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // 최고 관리자 권한 확인
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (!profile || profile.role !== 'super_admin') {
-      return NextResponse.json(
-        { error: 'Super admin access required' },
-        { status: 403 }
-      );
-    }
-
-    const { searchParams } = new URL(request.url);
+// GET /api/admin/permissions - 최적화된 모든 권한 조회
+export const GET = createDirectApi(
+  async ({ supabase, searchParams }) => {
+    const queryBuilder = new DirectQueryBuilder(supabase, 'permissions');
     const category = searchParams.get('category');
 
-    let query = supabase
-      .from('permissions')
-      .select('*')
-      .order('category', { ascending: true })
-      .order('name', { ascending: true });
+    // WHERE 조건
+    const where: Record<string, any> = {};
+    if (category) where.category = category;
 
-    if (category) {
-      query = query.eq('category', category);
-    }
-
-    const { data: permissions, error } = await query;
-
-    if (error) {
-      console.error('Error fetching permissions:', error);
-      return NextResponse.json(
-        { error: 'Failed to fetch permissions' },
-        { status: 500 }
-      );
-    }
+    const { data: permissions } = await queryBuilder.findMany<Permission>({
+      select: '*',
+      where,
+      sort: [
+        { by: 'category', order: 'asc' },
+        { by: 'name', order: 'asc' }
+      ]
+    });
 
     // 카테고리별로 그룹화
     const groupedPermissions =
@@ -64,15 +44,10 @@ export async function GET(request: NextRequest) {
         {} as Record<string, any[]>
       ) || {};
 
-    return NextResponse.json({
+    return {
       permissions: permissions || [],
       grouped: groupedPermissions,
-    });
-  } catch (error) {
-    console.error('Error in permissions GET:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  { requireAuth: true, requiredRole: 'super_admin', enableLogging: true }
+);

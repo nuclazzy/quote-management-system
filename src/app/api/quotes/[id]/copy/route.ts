@@ -1,128 +1,117 @@
-import { NextRequest } from 'next/server';
-import { withAuth } from '@/app/api/lib/middleware/auth';
-import { withErrorHandler } from '@/app/api/lib/middleware/error-handler';
-import { withValidation } from '@/app/api/lib/middleware/validation';
 import {
-  withRateLimit,
-  RateLimitPresets,
-} from '@/app/api/lib/middleware/rate-limit';
-import {
-  createCreatedResponse,
-  createNotFoundResponse,
-  createForbiddenResponse,
-  createMethodNotAllowedResponse,
-} from '@/app/api/lib/utils/response';
-import { QuoteCopySchema } from '@/app/api/lib/schemas/quote';
-import { QuoteService } from '@/lib/services/quote-service';
-import { extractIdFromPath } from '@/app/api/lib/utils/helpers';
-import {
-  NotFoundError,
-  ForbiddenError,
-} from '@/app/api/lib/middleware/error-handler';
-import type { AuthenticatedRequest } from '@/app/api/lib/middleware/auth';
+  createDirectApi,
+  DirectQueryBuilder,
+} from '@/lib/api/direct-integration';
 
-/**
- * POST /api/quotes/[id]/copy - 견적서 복사
- */
-async function handlePost(req: AuthenticatedRequest, validatedData: any) {
-  const sourceQuoteId = extractIdFromPath(req);
+interface QuoteGroup {
+  id: string;
+  name: string;
+  include_in_fee: boolean;
+  items: QuoteItem[];
+}
 
-  try {
-    // 원본 견적서 조회 및 권한 확인
-    const sourceQuote = await QuoteService.getQuoteWithDetails(sourceQuoteId);
+interface QuoteItem {
+  id: string;
+  name: string;
+  include_in_fee: boolean;
+  details: QuoteDetail[];
+}
 
-    if (req.user.role === 'member' && sourceQuote.created_by !== req.user.id) {
-      throw new ForbiddenError('해당 견적서를 복사할 권한이 없습니다.');
-    }
+interface QuoteDetail {
+  id: string;
+  name: string;
+  description?: string;
+  quantity: number;
+  days: number;
+  unit: string;
+  unit_price: number;
+  is_service: boolean;
+  cost_price: number;
+  supplier_id?: string;
+  supplier_name_snapshot?: string;
+}
 
+interface Quote {
+  id: string;
+  quote_number: string;
+  project_title: string;
+  customer_id?: string;
+  customer_name_snapshot: string;
+  vat_type: string;
+  discount_amount: number;
+  agency_fee_rate: number;
+  notes?: string;
+  created_by: string;
+  groups: QuoteGroup[];
+}
+
+// POST /api/quotes/[id]/copy - 최적화된 견적서 복사
+export const POST = createDirectApi(
+  async ({ supabase, user, body }, { params }: { params: { id: string } }) => {
     const {
       project_title,
       customer_id,
       customer_name_snapshot,
-      copy_structure_only,
-    } = validatedData;
+      copy_structure_only = false,
+    } = body;
 
-    // 복사할 데이터 구성
-    const copyData = {
-      project_title,
-      customer_id,
-      customer_name_snapshot,
-      issue_date: new Date().toISOString().split('T')[0],
-      status: 'draft' as const,
-      vat_type: sourceQuote.vat_type,
-      discount_amount: copy_structure_only ? 0 : sourceQuote.discount_amount,
-      agency_fee_rate: copy_structure_only ? 0 : sourceQuote.agency_fee_rate,
-      notes: copy_structure_only ? undefined : sourceQuote.notes,
-      groups: sourceQuote.groups.map((group) => ({
-        name: group.name,
-        include_in_fee: group.include_in_fee,
-        items: group.items.map((item) => ({
-          name: item.name,
-          include_in_fee: item.include_in_fee,
-          details: item.details.map((detail) => ({
-            name: detail.name,
-            description: detail.description,
-            quantity: copy_structure_only ? 1 : detail.quantity,
-            days: copy_structure_only ? 1 : detail.days,
-            unit: detail.unit,
-            unit_price: copy_structure_only ? 0 : detail.unit_price,
-            is_service: detail.is_service,
-            cost_price: copy_structure_only ? 0 : detail.cost_price,
-            supplier_id: copy_structure_only ? undefined : detail.supplier_id,
-            supplier_name_snapshot: copy_structure_only
-              ? undefined
-              : detail.supplier_name_snapshot,
-          })),
-        })),
-      })),
-    };
-
-    // 새 견적서 생성
-    const newQuoteId = await QuoteService.createQuote(copyData);
-
-    // 생성된 견적서 조회
-    const newQuote = await QuoteService.getQuoteWithDetails(newQuoteId);
-
-    return createCreatedResponse(
-      newQuote,
-      `견적서가 성공적으로 복사되었습니다. ${copy_structure_only ? '(구조만 복사)' : '(전체 복사)'}`
-    );
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('찾을 수 없습니다')) {
-      throw new NotFoundError('원본 견적서');
+    if (!project_title?.trim()) {
+      throw new Error('프로젝트명을 입력해주세요.');
     }
-    throw error;
-  }
-}
 
-/**
- * 메서드별 핸들러 래핑
- */
-const postHandler = withAuth(
-  withRateLimit(
-    RateLimitPresets.standard,
-    withValidation(QuoteCopySchema, handlePost)
-  )
+    const queryBuilder = new DirectQueryBuilder(supabase, 'quotes');
+
+    // 원본 견적서 조회 및 권한 확인
+    const sourceQuote = await queryBuilder.findOne<Quote>(params.id, `
+      *,
+      groups:quote_groups(
+        id, name, include_in_fee, sort_order,
+        items:quote_items(
+          id, name, include_in_fee, sort_order,
+          details:quote_details(
+            id, name, description, quantity, days, unit, unit_price,
+            is_service, cost_price, supplier_id, supplier_name_snapshot, sort_order
+          )
+        )
+      )
+    `);
+
+    if (!sourceQuote) {
+      throw new Error('원본 견적서를 찾을 수 없습니다.');
+    }
+
+    // 권한 확인
+    const profileQuery = new DirectQueryBuilder(supabase, 'profiles');
+    const userProfile = await profileQuery.findOne(user.id, 'role');
+
+    if (userProfile?.role === 'member' && sourceQuote.created_by !== user.id) {
+      throw new Error('해당 견적서를 복사할 권한이 없습니다.');
+    }
+
+    // 4-Tier 견적서 복사를 위한 RPC 호출
+    const { data: result, error } = await supabase.rpc('copy_quote_4tier', {
+      p_source_quote_id: params.id,
+      p_project_title: project_title,
+      p_customer_id: customer_id || null,
+      p_customer_name_snapshot: customer_name_snapshot || '',
+      p_copy_structure_only: copy_structure_only,
+      p_created_by: user.id
+    });
+
+    if (error) {
+      console.error('견적서 복사 오류:', error);
+      throw new Error('견적서 복사에 실패했습니다.');
+    }
+
+    // 복사된 견적서 조회
+    const newQuote = await queryBuilder.findOne<Quote>(result.quote_id, `
+      id, quote_number, project_title, customer_name_snapshot, status, created_at
+    `);
+
+    return {
+      message: `견적서가 성공적으로 복사되었습니다. ${copy_structure_only ? '(구조만 복사)' : '(전체 복사)'}`,
+      quote: newQuote,
+    };
+  },
+  { requireAuth: true, requiredRole: 'member', enableLogging: true }
 );
-
-/**
- * 라우트 핸들러
- */
-export const POST = withErrorHandler(postHandler);
-
-// 허용되지 않는 메서드에 대한 응답
-export async function GET() {
-  return createMethodNotAllowedResponse(['POST']);
-}
-
-export async function PUT() {
-  return createMethodNotAllowedResponse(['POST']);
-}
-
-export async function PATCH() {
-  return createMethodNotAllowedResponse(['POST']);
-}
-
-export async function DELETE() {
-  return createMethodNotAllowedResponse(['POST']);
-}

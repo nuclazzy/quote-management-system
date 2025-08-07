@@ -1,15 +1,24 @@
-import { NextRequest, NextResponse } from 'next/server';
+import {
+  createDirectApi,
+} from '@/lib/api/direct-integration';
 
-export async function POST(request: NextRequest) {
-  try {
-    const errorData = await request.json();
+interface ErrorData {
+  message: string;
+  stack?: string;
+  context?: any;
+  timestamp: string;
+  userAgent?: string;
+  url?: string;
+}
+
+// POST /api/errors - 최적화된 클라이언트 에러 로깅
+export const POST = createDirectApi(
+  async ({ body }) => {
+    const errorData = body as ErrorData;
 
     // 에러 데이터 검증
     if (!errorData.message || !errorData.timestamp) {
-      return NextResponse.json(
-        { error: 'Invalid error data' },
-        { status: 400 }
-      );
+      throw new Error('올바르지 않은 에러 데이터입니다.');
     }
 
     // 개발 환경에서는 콘솔에 출력
@@ -29,7 +38,6 @@ export async function POST(request: NextRequest) {
       // TODO: 실제 운영에서는 Sentry, LogRocket, Datadog 등의 서비스 사용
       // 또는 데이터베이스에 저장
 
-      // 예시: 파일 로그 (실제로는 로그 로테이션 등을 고려해야 함)
       const logEntry = {
         timestamp: errorData.timestamp,
         level: 'error',
@@ -44,9 +52,9 @@ export async function POST(request: NextRequest) {
       console.error('Production Error:', logEntry);
     }
 
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Error logging failed:', error);
-    return NextResponse.json({ error: 'Failed to log error' }, { status: 500 });
-  }
-}
+    return {
+      message: '에러가 성공적으로 기록되었습니다.',
+    };
+  },
+  { requireAuth: false, enableLogging: false } // 에러 로깅은 인증 불필요
+);

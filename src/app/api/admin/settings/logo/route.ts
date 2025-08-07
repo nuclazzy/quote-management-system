@@ -1,64 +1,45 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import {
+  createDirectApi,
+  DirectQueryBuilder,
+} from '@/lib/api/direct-integration';
+import { NextRequest } from 'next/server';
 
-export async function POST(request: NextRequest) {
-  try {
-    const supabase = createRouteHandlerClient({ cookies });
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Check if user is admin
-    const { data: userProfile } = await supabase
-      .from('profiles')
-      .select('role, company_id')
-      .eq('id', user.id)
-      .single();
-
-    if (!userProfile || userProfile.role !== 'admin') {
-      return NextResponse.json(
-        { error: 'Admin access required' },
-        { status: 403 }
-      );
+// POST /api/admin/settings/logo - 최적화된 로고 업로드
+export const POST = createDirectApi(
+  async ({ supabase, user, request }: { supabase: any; user: any; request: NextRequest }) => {
+    // 사용자 프로필과 회사 ID 조회
+    const profileQuery = new DirectQueryBuilder(supabase, 'profiles');
+    const userProfile = await profileQuery.findOne(user.id, 'role, company_id');
+    
+    if (!userProfile?.company_id) {
+      throw new Error('회사 정보를 찾을 수 없습니다.');
     }
 
     const formData = await request.formData();
     const file = formData.get('logo') as File;
 
     if (!file) {
-      return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+      throw new Error('파일이 제공되지 않았습니다.');
     }
 
-    // Validate file type
+    // 파일 타입 검증
     if (!file.type.startsWith('image/')) {
-      return NextResponse.json(
-        { error: 'File must be an image' },
-        { status: 400 }
-      );
+      throw new Error('이미지 파일만 업로드 가능합니다.');
     }
 
-    // Validate file size (5MB max)
+    // 파일 크기 검증 (5MB 제한)
     if (file.size > 5 * 1024 * 1024) {
-      return NextResponse.json(
-        { error: 'File size must be less than 5MB' },
-        { status: 400 }
-      );
+      throw new Error('파일 크기는 5MB 이하여야 합니다.');
     }
 
-    // Generate unique filename
+    // 고유한 파일명 생성
     const fileExt = file.name.split('.').pop();
     const fileName = `${userProfile.company_id}/logo-${Date.now()}.${fileExt}`;
 
-    // Convert file to buffer
+    // 파일을 버퍼로 변환
     const buffer = Buffer.from(await file.arrayBuffer());
 
-    // Upload to Supabase Storage
+    // Supabase Storage에 업로드
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('company-assets')
       .upload(fileName, buffer, {
@@ -67,27 +48,20 @@ export async function POST(request: NextRequest) {
       });
 
     if (uploadError) {
-      console.error('Error uploading logo:', uploadError);
-      return NextResponse.json(
-        { error: 'Failed to upload logo' },
-        { status: 500 }
-      );
+      console.error('로고 업로드 오류:', uploadError);
+      throw new Error('로고 업로드에 실패했습니다.');
     }
 
-    // Get public URL
+    // 공개 URL 생성
     const {
       data: { publicUrl },
     } = supabase.storage.from('company-assets').getPublicUrl(fileName);
 
-    return NextResponse.json({
+    return {
+      message: '로고가 성공적으로 업로드되었습니다.',
       url: publicUrl,
       path: fileName,
-    });
-  } catch (error) {
-    console.error('Error in logo upload:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  { requireAuth: true, requiredRole: 'admin', enableLogging: true }
+);

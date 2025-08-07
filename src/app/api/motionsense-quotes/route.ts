@@ -1,7 +1,7 @@
-import { NextRequest } from 'next/server';
-import { withAuth } from '../lib/base';
-import { createSuccessResponse, createErrorResponse } from '../lib/utils/response';
-import { ValidationError, BusinessError } from '../lib/middleware/error-handler';
+import {
+  createDirectApi,
+  DirectQueryBuilder,
+} from '@/lib/api/direct-integration';
 import { withTransaction } from '@/lib/database/transaction';
 import { createApiError } from '@/lib/api/client';
 
@@ -57,17 +57,17 @@ interface MotionsenseQuoteData {
 // 데이터 검증 함수
 function validateMotionsenseQuoteData(data: any): MotionsenseQuoteData {
   if (!data.project_info?.name?.trim()) {
-    throw new ValidationError('프로젝트명을 입력해주세요.');
+    throw new Error('프로젝트명을 입력해주세요.');
   }
 
   if (!data.groups || !Array.isArray(data.groups) || data.groups.length === 0) {
-    throw new ValidationError('최소 하나 이상의 그룹을 추가해주세요.');
+    throw new Error('최소 하나 이상의 그룹을 추가해주세요.');
   }
 
   // 그룹 검증
   data.groups.forEach((group: any, groupIndex: number) => {
     if (!group.name?.trim()) {
-      throw new ValidationError(`그룹 ${groupIndex + 1}의 이름을 입력해주세요.`);
+      throw new Error(`그룹 ${groupIndex + 1}의 이름을 입력해주세요.`);
     }
 
     if (!group.items || !Array.isArray(group.items)) {
@@ -77,7 +77,7 @@ function validateMotionsenseQuoteData(data: any): MotionsenseQuoteData {
     // 아이템 검증
     group.items.forEach((item: any, itemIndex: number) => {
       if (!item.name?.trim()) {
-        throw new ValidationError(`그룹 ${groupIndex + 1}, 항목 ${itemIndex + 1}의 이름을 입력해주세요.`);
+        throw new Error(`그룹 ${groupIndex + 1}, 항목 ${itemIndex + 1}의 이름을 입력해주세요.`);
       }
 
       if (!item.details || !Array.isArray(item.details)) {
@@ -87,15 +87,15 @@ function validateMotionsenseQuoteData(data: any): MotionsenseQuoteData {
       // 세부 항목 검증
       item.details.forEach((detail: any, detailIndex: number) => {
         if (!detail.name?.trim()) {
-          throw new ValidationError(`그룹 ${groupIndex + 1}, 항목 ${itemIndex + 1}, 세부항목 ${detailIndex + 1}의 이름을 입력해주세요.`);
+          throw new Error(`그룹 ${groupIndex + 1}, 항목 ${itemIndex + 1}, 세부항목 ${detailIndex + 1}의 이름을 입력해주세요.`);
         }
 
         if (typeof detail.quantity !== 'number' || detail.quantity <= 0) {
-          throw new ValidationError(`그룹 ${groupIndex + 1}, 항목 ${itemIndex + 1}, 세부항목 ${detailIndex + 1}의 수량을 올바르게 입력해주세요.`);
+          throw new Error(`그룹 ${groupIndex + 1}, 항목 ${itemIndex + 1}, 세부항목 ${detailIndex + 1}의 수량을 올바르게 입력해주세요.`);
         }
 
         if (typeof detail.unit_price !== 'number' || detail.unit_price < 0) {
-          throw new ValidationError(`그룹 ${groupIndex + 1}, 항목 ${itemIndex + 1}, 세부항목 ${detailIndex + 1}의 단가를 올바르게 입력해주세요.`);
+          throw new Error(`그룹 ${groupIndex + 1}, 항목 ${itemIndex + 1}, 세부항목 ${detailIndex + 1}의 단가를 올바르게 입력해주세요.`);
         }
       });
     });
@@ -250,66 +250,24 @@ async function saveMotionsenseQuoteWithSnapshots(supabase: any, data: Motionsens
   });
 }
 
-// POST /api/motionsense-quotes - 모션센스 견적서 생성
-export async function POST(request: NextRequest) {
-  return withAuth(request, async ({ user, supabase }) => {
-    try {
-      const body = await request.json();
-      
-      // 데이터 검증
-      const validatedData = validateMotionsenseQuoteData(body);
+// POST /api/motionsense-quotes - 최적화된 모션센스 견적서 생성
+export const POST = createDirectApi(
+  async ({ supabase, user, body }) => {
+    // 데이터 검증
+    const validatedData = validateMotionsenseQuoteData(body);
 
-      // 트랜잭션을 사용한 견적서 저장
-      const result = await saveMotionsenseQuoteWithSnapshots(
-        supabase,
-        validatedData,
-        user.id
-      );
+    // 트랜잭션을 사용한 견적서 저장
+    const result = await saveMotionsenseQuoteWithSnapshots(
+      supabase,
+      validatedData,
+      user.id
+    );
 
-      return createSuccessResponse({
-        id: result.quoteId,
-        message: '견적서가 성공적으로 저장되었습니다.',
-        timestamp: new Date().toISOString(),
-      });
-
-    } catch (error) {
-      console.error('견적서 생성 실패:', error);
-      
-      // ValidationError 처리
-      if (error instanceof ValidationError) {
-        return createErrorResponse({
-          error: error.message,
-          code: 'VALIDATION_ERROR',
-          timestamp: new Date().toISOString(),
-        }, 400);
-      }
-      
-      // BusinessError 처리
-      if (error instanceof BusinessError) {
-        return createErrorResponse({
-          error: error.message,
-          code: 'BUSINESS_ERROR',
-          timestamp: new Date().toISOString(),
-        }, 500);
-      }
-
-      // ApiError 처리 (트랜잭션에서 발생)
-      if (error instanceof Error && error.name === 'ApiError') {
-        const apiError = error as any;
-        return createErrorResponse({
-          error: apiError.message,
-          code: apiError.code || 'TRANSACTION_ERROR',
-          details: apiError.details,
-          timestamp: new Date().toISOString(),
-        }, apiError.status || 500);
-      }
-
-      // 예상치 못한 에러
-      return createErrorResponse({
-        error: '견적서 저장 중 예상치 못한 오류가 발생했습니다.',
-        code: 'INTERNAL_ERROR',
-        timestamp: new Date().toISOString(),
-      }, 500);
-    }
-  });
-}
+    return {
+      id: result.quoteId,
+      message: '견적서가 성공적으로 저장되었습니다.',
+      timestamp: new Date().toISOString(),
+    };
+  },
+  { requireAuth: true, requiredRole: 'member', enableLogging: true }
+);

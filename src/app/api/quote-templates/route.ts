@@ -1,125 +1,142 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
-import { quoteTemplateSchema, quoteTemplateQuerySchema } from '@/lib/validations/quote-templates';
-import { Database } from '@/types/supabase';
+import {
+  createDirectApi,
+  DirectQueryBuilder,
+  createPaginatedResponse,
+  parsePagination,
+  parseSort,
+  parseSearch,
+} from '@/lib/api/direct-integration';
+import { quoteTemplateSchema } from '@/lib/validations/quote-templates';
 
-// GET /api/quote-templates - 견적서 템플릿 목록 조회
-export async function GET(request: NextRequest) {
-  try {
-    const supabase = createServerComponentClient<Database>({ cookies });
+interface QuoteTemplate {
+  id: string;
+  name: string;
+  description?: string;
+  category?: string;
+  template_data: any;
+  created_at: string;
+  updated_at: string;
+  created_by: string;
+  updated_by?: string;
+}
+
+// GET /api/quote-templates - 최적화된 견적서 템플릿 목록 조회
+export const GET = createDirectApi(
+  async ({ supabase, searchParams }) => {
+    const queryBuilder = new DirectQueryBuilder(supabase, 'quote_templates');
     
-    // 사용자 인증 확인
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // 쿼리 파라미터 파싱
-    const searchParams = request.nextUrl.searchParams;
-    const rawParams = {
-      search: searchParams.get('search') || undefined,
-      category: searchParams.get('category') || undefined,
-      is_active: searchParams.get('is_active') ? searchParams.get('is_active') === 'true' : undefined,
-      page: searchParams.get('page') ? parseInt(searchParams.get('page')!) : 1,
-      limit: searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 20,
-    };
-
-    const validatedParams = quoteTemplateQuerySchema.parse(rawParams);
-
-    // 쿼리 빌더 시작
+    // 파라미터 파싱
+    const pagination = parsePagination(searchParams);
+    const sort = parseSort(searchParams, ['name', 'category', 'created_at', 'updated_at']);
+    const searchTerm = searchParams.get('search')?.trim() || '';
+    const category = searchParams.get('category') || '';
+    const isActiveParam = searchParams.get('is_active');
+    
+    // 검색 조건 구성
+    const searchCondition = searchTerm ? {
+      fields: ['name', 'description', 'category'],
+      term: searchTerm
+    } : undefined;
+    
+    // WHERE 조건
+    const where: Record<string, any> = {};
+    if (category) where.category = category;
+    
+    // is_active 필터 처리 - template_data내 is_active 필드 검사
+    // 이 부분은 Supabase의 JSON 연산을 사용해야 하므로 별도 처리
     let query = supabase
       .from('quote_templates')
-      .select('*', { count: 'exact' })
-      .order('created_at', { ascending: false });
-
-    // 검색 필터 적용
-    if (validatedParams.search) {
-      query = query.or(`name.ilike.%${validatedParams.search}%,description.ilike.%${validatedParams.search}%,category.ilike.%${validatedParams.search}%`);
+      .select('*', { count: 'exact' });
+      
+    // WHERE 조건 적용
+    if (category) {
+      query = query.eq('category', category);
     }
-
-    if (validatedParams.category) {
-      query = query.eq('category', validatedParams.category);
+    
+    // 검색 조건 적용
+    if (searchTerm) {
+      query = query.or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,category.ilike.%${searchTerm}%`);
     }
-
+    
     // is_active 필터 (기본값은 true)
-    const isActiveFilter = validatedParams.is_active !== undefined ? validatedParams.is_active : true;
-    if (isActiveFilter !== undefined) {
+    const isActive = isActiveParam !== null ? isActiveParam === 'true' : true;
+    if (isActive) {
       // template_data에서 is_active가 없거나 true인 경우만 조회
       query = query.or(`template_data->>'is_active'.is.null,template_data->>'is_active'.eq.true`);
+    } else {
+      // is_active가 false인 경우
+      query = query.eq('template_data->is_active', false);
     }
-
+    
+    // 정렬 적용
+    query = query.order(sort.sortBy, { ascending: sort.sortOrder === 'asc' });
+    
     // 페이지네이션 적용
-    const offset = (validatedParams.page - 1) * validatedParams.limit;
-    query = query.range(offset, offset + validatedParams.limit - 1);
-
+    const offset = (pagination.page - 1) * pagination.limit;
+    query = query.range(offset, offset + pagination.limit - 1);
+    
     const { data, error, count } = await query;
-
-    if (error) {
-      console.error('견적서 템플릿 조회 중 오류:', error);
-      return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
-    }
-
-    // 페이지네이션 메타데이터 계산
-    const totalPages = Math.ceil((count || 0) / validatedParams.limit);
-
-    return NextResponse.json({
-      data: data || [],
-      pagination: {
-        page: validatedParams.page,
-        limit: validatedParams.limit,
-        total: count || 0,
-        totalPages,
-        hasNextPage: validatedParams.page < totalPages,
-        hasPrevPage: validatedParams.page > 1,
-      }
-    });
-  } catch (error) {
-    console.error('견적서 템플릿 조회 중 오류:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
-  }
-}
-
-// POST /api/quote-templates - 새 견적서 템플릿 생성
-export async function POST(request: NextRequest) {
-  try {
-    const supabase = createServerComponentClient<Database>({ cookies });
     
-    // 사용자 인증 확인
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (error) {
+      console.error('견적서 템플릿 조회 오류:', error);
+      throw error;
     }
+    
+    return createPaginatedResponse(data || [], count || 0, pagination.page, pagination.limit);
+  },
+  { requireAuth: true, enableLogging: true }
+);
 
-    // 요청 본문 파싱 및 검증
-    const body = await request.json();
+// POST /api/quote-templates - 최적화된 견적서 템플릿 생성
+export const POST = createDirectApi(
+  async ({ supabase, user, body }) => {
+    // 입력 검증
     const validatedData = quoteTemplateSchema.parse(body);
-
-    // 견적서 템플릿 생성
-    const { data, error } = await supabase
-      .from('quote_templates')
-      .insert({
-        name: validatedData.name,
-        description: validatedData.description,
-        category: validatedData.category,
-        template_data: validatedData.template_data,
-        created_by: user.id,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error('견적서 템플릿 생성 중 오류:', error);
-      return NextResponse.json({ error: 'Failed to create quote template' }, { status: 500 });
-    }
-
-    return NextResponse.json({ data }, { status: 201 });
-  } catch (error) {
-    if (error instanceof Error && error.name === 'ZodError') {
-      return NextResponse.json({ error: 'Invalid input data', details: error }, { status: 400 });
+    
+    // 필수 필드 검증
+    if (!validatedData.name?.trim()) {
+      throw new Error('템플릿명은 필수입니다.');
     }
     
-    console.error('견적서 템플릿 생성 중 오류:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
-  }
-}
+    if (!validatedData.template_data) {
+      throw new Error('템플릿 데이터는 필수입니다.');
+    }
+    
+    const queryBuilder = new DirectQueryBuilder(supabase, 'quote_templates');
+    
+    // 중복 템플릿명 검사
+    const { count: duplicateCount } = await queryBuilder.findMany({
+      select: 'id',
+      where: {
+        name: validatedData.name.trim(),
+        category: validatedData.category || null,
+      },
+      pagination: { page: 1, limit: 1 }
+    });
+    
+    if (duplicateCount > 0) {
+      throw new Error('같은 카테고리에 이미 동일한 템플릿명이 존재합니다.');
+    }
+    
+    // 데이터 정리
+    const templateData = {
+      name: validatedData.name.trim(),
+      description: validatedData.description?.trim() || null,
+      category: validatedData.category?.trim() || null,
+      template_data: validatedData.template_data,
+      created_by: user.id,
+    };
+    
+    // 견적서 템플릿 생성
+    const template = await queryBuilder.create<QuoteTemplate>(templateData, `
+      *,
+      created_by_profile:profiles!quote_templates_created_by_fkey(id, full_name, email)
+    `);
+    
+    return {
+      message: '견적서 템플릿이 성공적으로 생성되었습니다.',
+      template,
+    };
+  },
+  { requireAuth: true, requiredRole: 'member', enableLogging: true }
+);

@@ -1,296 +1,257 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { withAuth } from '../../lib/base';
-import { createSuccessResponse, createErrorResponse } from '../../lib/utils/response';
+import {
+  createDirectApi,
+  DirectQueryBuilder,
+} from '@/lib/api/direct-integration';
 
-// GET /api/motionsense-quotes/[id] - 모션센스 견적서 개별 조회
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  return withAuth(request, async ({ user, supabase }) => {
-    try {
-      // 견적서 기본 정보 조회
-      const { data: quote, error: quoteError } = await supabase
-        .from('quotes')
-        .select(`
-          id,
-          quote_number,
-          project_title,
-          customer_id,
-          customer_name_snapshot,
-          issue_date,
-          status,
-          vat_type,
-          discount_amount,
-          agency_fee_rate,
-          total_amount,
-          version,
-          parent_quote_id,
-          created_by,
-          created_at,
-          updated_at
-        `)
-        .eq('id', params.id)
-        .single();
+interface MotionsenseQuote {
+  id: string;
+  quote_number: string;
+  project_title: string;
+  customer_id?: string;
+  customer_name_snapshot: string;
+  issue_date: string;
+  due_date?: string;
+  status: string;
+  vat_type: string;
+  discount_amount: number;
+  agency_fee_rate: number;
+  total_amount: number;
+  version: number;
+  parent_quote_id?: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
 
-      if (quoteError || !quote) {
-        console.error('Error fetching motionsense quote:', quoteError);
-        return createErrorResponse('견적서를 찾을 수 없습니다.', 404);
-      }
+// GET /api/motionsense-quotes/[id] - 최적화된 모션센스 견적서 개별 조회
+export const GET = createDirectApi(
+  async ({ supabase }, { params }: { params: { id: string } }) => {
+    const queryBuilder = new DirectQueryBuilder(supabase, 'quotes');
+    
+    // 견적서 기본 정보 조회
+    const quote = await queryBuilder.findOne<MotionsenseQuote>(params.id, `
+      id,
+      quote_number,
+      project_title,
+      customer_id,
+      customer_name_snapshot,
+      issue_date,
+      due_date,
+      status,
+      vat_type,
+      discount_amount,
+      agency_fee_rate,
+      total_amount,
+      version,
+      parent_quote_id,
+      created_by,
+      created_at,
+      updated_at
+    `);
 
-      // 견적서 그룹 정보 조회
-      const { data: groups, error: groupsError } = await supabase
-        .from('quote_groups')
-        .select(`
+    if (!quote) {
+      throw new Error('견적서를 찾을 수 없습니다.');
+    }
+
+    // 견적서 그룹 정보 조회
+    const groupsQueryBuilder = new DirectQueryBuilder(supabase, 'quote_groups');
+    const { data: groups } = await groupsQueryBuilder.findMany({
+      select: `
+        id,
+        name,
+        sort_order,
+        include_in_fee
+      `,
+      where: { quote_id: params.id },
+      sort: { by: 'sort_order', order: 'asc' }
+    });
+
+    // 각 그룹의 항목 및 세부 정보 조회
+    const groupsWithDetails = [];
+
+    for (const group of groups) {
+      // 항목 조회
+      const itemsQueryBuilder = new DirectQueryBuilder(supabase, 'quote_items_motionsense');
+      const { data: items } = await itemsQueryBuilder.findMany({
+        select: `
           id,
           name,
-          sort_order,
-          include_in_fee
-        `)
-        .eq('quote_id', params.id)
-        .order('sort_order');
+          sort_order
+        `,
+        where: { quote_group_id: group.id },
+        sort: { by: 'sort_order', order: 'asc' }
+      });
 
-      if (groupsError) {
-        console.error('Error fetching quote groups:', groupsError);
-        return createErrorResponse('견적서 그룹 정보를 가져올 수 없습니다.', 500);
-      }
+      const itemsWithDetails = [];
 
-      // 각 그룹의 항목 및 세부 정보 조회
-      const groupsWithDetails = [];
-
-      for (const group of groups || []) {
-        // 항목 조회
-        const { data: items, error: itemsError } = await supabase
-          .from('quote_items_motionsense')
-          .select(`
+      for (const item of items) {
+        // 세부 항목 조회
+        const detailsQueryBuilder = new DirectQueryBuilder(supabase, 'quote_details');
+        const { data: details } = await detailsQueryBuilder.findMany({
+          select: `
             id,
             name,
+            description,
+            quantity,
+            days,
+            unit,
+            unit_price,
+            is_service,
+            cost_price,
+            supplier_id,
+            supplier_name_snapshot,
             sort_order
-          `)
-          .eq('quote_group_id', group.id)
-          .order('sort_order');
+          `,
+          where: { quote_item_id: item.id },
+          sort: { by: 'sort_order', order: 'asc' }
+        });
 
-        if (itemsError) {
-          console.error('Error fetching quote items:', itemsError);
-          continue;
-        }
-
-        const itemsWithDetails = [];
-
-        for (const item of items || []) {
-          // 세부 항목 조회
-          const { data: details, error: detailsError } = await supabase
-            .from('quote_details')
-            .select(`
-              id,
-              name,
-              description,
-              quantity,
-              days,
-              unit,
-              unit_price,
-              is_service,
-              cost_price,
-              supplier_id,
-              supplier_name_snapshot
-            `)
-            .eq('quote_item_id', item.id)
-            .order('id'); // sort_order가 없으므로 id로 정렬
-
-          if (detailsError) {
-            console.error('Error fetching quote details:', detailsError);
-            continue;
-          }
-
-          itemsWithDetails.push({
-            ...item,
-            details: details || []
-          });
-        }
-
-        groupsWithDetails.push({
-          ...group,
-          items: itemsWithDetails
+        itemsWithDetails.push({
+          ...item,
+          details
         });
       }
 
-      // 최종 응답 데이터 구성
-      const responseData = {
-        ...quote,
-        groups: groupsWithDetails
-      };
-
-      return createSuccessResponse(responseData);
-
-    } catch (error) {
-      console.error('견적서 조회 실패:', error);
-      return createErrorResponse('견적서 조회에 실패했습니다.', 500);
+      groupsWithDetails.push({
+        ...group,
+        items: itemsWithDetails
+      });
     }
-  });
-}
 
-// PUT /api/motionsense-quotes/[id] - 모션센스 견적서 수정
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  return withAuth(request, async ({ user, supabase }) => {
-    try {
-      const body = await request.json();
-      
-      // 기존 견적서 확인
-      const { data: existingQuote, error: fetchError } = await supabase
-        .from('quotes')
-        .select('id, version')
-        .eq('id', params.id)
-        .single();
+    // 최종 응답 데이터 구성
+    const responseData = {
+      ...quote,
+      groups: groupsWithDetails
+    };
 
-      if (fetchError || !existingQuote) {
-        return createErrorResponse('견적서를 찾을 수 없습니다.', 404);
+    return { quote: responseData };
+  },
+  { requireAuth: true, enableLogging: true }
+);
+
+// PUT /api/motionsense-quotes/[id] - 최적화된 모션센스 견적서 수정
+export const PUT = createDirectApi(
+  async ({ supabase, user, body }, { params }: { params: { id: string } }) => {
+    const queryBuilder = new DirectQueryBuilder(supabase, 'quotes');
+    
+    // 기존 견적서 확인
+    const existingQuote = await queryBuilder.findOne<MotionsenseQuote>(params.id, 'id, version');
+    if (!existingQuote) {
+      throw new Error('견적서를 찾을 수 없습니다.');
+    }
+
+    // 데이터 검증
+    if (!body.project_info?.name?.trim()) {
+      throw new Error('프로젝트명을 입력해주세요.');
+    }
+
+    if (!body.groups || !Array.isArray(body.groups) || body.groups.length === 0) {
+      throw new Error('최소 하나 이상의 그룹을 추가해주세요.');
+    }
+
+    // 견적서 기본 정보 업데이트
+    const updatedQuote = await queryBuilder.update<MotionsenseQuote>(params.id, {
+      project_title: body.project_info.name.trim(),
+      customer_name_snapshot: body.project_info?.client_name?.trim() || '',
+      issue_date: body.project_info?.issue_date || new Date().toISOString().split('T')[0],
+      due_date: body.project_info?.due_date || null,
+      vat_type: body.vat_type || 'exclusive',
+      discount_amount: body.discount_amount || 0,
+      agency_fee_rate: body.agency_fee_rate || 0,
+      total_amount: body.calculation?.total_with_vat || 0,
+      version: existingQuote.version + 1,
+    });
+
+    // 기존 그룹, 항목, 세부내용 삭제 (CASCADE로 자동 삭제됨)
+    const groupsQueryBuilder = new DirectQueryBuilder(supabase, 'quote_groups');
+    await supabase
+      .from('quote_groups')
+      .delete()
+      .eq('quote_id', params.id);
+
+    // 새로운 그룹, 항목, 세부내용 생성
+    for (let groupIndex = 0; groupIndex < body.groups.length; groupIndex++) {
+      const group = body.groups[groupIndex];
+
+      // 그룹 생성
+      const groupData = await groupsQueryBuilder.create({
+        quote_id: params.id,
+        name: group.name.trim(),
+        sort_order: groupIndex,
+        include_in_fee: group.include_in_fee || false,
+      });
+
+      if (!group.items || !Array.isArray(group.items)) {
+        continue;
       }
 
-      // 견적서 기본 정보 업데이트
-      const { data: updatedQuote, error: updateError } = await supabase
-        .from('quotes')
-        .update({
-          project_title: body.project_info?.name,
-          customer_name_snapshot: body.project_info?.client_name,
-          issue_date: body.project_info?.issue_date,
-          vat_type: body.vat_type,
-          discount_amount: body.discount_amount,
-          agency_fee_rate: body.agency_fee_rate,
-          total_amount: body.calculation?.final_total,
-          version: existingQuote.version + 1,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', params.id)
-        .select()
-        .single();
+      // 항목 생성
+      const itemsQueryBuilder = new DirectQueryBuilder(supabase, 'quote_items_motionsense');
+      for (let itemIndex = 0; itemIndex < group.items.length; itemIndex++) {
+        const item = group.items[itemIndex];
 
-      if (updateError) {
-        console.error('견적서 업데이트 실패:', updateError);
-        return createErrorResponse('견적서 업데이트에 실패했습니다.', 500);
-      }
+        const itemData = await itemsQueryBuilder.create({
+          quote_group_id: groupData.id,
+          name: item.name.trim(),
+          sort_order: itemIndex,
+        });
 
-      // 기존 그룹, 항목, 세부내용 삭제 (CASCADE로 자동 삭제됨)
-      await supabase
-        .from('quote_groups')
-        .delete()
-        .eq('quote_id', params.id);
-
-      // 새로운 그룹, 항목, 세부내용 생성
-      for (let groupIndex = 0; groupIndex < body.groups.length; groupIndex++) {
-        const group = body.groups[groupIndex];
-
-        // 그룹 생성
-        const { data: groupData, error: groupError } = await supabase
-          .from('quote_groups')
-          .insert({
-            quote_id: params.id,
-            name: group.name,
-            sort_order: groupIndex,
-            include_in_fee: group.include_in_fee,
-          })
-          .select()
-          .single();
-
-        if (groupError) throw groupError;
-
-        // 항목 생성
-        for (let itemIndex = 0; itemIndex < group.items.length; itemIndex++) {
-          const item = group.items[itemIndex];
-
-          const { data: itemData, error: itemError } = await supabase
-            .from('quote_items_motionsense')
-            .insert({
-              quote_group_id: groupData.id,
-              name: item.name,
-              sort_order: itemIndex,
-            })
-            .select()
-            .single();
-
-          if (itemError) throw itemError;
-
-          // 세부내용 생성
-          if (item.details && item.details.length > 0) {
-            const detailsToInsert = item.details.map((detail: any) => ({
+        // 세부내용 생성
+        if (item.details && Array.isArray(item.details) && item.details.length > 0) {
+          const detailsQueryBuilder = new DirectQueryBuilder(supabase, 'quote_details');
+          for (let detailIndex = 0; detailIndex < item.details.length; detailIndex++) {
+            const detail = item.details[detailIndex];
+            
+            await detailsQueryBuilder.create({
               quote_item_id: itemData.id,
-              name: detail.name,
-              description: detail.description || '',
+              name: detail.name.trim(),
+              description: detail.description?.trim() || '',
               unit: detail.unit || '개',
-              unit_price: detail.unit_price,
-              quantity: detail.quantity,
-              days: detail.days,
+              unit_price: detail.unit_price || 0,
+              quantity: detail.quantity || 1,
+              days: detail.days || 1,
               is_service: detail.is_service || false,
               cost_price: detail.cost_price || 0,
               supplier_id: detail.supplier_id || null,
               supplier_name_snapshot: detail.supplier_name_snapshot || '',
-            }));
-
-            const { error: detailsError } = await supabase
-              .from('quote_details')
-              .insert(detailsToInsert);
-
-            if (detailsError) throw detailsError;
+              sort_order: detailIndex,
+            });
           }
         }
       }
-
-      return createSuccessResponse({
-        id: params.id,
-        message: '견적서가 성공적으로 수정되었습니다.',
-        version: updatedQuote.version
-      });
-
-    } catch (error) {
-      console.error('견적서 수정 실패:', error);
-      return createErrorResponse('견적서 수정에 실패했습니다.', 500);
     }
-  });
-}
 
-// DELETE /api/motionsense-quotes/[id] - 모션센스 견적서 삭제
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  return withAuth(request, async ({ user, supabase }) => {
-    try {
-      // 견적서 존재 확인
-      const { data: existingQuote, error: fetchError } = await supabase
-        .from('quotes')
-        .select('id, status')
-        .eq('id', params.id)
-        .single();
+    return {
+      id: params.id,
+      message: '견적서가 성공적으로 수정되었습니다.',
+      version: updatedQuote.version
+    };
+  },
+  { requireAuth: true, requiredRole: 'member', enableLogging: true }
+);
 
-      if (fetchError || !existingQuote) {
-        return createErrorResponse('견적서를 찾을 수 없습니다.', 404);
-      }
-
-      // 승인된 견적서는 삭제 불가
-      if (existingQuote.status === 'accepted') {
-        return createErrorResponse('승인된 견적서는 삭제할 수 없습니다.', 400);
-      }
-
-      // 견적서 삭제 (CASCADE로 관련 데이터 자동 삭제)
-      const { error: deleteError } = await supabase
-        .from('quotes')
-        .delete()
-        .eq('id', params.id);
-
-      if (deleteError) {
-        console.error('견적서 삭제 실패:', deleteError);
-        return createErrorResponse('견적서 삭제에 실패했습니다.', 500);
-      }
-
-      return createSuccessResponse({
-        message: '견적서가 성공적으로 삭제되었습니다.'
-      });
-
-    } catch (error) {
-      console.error('견적서 삭제 실패:', error);
-      return createErrorResponse('견적서 삭제에 실패했습니다.', 500);
+// DELETE /api/motionsense-quotes/[id] - 최적화된 모션센스 견적서 삭제
+export const DELETE = createDirectApi(
+  async ({ supabase, user }, { params }: { params: { id: string } }) => {
+    const queryBuilder = new DirectQueryBuilder(supabase, 'quotes');
+    
+    // 견적서 존재 확인
+    const existingQuote = await queryBuilder.findOne<MotionsenseQuote>(params.id, 'id, status');
+    if (!existingQuote) {
+      throw new Error('견적서를 찾을 수 없습니다.');
     }
-  });
-}
+
+    // 승인된 견적서는 삭제 불가
+    if (existingQuote.status === 'accepted') {
+      throw new Error('승인된 견적서는 삭제할 수 없습니다.');
+    }
+
+    // 견적서 삭제 (CASCADE로 관련 데이터 자동 삭제)
+    await queryBuilder.delete(params.id);
+
+    return {
+      message: '견적서가 성공적으로 삭제되었습니다.'
+    };
+  },
+  { requireAuth: true, requiredRole: 'member', enableLogging: true }
+);

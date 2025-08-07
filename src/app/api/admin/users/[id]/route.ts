@@ -1,187 +1,87 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@/lib/supabase/server';
+import {
+  createDirectApi,
+  DirectQueryBuilder,
+} from '@/lib/api/direct-integration';
 
-// PUT /api/admin/users/[id] - 사용자 정보 수정 (최고 관리자만)
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const supabase = createServerClient();
+interface UserProfile {
+  id: string;
+  email: string;
+  full_name: string;
+  role: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
 
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // 최고 관리자 권한 확인
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (!profile || profile.role !== 'super_admin') {
-      return NextResponse.json(
-        { error: 'Super admin access required' },
-        { status: 403 }
-      );
-    }
-
-    const body = await request.json();
+// PUT /api/admin/users/[id] - 최적화된 사용자 정보 수정 (최고 관리자만)
+export const PUT = createDirectApi(
+  async ({ supabase, user, body }, { params }: { params: { id: string } }) => {
     const { email, full_name, role, is_active } = body;
 
     // 입력 검증
     if (!email || !full_name || !role) {
-      return NextResponse.json(
-        {
-          error: 'Missing required fields: email, full_name, role',
-        },
-        { status: 400 }
-      );
+      throw new Error('필수 필드가 누락되었습니다: email, full_name, role');
     }
 
     if (!['admin', 'member'].includes(role)) {
-      return NextResponse.json(
-        {
-          error: 'Invalid role. Must be admin or member',
-        },
-        { status: 400 }
-      );
+      throw new Error('올바른 역할을 선택해주세요. (admin 또는 member)');
     }
 
     // 자신의 계정 수정 제한
     if (params.id === user.id) {
-      return NextResponse.json(
-        {
-          error: 'Cannot modify your own account',
-        },
-        { status: 400 }
-      );
+      throw new Error('자신의 계정은 수정할 수 없습니다.');
     }
 
-    // 수정할 사용자 존재 확인
-    const { data: targetUser } = await supabase
-      .from('profiles')
-      .select('id, role')
-      .eq('id', params.id)
-      .single();
+    const queryBuilder = new DirectQueryBuilder(supabase, 'profiles');
 
+    // 수정할 사용자 존재 확인
+    const targetUser = await queryBuilder.findOne<UserProfile>(params.id);
     if (!targetUser) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      throw new Error('사용자를 찾을 수 없습니다.');
     }
 
     // 프로필 업데이트
-    const { data: updatedUser, error: updateError } = await supabase
-      .from('profiles')
-      .update({
-        email,
-        full_name,
-        role,
-        is_active: is_active !== undefined ? is_active : true,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', params.id)
-      .select()
-      .single();
-
-    if (updateError) {
-      console.error('Error updating user:', updateError);
-      return NextResponse.json(
-        { error: 'Failed to update user' },
-        { status: 500 }
-      );
-    }
+    const updatedUser = await queryBuilder.update<UserProfile>(params.id, {
+      email,
+      full_name,
+      role,
+      is_active: is_active !== undefined ? is_active : true,
+    });
 
     // Auth 사용자 이메일 업데이트 (옵션)
     try {
       await supabase.auth.admin.updateUserById(params.id, { email });
     } catch (authUpdateError) {
-      console.error('Error updating auth email:', authUpdateError);
+      console.error('Auth 이메일 업데이트 오류:', authUpdateError);
       // Auth 업데이트 실패해도 계속 진행
     }
 
-    return NextResponse.json({
-      success: true,
-      message: 'User updated successfully',
+    return {
+      message: '사용자 정보가 성공적으로 수정되었습니다.',
       user: updatedUser,
-    });
-  } catch (error) {
-    console.error('Error in admin user PUT:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  { requireAuth: true, requiredRole: 'super_admin', enableLogging: true }
+);
 
-// DELETE /api/admin/users/[id] - 사용자 삭제 (최고 관리자만)
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const supabase = createServerClient();
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // 최고 관리자 권한 확인
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (!profile || profile.role !== 'super_admin') {
-      return NextResponse.json(
-        { error: 'Super admin access required' },
-        { status: 403 }
-      );
-    }
-
+// DELETE /api/admin/users/[id] - 최적화된 사용자 삭제 (최고 관리자만)
+export const DELETE = createDirectApi(
+  async ({ supabase, user }, { params }: { params: { id: string } }) => {
     // 자신의 계정 삭제 방지
     if (params.id === user.id) {
-      return NextResponse.json(
-        {
-          error: 'Cannot delete your own account',
-        },
-        { status: 400 }
-      );
+      throw new Error('자신의 계정은 삭제할 수 없습니다.');
     }
 
-    // 삭제할 사용자 존재 확인
-    const { data: userToDelete } = await supabase
-      .from('profiles')
-      .select('id, role, email')
-      .eq('id', params.id)
-      .single();
+    const queryBuilder = new DirectQueryBuilder(supabase, 'profiles');
 
+    // 삭제할 사용자 존재 확인
+    const userToDelete = await queryBuilder.findOne<UserProfile>(params.id);
     if (!userToDelete) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      throw new Error('사용자를 찾을 수 없습니다.');
     }
 
     // 프로필 데이터 먼저 삭제 (CASCADE로 연관된 데이터도 삭제됨)
-    const { error: profileDeleteError } = await supabase
-      .from('profiles')
-      .delete()
-      .eq('id', params.id);
-
-    if (profileDeleteError) {
-      console.error('Error deleting profile:', profileDeleteError);
-      return NextResponse.json(
-        { error: 'Failed to delete user profile' },
-        { status: 500 }
-      );
-    }
+    await queryBuilder.delete(params.id);
 
     // Auth 사용자 삭제
     const { error: deleteError } = await supabase.auth.admin.deleteUser(
@@ -189,19 +89,13 @@ export async function DELETE(
     );
 
     if (deleteError) {
-      console.error('Error deleting auth user:', deleteError);
+      console.error('Auth 사용자 삭제 오류:', deleteError);
       // Auth 삭제는 실패해도 프로필은 이미 삭제됨
     }
 
-    return NextResponse.json({
-      success: true,
-      message: 'User deleted successfully',
-    });
-  } catch (error) {
-    console.error('Error in admin user DELETE:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
+    return {
+      message: '사용자가 성공적으로 삭제되었습니다.',
+    };
+  },
+  { requireAuth: true, requiredRole: 'super_admin', enableLogging: true }
+);

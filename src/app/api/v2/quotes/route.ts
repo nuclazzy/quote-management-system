@@ -1,81 +1,95 @@
-import { NextRequest } from 'next/server';
 import {
-  withAuth,
-  parseSearchParams,
-  validateRequestBody,
-  extractFilterParams,
-  validateUUID,
-  sanitizeString,
-  callRPC,
-  createPaginatedApiResponse,
-  ApiErrors,
-} from '../../lib/base';
-import { createSuccessResponse } from '../../lib/utils/response';
-import {
-  BusinessError,
-  ValidationError,
-} from '../../lib/middleware/error-handler';
+  createDirectApi,
+  DirectQueryBuilder,
+  createPaginatedResponse,
+  parsePagination,
+  parseSort,
+} from '@/lib/api/direct-integration';
 
-// POST /api/v2/quotes - 새로운 견적서 생성 (모션센스 구조 + 스냅샷)
-export async function POST(request: NextRequest) {
-  return withAuth(request, async ({ user, supabase }) => {
-    const requestBody = await validateRequestBody(request);
-    
-    const client = supabase;
-    
-    try {
-      // 트랜잭션 시작
-      const { data: quoteData, error: quoteError } = await client
-        .from('quotes')
-        .insert({
-          // 기본 견적서 정보
-          project_title: requestBody.project_title,
-          customer_id: requestBody.customer_id,
-          customer_name_snapshot: requestBody.customer_name_snapshot,
-          issue_date: requestBody.issue_date,
-          status: requestBody.status || 'draft',
-          vat_type: requestBody.vat_type || 'exclusive',
-          discount_amount: requestBody.discount_amount || 0,
-          agency_fee_rate: requestBody.agency_fee_rate || 0,
-          version: 1,
-          created_by: user.id,
-          
-          // 새로운 구조 (모션센스)
-          name: requestBody.name,
-          items: requestBody.items,
-          include_in_fee: requestBody.include_in_fee,
-          
-          // 🔑 핵심: 스냅샷 생성 및 저장
-          quote_snapshot: await createQuoteSnapshot(requestBody.groups, client),
-        })
-        .select('*')
-        .single();
-
-      if (quoteError) {
-        throw new BusinessError(`견적서 생성 실패: ${quoteError.message}`);
-      }
-
-      return createSuccessResponse(quoteData, 201);
-    } catch (error) {
-      console.error('견적서 생성 중 오류:', error);
-      throw error;
+// POST /api/v2/quotes - 최적화된 견적서 생성 (v2 구조 + 스냅샷)
+export const POST = createDirectApi(
+  async ({ supabase, user, body }) => {
+    // 필수 필드 검증
+    if (!body.project_title?.trim()) {
+      throw new Error('프로젝트명을 입력해주세요.');
     }
-  });
-}
 
-// GET /api/v2/quotes - 견적서 목록 조회 (새로운 구조)
-export async function GET(request: NextRequest) {
-  return withAuth(request, async ({ user, supabase }) => {
-    const { page, limit, sortBy, sortOrder, offset } = parseSearchParams(request);
+    // 스냅샷 생성
+    const quoteSnapshot = await createQuoteSnapshot(body.groups || [], supabase);
+
+    const queryBuilder = new DirectQueryBuilder(supabase, 'quotes');
     
-    const allowedFilters = ['status', 'customer_id', 'search'];
-    const filters = extractFilterParams(request, allowedFilters);
+    // 견적서 생성
+    const quoteData = await queryBuilder.create({
+      // 기본 견적서 정보
+      project_title: body.project_title,
+      customer_id: body.customer_id || null,
+      customer_name_snapshot: body.customer_name_snapshot || '',
+      issue_date: body.issue_date || new Date().toISOString().split('T')[0],
+      status: body.status || 'draft',
+      vat_type: body.vat_type || 'exclusive',
+      discount_amount: body.discount_amount || 0,
+      agency_fee_rate: body.agency_fee_rate || 0,
+      version: 1,
+      created_by: user.id,
+      
+      // 새로운 구조 (모션센스)
+      name: body.name || body.project_title,
+      items: body.items || [],
+      include_in_fee: body.include_in_fee || false,
+      
+      // 핵심: 스냅샷 생성 및 저장
+      quote_snapshot: quoteSnapshot,
+    });
 
-    let query = supabase.from('quotes').select(
-      `
+    return {
+      message: '견적서가 성공적으로 생성되었습니다.',
+      quote: quoteData,
+    };
+  },
+  { requireAuth: true, requiredRole: 'member', enableLogging: true }
+);
+
+// GET /api/v2/quotes - 최적화된 견적서 목록 조회 (v2 구조)
+export const GET = createDirectApi(
+  async ({ supabase, searchParams }) => {
+    const queryBuilder = new DirectQueryBuilder(supabase, 'quotes');
+    const pagination = parsePagination(searchParams);
+    const sort = parseSort(searchParams, ['created_at', 'updated_at', 'issue_date', 'name']);
+    
+    // 필터 파라미터
+    const status = searchParams.get('status');
+    const customer_id = searchParams.get('customer_id');
+    const search = searchParams.get('search');
+
+    // WHERE 조건
+    const where: Record<string, any> = {};
+    
+    // 상태 필터
+    if (status) {
+      const validStatuses = ['draft', 'sent', 'accepted', 'revised', 'canceled'];
+      if (validStatuses.includes(status)) {
+        where.status = status;
+      }
+    }
+    
+    // 고객 필터
+    if (customer_id) {
+      where.customer_id = customer_id;
+    }
+
+    // 검색 조건
+    const searchCondition = search ? {
+      fields: ['name', 'quote_number', 'project_title'],
+      term: search.trim()
+    } : undefined;
+
+    const { data: quotes, count } = await queryBuilder.findMany({
+      select: `
         id,
         quote_number,
         name,
+        project_title,
         items,
         include_in_fee,
         quote_snapshot,
@@ -84,49 +98,19 @@ export async function GET(request: NextRequest) {
         issue_date,
         created_at,
         updated_at,
-        customers!inner(id, name),
-        projects(id, name),
-        profiles!quotes_created_by_fkey(id, full_name)
+        customer_id,
+        customer_name_snapshot
       `,
-      { count: 'exact' }
-    );
+      where,
+      search: searchCondition,
+      sort,
+      pagination
+    });
 
-    // 필터 적용
-    if (filters.status) {
-      const validStatuses = ['draft', 'sent', 'accepted', 'revised', 'canceled'];
-      if (validStatuses.includes(filters.status)) {
-        query = query.eq('status', filters.status);
-      }
-    }
-
-    if (filters.customer_id) {
-      const customerId = validateUUID(filters.customer_id, '고객 ID');
-      query = query.eq('customer_id', customerId);
-    }
-
-    if (filters.search) {
-      const searchTerm = sanitizeString(filters.search, 100);
-      query = query.or(
-        `name.ilike.%${searchTerm}%,quote_number.ilike.%${searchTerm}%`
-      );
-    }
-
-    // 정렬 및 페이지네이션
-    const validSortFields = ['created_at', 'updated_at', 'issue_date', 'name'];
-    const safeSortBy = validSortFields.includes(sortBy) ? sortBy : 'created_at';
-    query = query
-      .order(safeSortBy, { ascending: sortOrder === 'asc' })
-      .range(offset, offset + limit - 1);
-
-    const { data, error, count } = await query;
-
-    if (error) {
-      throw new BusinessError(`견적서 목록 조회 실패: ${error.message}`);
-    }
-
-    return createPaginatedApiResponse(data || [], count || 0, page, limit);
-  });
-}
+    return createPaginatedResponse(quotes, count, pagination.page, pagination.limit);
+  },
+  { requireAuth: true, enableLogging: true }
+);
 
 /**
  * 🔑 핵심 함수: 견적서 스냅샷 생성

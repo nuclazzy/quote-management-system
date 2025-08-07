@@ -1,21 +1,37 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { withAuth, requireRole } from '@/lib/auth/secure-middleware';
-import { secureLog } from '@/lib/utils/secure-logger';
-import { parseSearchParams } from '@/app/api/lib/base';
-import { createServerClient } from '@/lib/supabase/server';
+import {
+  createDirectApi,
+  DirectQueryBuilder,
+  createPaginatedResponse,
+  parsePagination,
+} from '@/lib/api/direct-integration';
 
-// GET /api/admin/users - 모든 사용자 조회 (관리자 이상)
-export async function GET(request: NextRequest) {
-  return withAuth(request, async ({ user, supabase }) => {
-    secureLog.apiRequest('GET', '/api/admin/users', user.id);
-    
-    const { page, limit, offset } = parseSearchParams(request);
-    const { searchParams } = new URL(request.url);
+interface UserProfile {
+  id: string;
+  email: string;
+  full_name: string;
+  role: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  last_sign_in_at?: string;
+}
+
+// GET /api/admin/users - 최적화된 모든 사용자 조회
+export const GET = createDirectApi(
+  async ({ supabase, searchParams }) => {
+    const queryBuilder = new DirectQueryBuilder(supabase, 'profiles');
+    const pagination = parsePagination(searchParams);
     const role = searchParams.get('role');
     const status = searchParams.get('status');
 
-    let query = supabase.from('profiles').select(
-      `
+    // WHERE 조건
+    const where: Record<string, any> = {};
+    if (role) where.role = role;
+    if (status === 'active') where.is_active = true;
+    if (status === 'inactive') where.is_active = false;
+
+    const { data: users, count } = await queryBuilder.findMany<UserProfile>({
+      select: `
         id,
         email,
         full_name,
@@ -25,80 +41,45 @@ export async function GET(request: NextRequest) {
         updated_at,
         last_sign_in_at
       `,
-      { count: 'exact' }
-    );
+      where,
+      sort: { by: 'created_at', order: 'desc' },
+      pagination
+    });
 
-    // 역할 필터
-    if (role) {
-      query = query.eq('role', role);
-    }
+    return createPaginatedResponse(users, count, pagination.page, pagination.limit);
+  },
+  { requireAuth: true, requiredRole: 'admin', enableLogging: true }
+);
 
-    // 상태 필터
-    if (status === 'active') {
-      query = query.eq('is_active', true);
-    } else if (status === 'inactive') {
-      query = query.eq('is_active', false);
-    }
-
-    // 정렬 및 페이지네이션
-    query = query
-      .order('created_at', { ascending: false })
-      .range((page - 1) * limit, page * limit - 1);
-
-    const { data: users, error, count } = await query;
-
-    if (error) {
-      secureLog.error('Error fetching users', error);
-      throw new Error('Failed to fetch users');
-    }
-
-    return {
-      users: users || [],
-      pagination: {
-        page,
-        limit,
-        total: count || 0,
-        totalPages: Math.ceil((count || 0) / limit),
-      },
-    };
-  }, requireRole('admin'));
-}
-
-// POST /api/admin/users - 사용자 직접 생성 (최고 관리자만)
-export async function POST(request: NextRequest) {
-  return withAuth(request, async ({ user, supabase }) => {
-    secureLog.apiRequest('POST', '/api/admin/users', user.id);
-
-    const body = await request.json();
+// POST /api/admin/users - 최적화된 사용자 직접 생성 (최고 관리자만)
+export const POST = createDirectApi(
+  async ({ supabase, user, body }) => {
     const { email, password, full_name, role = 'member' } = body;
 
     // 입력 검증
     if (!email || !email.includes('@')) {
-      throw new Error('Valid email is required');
+      throw new Error('올바른 이메일을 입력해주세요.');
     }
 
     if (!password || password.length < 6) {
-      throw new Error('Password must be at least 6 characters');
+      throw new Error('비밀번호는 최소 6자리 이상이어야 합니다.');
     }
 
     if (!['member', 'admin'].includes(role)) {
-      throw new Error('Invalid role');
+      throw new Error('올바른 역할을 선택해주세요.');
     }
 
     // 도메인 제한 확인
     if (!email.endsWith('@motionsense.co.kr')) {
-      throw new Error('Only @motionsense.co.kr email addresses are allowed');
+      throw new Error('@motionsense.co.kr 이메일만 허용됩니다.');
     }
 
     // 이미 존재하는 사용자인지 확인
-    const { data: existingUser } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('email', email)
-      .single();
+    const queryBuilder = new DirectQueryBuilder(supabase, 'profiles');
+    const existingUser = await queryBuilder.findOne('email', email);
 
     if (existingUser) {
-      throw new Error('User already exists');
+      throw new Error('이미 존재하는 사용자입니다.');
     }
 
     // Supabase Admin API로 새 사용자 생성
@@ -113,36 +94,21 @@ export async function POST(request: NextRequest) {
       });
 
     if (createError) {
-      secureLog.error('Error creating user', createError);
-      throw new Error('Failed to create user');
+      console.error('사용자 생성 오류:', createError);
+      throw new Error('사용자 생성에 실패했습니다.');
     }
 
     // 프로필 생성
-    const { error: profileError } = await supabase.from('profiles').insert({
+    const profileData = await queryBuilder.create({
       id: newUser.user.id,
-      email: newUser.user.email,
+      email: newUser.user.email!,
       full_name: full_name || email.split('@')[0],
       role,
       is_active: true,
     });
 
-    if (profileError) {
-      secureLog.error('Error creating profile', profileError);
-      // 프로필 생성 실패 시 인증 사용자도 삭제
-      await supabase.auth.admin.deleteUser(newUser.user.id);
-      throw new Error('Failed to create user profile');
-    }
-
-    secureLog.info('User created successfully', { 
-      newUserId: newUser.user.id,
-      email: email.replace(/(.{2}).*@/, '$1***@'),
-      role,
-      createdBy: user.id
-    });
-
     return {
-      success: true,
-      message: 'User created successfully',
+      message: '사용자가 성공적으로 생성되었습니다.',
       user: {
         id: newUser.user.id,
         email: newUser.user.email,
@@ -150,5 +116,6 @@ export async function POST(request: NextRequest) {
         role,
       },
     };
-  }, { requireSpecificRole: 'super_admin' });
-}
+  },
+  { requireAuth: true, requiredRole: 'super_admin', enableLogging: true }
+);

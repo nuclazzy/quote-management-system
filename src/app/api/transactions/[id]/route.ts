@@ -1,5 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@/lib/supabase/server';
+import {
+  createDirectApi,
+  DirectQueryBuilder,
+} from '@/lib/api/direct-integration';
 import { z } from 'zod';
 
 const updateTransactionSchema = z.object({
@@ -12,113 +14,70 @@ const updateTransactionSchema = z.object({
   due_date: z.string().nullable().optional(),
 });
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const supabase = createServerClient();
-    const transactionId = params.id;
-
-    // 현재 사용자 확인
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // 거래 정보 조회
-    const { data: transaction, error } = await supabase
-      .from('transactions')
-      .select(
-        `
-        *,
-        projects!inner(id, name, quotes!inner(customer_name_snapshot))
-      `
-      )
-      .eq('id', transactionId)
-      .single();
-
-    if (error || !transaction) {
-      return NextResponse.json(
-        { error: 'Transaction not found' },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json({ transaction });
-  } catch (error) {
-    console.error('Transaction GET error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
+interface Transaction {
+  id: string;
+  project_id: string;
+  type: 'income' | 'expense';
+  partner_name: string;
+  item_name: string;
+  amount: number;
+  due_date?: string;
+  status: 'pending' | 'processing' | 'completed' | 'issue';
+  tax_invoice_status: 'not_issued' | 'issued' | 'received';
+  notes?: string;
+  created_at: string;
+  created_by: string;
 }
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const supabase = createServerClient();
-    const transactionId = params.id;
-
-    // 현재 사용자 확인
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+// GET /api/transactions/[id] - 최적화된 거래 상세 조회
+export const GET = createDirectApi(
+  async ({ supabase }, { params }: { params: { id: string } }) => {
+    const queryBuilder = new DirectQueryBuilder(supabase, 'transactions');
+    
+    const transaction = await queryBuilder.findOne<Transaction>(params.id, `
+      *,
+      projects!inner(id, name, quotes!inner(customer_name_snapshot))
+    `);
+    
+    if (!transaction) {
+      throw new Error('거래를 찾을 수 없습니다.');
     }
 
-    // 요청 데이터 검증
-    const body = await request.json();
-    const validatedData = updateTransactionSchema.parse(body);
+    return { transaction };
+  },
+  { requireAuth: true, enableLogging: true }
+);
 
-    // 거래 존재 확인
-    const { data: existingTransaction, error: fetchError } = await supabase
-      .from('transactions')
-      .select('*')
-      .eq('id', transactionId)
-      .single();
+// PATCH /api/transactions/[id] - 최적화된 거래 수정
+export const PATCH = createDirectApi(
+  async ({ supabase, user, body }, { params }: { params: { id: string } }) => {
+    const queryBuilder = new DirectQueryBuilder(supabase, 'transactions');
+    
+    // 스키마 검증
+    let validatedData;
+    try {
+      validatedData = updateTransactionSchema.parse(body);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        throw new Error(`입력 데이터가 유효하지 않습니다: ${error.errors.map(e => e.message).join(', ')}`);
+      }
+      throw error;
+    }
 
-    if (fetchError || !existingTransaction) {
-      return NextResponse.json(
-        { error: 'Transaction not found' },
-        { status: 404 }
-      );
+    // 기존 거래 확인
+    const existingTransaction = await queryBuilder.findOne<Transaction>(params.id);
+    if (!existingTransaction) {
+      throw new Error('거래를 찾을 수 없습니다.');
     }
 
     // 거래 업데이트
-    const { data: transaction, error: updateError } = await supabase
-      .from('transactions')
-      .update(validatedData)
-      .eq('id', transactionId)
-      .select(
-        `
-        *,
-        projects!inner(id, name)
-      `
-      )
-      .single();
+    const transaction = await queryBuilder.update<Transaction>(params.id, validatedData, `
+      *,
+      projects!inner(id, name)
+    `);
 
-    if (updateError) {
-      console.error('Transaction update error:', updateError);
-      return NextResponse.json(
-        { error: 'Failed to update transaction' },
-        { status: 500 }
-      );
-    }
-
-    // 상태 변경 시 알림 생성
-    if (
-      validatedData.status &&
-      validatedData.status !== existingTransaction.status
-    ) {
+    // 상태 변경 시 알림 생성 (비동기)
+    if (validatedData.status && validatedData.status !== existingTransaction.status) {
       const statusText = {
         pending: '대기',
         processing: '진행중',
@@ -126,108 +85,54 @@ export async function PATCH(
         issue: '문제',
       }[validatedData.status];
 
-      const { error: notificationError } = await supabase
-        .from('notifications')
-        .insert({
+      const notificationQuery = new DirectQueryBuilder(supabase, 'notifications');
+      try {
+        await notificationQuery.create({
           user_id: user.id,
           message: `거래 "${existingTransaction.item_name}"의 상태가 "${statusText}"로 변경되었습니다.`,
           link_url: `/projects/${existingTransaction.project_id}`,
-          notification_type:
-            validatedData.status === 'completed'
-              ? 'general'
-              : validatedData.status === 'issue'
-                ? 'issue'
-                : 'general',
+          notification_type: validatedData.status === 'completed' ? 'general' : 
+                           validatedData.status === 'issue' ? 'issue' : 'general',
+          is_read: false,
         });
-
-      if (notificationError) {
+      } catch (notificationError) {
         console.error('Notification creation error:', notificationError);
+        // 알림 생성 실패는 무시하고 계속 진행
       }
     }
 
-    return NextResponse.json({
+    return {
       success: true,
+      message: '거래가 성공적으로 수정되었습니다.',
       transaction,
-    });
-  } catch (error) {
-    console.error('Transaction PATCH error:', error);
+    };
+  },
+  { requireAuth: true, requiredRole: 'member', enableLogging: true }
+);
 
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: 'Invalid request data', details: error.errors },
-        { status: 400 }
-      );
-    }
-
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
-
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const supabase = createServerClient();
-    const transactionId = params.id;
-
-    // 현재 사용자 확인
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // 거래 존재 확인
-    const { data: transaction, error: fetchError } = await supabase
-      .from('transactions')
-      .select('*')
-      .eq('id', transactionId)
-      .single();
-
-    if (fetchError || !transaction) {
-      return NextResponse.json(
-        { error: 'Transaction not found' },
-        { status: 404 }
-      );
+// DELETE /api/transactions/[id] - 최적화된 거래 삭제
+export const DELETE = createDirectApi(
+  async ({ supabase }, { params }: { params: { id: string } }) => {
+    const queryBuilder = new DirectQueryBuilder(supabase, 'transactions');
+    
+    // 기존 거래 확인
+    const existingTransaction = await queryBuilder.findOne<Transaction>(params.id);
+    if (!existingTransaction) {
+      throw new Error('거래를 찾을 수 없습니다.');
     }
 
     // 완료된 거래는 삭제 불가
-    if (transaction.status === 'completed') {
-      return NextResponse.json(
-        { error: 'Cannot delete completed transaction' },
-        { status: 400 }
-      );
+    if (existingTransaction.status === 'completed') {
+      throw new Error('완료된 거래는 삭제할 수 없습니다.');
     }
 
     // 거래 삭제
-    const { error: deleteError } = await supabase
-      .from('transactions')
-      .delete()
-      .eq('id', transactionId);
+    await queryBuilder.delete(params.id);
 
-    if (deleteError) {
-      console.error('Transaction delete error:', deleteError);
-      return NextResponse.json(
-        { error: 'Failed to delete transaction' },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({
+    return {
       success: true,
-      message: 'Transaction deleted successfully',
-    });
-  } catch (error) {
-    console.error('Transaction DELETE error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
+      message: '거래가 성공적으로 삭제되었습니다.',
+    };
+  },
+  { requireAuth: true, requiredRole: 'member', enableLogging: true }
+);

@@ -1,77 +1,48 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import {
+  createDirectApi,
+  DirectQueryBuilder,
+} from '@/lib/api/direct-integration';
 
-export async function POST(request: NextRequest) {
-  try {
-    const supabase = createRouteHandlerClient({ cookies });
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Check if user is admin
-    const { data: userProfile } = await supabase
-      .from('profiles')
-      .select('role, company_id')
-      .eq('id', user.id)
-      .single();
-
-    if (!userProfile || userProfile.role !== 'admin') {
-      return NextResponse.json(
-        { error: 'Admin access required' },
-        { status: 403 }
-      );
-    }
-
-    const body = await request.json();
+// POST /api/admin/users/invite - 최적화된 사용자 초대
+export const POST = createDirectApi(
+  async ({ supabase, user, body }) => {
     const { email, full_name, role } = body;
 
-    // Validate required fields
+    // 필수 필드 검증
     if (!email || !full_name || !role) {
-      return NextResponse.json(
-        { error: 'Missing required fields: email, full_name, role' },
-        { status: 400 }
-      );
+      throw new Error('필수 필드가 누락되었습니다: email, full_name, role');
     }
 
-    // Validate role
+    // 역할 검증
     if (!['admin', 'member'].includes(role)) {
-      return NextResponse.json(
-        { error: 'Invalid role. Must be admin or member' },
-        { status: 400 }
-      );
+      throw new Error('올바른 역할을 선택해주세요. (admin 또는 member)');
     }
 
-    // Check if user already exists
-    const { data: existingUser } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('email', email)
-      .single();
+    // 사용자 프로필과 회사 ID 조회
+    const profileQuery = new DirectQueryBuilder(supabase, 'profiles');
+    const userProfile = await profileQuery.findOne(user.id, 'role, company_id');
+    
+    if (!userProfile?.company_id) {
+      throw new Error('회사 정보를 찾을 수 없습니다.');
+    }
 
+    // 이미 존재하는 사용자인지 확인
+    const existingUser = await profileQuery.findOne('email', email);
     if (existingUser) {
-      return NextResponse.json(
-        { error: 'User with this email already exists' },
-        { status: 400 }
-      );
+      throw new Error('이미 존재하는 이메일입니다.');
     }
 
-    // Generate a temporary password
+    // 임시 비밀번호 생성
     const tempPassword =
       Math.random().toString(36).slice(-8) +
       Math.random().toString(36).slice(-8).toUpperCase();
 
-    // Create auth user
+    // Auth 사용자 생성
     const { data: authUser, error: createError } =
       await supabase.auth.admin.createUser({
         email,
         password: tempPassword,
-        email_confirm: false, // Will be confirmed when user sets their password
+        email_confirm: false, // 사용자가 비밀번호 설정 시 확인됨
         user_metadata: {
           full_name,
           role,
@@ -81,40 +52,31 @@ export async function POST(request: NextRequest) {
       });
 
     if (createError) {
-      console.error('Error creating auth user:', createError);
-      return NextResponse.json(
-        { error: 'Failed to create user account' },
-        { status: 500 }
-      );
+      console.error('Auth 사용자 생성 오류:', createError);
+      throw new Error('사용자 계정 생성에 실패했습니다.');
     }
 
     if (!authUser.user) {
-      return NextResponse.json(
-        { error: 'Failed to create user account' },
-        { status: 500 }
-      );
+      throw new Error('사용자 계정 생성에 실패했습니다.');
     }
 
-    // Create user profile
-    const { error: profileError } = await supabase.from('profiles').insert({
-      id: authUser.user.id,
-      email,
-      full_name,
-      role,
-      company_id: userProfile.company_id,
-    });
-
-    if (profileError) {
-      console.error('Error creating user profile:', profileError);
-      // Try to cleanup auth user
+    // 사용자 프로필 생성
+    try {
+      await profileQuery.create({
+        id: authUser.user.id,
+        email,
+        full_name,
+        role,
+        company_id: userProfile.company_id,
+      });
+    } catch (profileError) {
+      console.error('사용자 프로필 생성 오류:', profileError);
+      // Auth 사용자 정리
       await supabase.auth.admin.deleteUser(authUser.user.id);
-      return NextResponse.json(
-        { error: 'Failed to create user profile' },
-        { status: 500 }
-      );
+      throw new Error('사용자 프로필 생성에 실패했습니다.');
     }
 
-    // Send invitation email with password reset link
+    // 초대 이메일 발송
     const { error: inviteError } = await supabase.auth.admin.inviteUserByEmail(
       email,
       {
@@ -128,22 +90,14 @@ export async function POST(request: NextRequest) {
     );
 
     if (inviteError) {
-      console.error('Error sending invite email:', inviteError);
-      // Don't fail the request if email sending fails
+      console.error('초대 이메일 발송 오류:', inviteError);
+      // 이메일 발송 실패해도 요청은 성공으로 처리
     }
 
-    return NextResponse.json(
-      {
-        message: 'User invited successfully',
-        user_id: authUser.user.id,
-      },
-      { status: 201 }
-    );
-  } catch (error) {
-    console.error('Error in admin user invite:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
+    return {
+      message: '사용자 초대가 성공적으로 완료되었습니다.',
+      user_id: authUser.user.id,
+    };
+  },
+  { requireAuth: true, requiredRole: 'admin', enableLogging: true }
+);

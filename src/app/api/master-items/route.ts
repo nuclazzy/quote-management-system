@@ -1,119 +1,124 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
-import { masterItemSchema, masterItemQuerySchema } from '@/lib/validations/master-items';
-import { Database } from '@/types/supabase';
+import {
+  createDirectApi,
+  DirectQueryBuilder,
+  createPaginatedResponse,
+  parsePagination,
+  parseSort,
+  parseSearch,
+} from '@/lib/api/direct-integration';
+import { masterItemSchema } from '@/lib/validations/master-items';
 
-// GET /api/master-items - 마스터 품목 목록 조회
-export async function GET(request: NextRequest) {
-  try {
-    const supabase = createServerComponentClient<Database>({ cookies });
+interface MasterItem {
+  id: string;
+  name: string;
+  description?: string;
+  category?: string;
+  unit: string;
+  cost_price?: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  created_by: string;
+  updated_by?: string;
+}
+
+// GET /api/master-items - 최적화된 마스터 품목 목록 조회
+export const GET = createDirectApi(
+  async ({ supabase, searchParams }) => {
+    const queryBuilder = new DirectQueryBuilder(supabase, 'master_items');
     
-    // 사용자 인증 확인
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // 쿼리 파라미터 파싱
-    const searchParams = request.nextUrl.searchParams;
-    const rawParams = {
-      search: searchParams.get('search') || undefined,
-      category: searchParams.get('category') || undefined,
-      is_active: searchParams.get('is_active') ? searchParams.get('is_active') === 'true' : undefined,
-      page: searchParams.get('page') ? parseInt(searchParams.get('page')!) : 1,
-      limit: searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 20,
-    };
-
-    const validatedParams = masterItemQuerySchema.parse(rawParams);
-
-    // 쿼리 빌더 시작
-    let query = supabase
-      .from('master_items')
-      .select('*', { count: 'exact' })
-      .order('created_at', { ascending: false });
-
-    // 검색 필터 적용
-    if (validatedParams.search) {
-      query = query.or(`name.ilike.%${validatedParams.search}%,description.ilike.%${validatedParams.search}%,category.ilike.%${validatedParams.search}%`);
-    }
-
-    if (validatedParams.category) {
-      query = query.eq('category', validatedParams.category);
-    }
-
-    if (validatedParams.is_active !== undefined) {
-      query = query.eq('is_active', validatedParams.is_active);
-    }
-
-    // 페이지네이션 적용
-    const offset = (validatedParams.page - 1) * validatedParams.limit;
-    query = query.range(offset, offset + validatedParams.limit - 1);
-
-    const { data, error, count } = await query;
-
-    if (error) {
-      console.error('마스터 품목 조회 중 오류:', error);
-      return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
-    }
-
-    // 페이지네이션 메타데이터 계산
-    const totalPages = Math.ceil((count || 0) / validatedParams.limit);
-
-    return NextResponse.json({
-      data: data || [],
-      pagination: {
-        page: validatedParams.page,
-        limit: validatedParams.limit,
-        total: count || 0,
-        totalPages,
-        hasNextPage: validatedParams.page < totalPages,
-        hasPrevPage: validatedParams.page > 1,
-      }
+    // 파라미터 파싱
+    const pagination = parsePagination(searchParams);
+    const sort = parseSort(searchParams, ['name', 'category', 'created_at', 'updated_at']);
+    const searchTerm = searchParams.get('search')?.trim() || '';
+    const category = searchParams.get('category') || '';
+    const isActiveParam = searchParams.get('is_active');
+    
+    // 검색 조건 구성
+    const searchCondition = searchTerm ? {
+      fields: ['name', 'description', 'category'],
+      term: searchTerm
+    } : undefined;
+    
+    // WHERE 조건
+    const where: Record<string, any> = {};
+    if (category) where.category = category;
+    if (isActiveParam !== null) where.is_active = isActiveParam === 'true';
+    
+    // 데이터 조회
+    const { data, count } = await queryBuilder.findMany<MasterItem>({
+      select: `
+        *,
+        created_by_profile:profiles!master_items_created_by_fkey(id, full_name, email)
+      `,
+      where,
+      search: searchCondition,
+      sort: { by: sort.sortBy, order: sort.sortOrder as 'asc' | 'desc' },
+      pagination,
     });
-  } catch (error) {
-    console.error('마스터 품목 조회 중 오류:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
-  }
-}
-
-// POST /api/master-items - 새 마스터 품목 생성
-export async function POST(request: NextRequest) {
-  try {
-    const supabase = createServerComponentClient<Database>({ cookies });
     
-    // 사용자 인증 확인
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    return createPaginatedResponse(data, count, pagination.page, pagination.limit);
+  },
+  { requireAuth: true, enableLogging: true }
+);
 
-    // 요청 본문 파싱 및 검증
-    const body = await request.json();
+// POST /api/master-items - 최적화된 마스터 품목 생성
+export const POST = createDirectApi(
+  async ({ supabase, user, body }) => {
+    // 입력 검증
     const validatedData = masterItemSchema.parse(body);
-
-    // 마스터 품목 생성
-    const { data, error } = await supabase
-      .from('master_items')
-      .insert({
-        ...validatedData,
-        created_by: user.id,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error('마스터 품목 생성 중 오류:', error);
-      return NextResponse.json({ error: 'Failed to create master item' }, { status: 500 });
-    }
-
-    return NextResponse.json({ data }, { status: 201 });
-  } catch (error) {
-    if (error instanceof Error && error.name === 'ZodError') {
-      return NextResponse.json({ error: 'Invalid input data', details: error }, { status: 400 });
+    
+    // 필수 필드 검증
+    if (!validatedData.name?.trim()) {
+      throw new Error('품목명은 필수입니다.');
     }
     
-    console.error('마스터 품목 생성 중 오류:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
-  }
-}
+    if (!validatedData.unit?.trim()) {
+      throw new Error('단위는 필수입니다.');
+    }
+    
+    // 원가 검증
+    if (validatedData.cost_price && validatedData.cost_price < 0) {
+      throw new Error('원가는 0 이상이어야 합니다.');
+    }
+    
+    const queryBuilder = new DirectQueryBuilder(supabase, 'master_items');
+    
+    // 중복 품목명 검사 (같은 카테고리 내에서)
+    const { count: duplicateCount } = await queryBuilder.findMany({
+      select: 'id',
+      where: {
+        name: validatedData.name.trim(),
+        category: validatedData.category || null,
+      },
+      pagination: { page: 1, limit: 1 }
+    });
+    
+    if (duplicateCount > 0) {
+      throw new Error('같은 카테고리에 이미 동일한 품목명이 존재합니다.');
+    }
+    
+    // 데이터 정리
+    const masterItemData = {
+      name: validatedData.name.trim(),
+      description: validatedData.description?.trim() || null,
+      category: validatedData.category?.trim() || null,
+      unit: validatedData.unit.trim(),
+      cost_price: validatedData.cost_price || null,
+      is_active: validatedData.is_active !== undefined ? validatedData.is_active : true,
+      created_by: user.id,
+    };
+    
+    // 마스터 품목 생성
+    const masterItem = await queryBuilder.create<MasterItem>(masterItemData, `
+      *,
+      created_by_profile:profiles!master_items_created_by_fkey(id, full_name, email)
+    `);
+    
+    return {
+      message: '마스터 품목이 성공적으로 생성되었습니다.',
+      masterItem,
+    };
+  },
+  { requireAuth: true, requiredRole: 'member', enableLogging: true }
+);

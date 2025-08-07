@@ -1,201 +1,188 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import {
+  createDirectApi,
+  DirectQueryBuilder,
+} from '@/lib/api/direct-integration';
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const supabase = createRouteHandlerClient({ cookies });
+interface Item {
+  id: string;
+  name: string;
+  description?: string;
+  category_id?: string;
+  category?: string;
+  sku: string;
+  unit: string;
+  unit_price: number;
+  cost_price?: number;
+  supplier_id?: string;
+  min_quantity?: number;
+  max_quantity?: number;
+  stock_quantity: number;
+  minimum_stock_level?: number;
+  item_type: 'product' | 'service';
+  barcode?: string;
+  status?: 'active' | 'inactive';
+  is_active: boolean;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
+  created_by: string;
+  updated_by?: string;
+}
 
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+// GET /api/items/[id] - 최적화된 품목 상세 조회
+export const GET = createDirectApi(
+  async ({ supabase, user }, { params }: { params: { id: string } }) => {
+    const queryBuilder = new DirectQueryBuilder(supabase, 'items');
+    
+    const item = await queryBuilder.findOne<Item>(params.id, `
+      *,
+      category:item_categories(id, name),
+      suppliers(id, name)
+    `);
+    
+    if (!item || item.user_id !== user.id) {
+      throw new Error('품목을 찾을 수 없습니다.');
     }
 
-    const { data: item, error } = await supabase
-      .from('items')
-      .select(
-        `
-        *,
-        suppliers (
-          id,
-          name
-        )
-      `
-      )
-      .eq('id', params.id)
-      .single();
-
-    if (error) {
-      console.error('Error fetching item:', error);
-      return NextResponse.json({ error: 'Item not found' }, { status: 404 });
-    }
-
-    // Flatten supplier data
+    // 공급업체 데이터 평면화
     const formattedItem = {
       ...item,
-      supplier_name: item.suppliers?.name || null,
+      supplier_name: (item as any).suppliers?.name || null,
     };
 
-    return NextResponse.json(formattedItem);
-  } catch (error) {
-    console.error('Error in item GET:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
+    return formattedItem;
+  },
+  { requireAuth: true, enableLogging: true }
+);
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const supabase = createRouteHandlerClient({ cookies });
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+// PUT /api/items/[id] - 최적화된 품목 수정
+export const PUT = createDirectApi(
+  async ({ supabase, user, body }, { params }: { params: { id: string } }) => {
+    const queryBuilder = new DirectQueryBuilder(supabase, 'items');
+    
+    // 입력 검증
+    if (!body?.name?.trim()) {
+      throw new Error('품목명은 필수 항목입니다.');
+    }
+    
+    if (!body?.sku?.trim()) {
+      throw new Error('SKU는 필수 항목입니다.');
+    }
+    
+    if (!body?.unit?.trim()) {
+      throw new Error('단위는 필수 항목입니다.');
+    }
+    
+    if (body?.unit_price === undefined || body.unit_price < 0) {
+      throw new Error('단가는 필수이며 0 이상이어야 합니다.');
     }
 
-    const body = await request.json();
-    const {
-      name,
-      description,
-      category,
-      unit,
-      unit_price,
-      cost_price,
-      supplier_id,
-      min_quantity,
-      max_quantity,
-      stock_quantity,
-      barcode,
-      sku,
-      status,
-    } = body;
+    // 기존 품목 확인 및 권한 체크
+    const existingItem = await queryBuilder.findOne<Item>(params.id);
+    if (!existingItem || existingItem.user_id !== user.id) {
+      throw new Error('품목을 찾을 수 없습니다.');
+    }
 
-    // Validate required fields
-    if (!name || !category || !unit || unit_price === undefined || !sku) {
-      return NextResponse.json(
-        {
-          error:
-            'Missing required fields: name, category, unit, unit_price, sku',
+    // SKU 중복 검사 (자신 제외)
+    if (body.sku.trim() !== existingItem.sku) {
+      const existing = await queryBuilder.findMany<Item>({
+        select: 'id',
+        where: {
+          sku: body.sku.trim(),
+          user_id: user.id
         },
-        { status: 400 }
-      );
+        pagination: { page: 1, limit: 1 }
+      });
+      
+      if (existing.count > 0) {
+        throw new Error('이미 사용 중인 SKU입니다.');
+      }
     }
 
-    // Check if SKU already exists for other items
-    const { data: existingSku } = await supabase
-      .from('items')
-      .select('id')
-      .eq('sku', sku)
-      .neq('id', params.id)
-      .single();
-
-    if (existingSku) {
-      return NextResponse.json(
-        { error: 'SKU already exists' },
-        { status: 400 }
-      );
+    // 카테고리 존재 확인 (제공된 경우)
+    if (body.category_id) {
+      const categoryQuery = new DirectQueryBuilder(supabase, 'item_categories');
+      const category = await categoryQuery.findOne(body.category_id);
+      if (!category) {
+        throw new Error('존재하지 않는 카테고리입니다.');
+      }
     }
 
-    const { data: item, error } = await supabase
-      .from('items')
-      .update({
-        name,
-        description: description || null,
-        category,
-        unit,
-        unit_price: Number(unit_price),
-        cost_price: Number(cost_price) || 0,
-        supplier_id: supplier_id || null,
-        min_quantity: Number(min_quantity) || 0,
-        max_quantity: Number(max_quantity) || 0,
-        stock_quantity: Number(stock_quantity) || 0,
-        barcode: barcode || null,
-        sku,
-        status: status || 'active',
-        updated_by: user.id,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', params.id)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error updating item:', error);
-      return NextResponse.json(
-        { error: 'Failed to update item' },
-        { status: 500 }
-      );
+    // 공급업체 존재 확인 (제공된 경우)
+    if (body.supplier_id) {
+      const supplierQuery = new DirectQueryBuilder(supabase, 'suppliers');
+      const supplier = await supplierQuery.findOne(body.supplier_id);
+      if (!supplier) {
+        throw new Error('존재하지 않는 공급업체입니다.');
+      }
     }
 
-    return NextResponse.json(item);
-  } catch (error) {
-    console.error('Error in item PUT:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
+    // 데이터 정리 및 검증
+    const itemData = {
+      name: body.name.trim(),
+      description: body.description?.trim() || null,
+      category_id: body.category_id || existingItem.category_id,
+      category: body.category?.trim() || existingItem.category,
+      sku: body.sku.trim(),
+      unit: body.unit.trim(),
+      unit_price: Math.max(0, Number(body.unit_price)),
+      cost_price: body.cost_price ? Math.max(0, Number(body.cost_price)) : 0,
+      supplier_id: body.supplier_id || null,
+      min_quantity: body.min_quantity ? Math.max(0, Number(body.min_quantity)) : 0,
+      max_quantity: body.max_quantity ? Math.max(0, Number(body.max_quantity)) : 0,
+      stock_quantity: body.stock_quantity ? Math.max(0, Number(body.stock_quantity)) : 0,
+      minimum_stock_level: body.minimum_stock_level ? Math.max(0, Number(body.minimum_stock_level)) : 0,
+      item_type: body.item_type && ['product', 'service'].includes(body.item_type) ? body.item_type : existingItem.item_type,
+      barcode: body.barcode?.trim() || null,
+      status: body.status && ['active', 'inactive'].includes(body.status) ? body.status : 'active',
+      is_active: body.status !== 'inactive',
+      updated_by: user.id,
+    };
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const supabase = createRouteHandlerClient({ cookies });
+    // 품목 수정
+    const item = await queryBuilder.update<Item>(params.id, itemData, `
+      *,
+      category:item_categories(id, name),
+      suppliers(id, name)
+    `);
 
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return {
+      message: '품목이 성공적으로 수정되었습니다.',
+      item,
+    };
+  },
+  { requireAuth: true, requiredRole: 'member', enableLogging: true }
+);
+
+// DELETE /api/items/[id] - 최적화된 품목 삭제
+export const DELETE = createDirectApi(
+  async ({ supabase, user }, { params }: { params: { id: string } }) => {
+    const queryBuilder = new DirectQueryBuilder(supabase, 'items');
+    
+    // 기존 품목 확인 및 권한 체크
+    const existingItem = await queryBuilder.findOne<Item>(params.id);
+    if (!existingItem || existingItem.user_id !== user.id) {
+      throw new Error('품목을 찾을 수 없습니다.');
     }
 
-    // Check if item is used in any quotes
-    const { data: quoteItems } = await supabase
-      .from('quote_items')
-      .select('id')
-      .eq('item_id', params.id)
-      .limit(1);
+    // 견적서에서 사용 중인지 확인
+    const quoteItemsQuery = new DirectQueryBuilder(supabase, 'quote_items_motionsense');
+    const { count: quoteItemsCount } = await quoteItemsQuery.findMany({
+      select: 'id',
+      where: { item_id: params.id },
+      pagination: { page: 1, limit: 1 }
+    });
 
-    if (quoteItems && quoteItems.length > 0) {
-      return NextResponse.json(
-        { error: 'Cannot delete item that is used in quotes' },
-        { status: 400 }
-      );
+    if (quoteItemsCount > 0) {
+      throw new Error('견적서에서 사용 중인 품목은 삭제할 수 없습니다.');
     }
 
-    const { error } = await supabase.from('items').delete().eq('id', params.id);
+    // 품목 삭제
+    await queryBuilder.delete(params.id);
 
-    if (error) {
-      console.error('Error deleting item:', error);
-      return NextResponse.json(
-        { error: 'Failed to delete item' },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({ message: 'Item deleted successfully' });
-  } catch (error) {
-    console.error('Error in item DELETE:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
+    return {
+      message: '품목이 성공적으로 삭제되었습니다.',
+    };
+  },
+  { requireAuth: true, requiredRole: 'member', enableLogging: true }
+);
