@@ -20,14 +20,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        // 현재 세션 확인
-        const {
-          data: { session },
-          error
-        } = await supabase.auth.getSession();
-
-        if (error) {
-          console.error('Session error:', error);
+        // Supabase client 생성 확인
+        let session = null;
+        try {
+          const result = await supabase.auth.getSession();
+          session = result.data?.session;
+          if (result.error) {
+            console.error('Session error:', result.error);
+          }
+        } catch (clientError) {
+          console.error('Supabase client error:', clientError);
+          // 클라이언트 생성 실패 시 기본 상태로 설정
           setAuthState({
             user: null,
             loading: false,
@@ -80,39 +83,58 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     initializeAuth();
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
-        // 간단한 사용자 객체 생성 (프로필 생성 스킵)
-        const user = {
-          ...session.user,
-          profile: {
-            id: session.user.id,
-            email: session.user.email!,
-            full_name:
-              session.user.user_metadata?.full_name ||
-              session.user.email!.split('@')[0],
-            role: 'user',
-            is_active: true,
-          },
-        };
+    // Auth state change subscription with error handling
+    let subscription: any = null;
+    try {
+      const result = supabase.auth.onAuthStateChange(async (event, session) => {
+        try {
+          if (event === 'SIGNED_IN' && session?.user) {
+            // 간단한 사용자 객체 생성 (프로필 생성 스킵)
+            const user = {
+              ...session.user,
+              profile: {
+                id: session.user.id,
+                email: session.user.email!,
+                full_name:
+                  session.user.user_metadata?.full_name ||
+                  session.user.email!.split('@')[0],
+                role: 'user',
+                is_active: true,
+              },
+            };
 
-        setAuthState({
-          user,
-          loading: false,
-          initialized: true,
-        });
-      } else if (event === 'SIGNED_OUT') {
-        setAuthState({
-          user: null,
-          loading: false,
-          initialized: true,
-        });
+            setAuthState({
+              user,
+              loading: false,
+              initialized: true,
+            });
+          } else if (event === 'SIGNED_OUT') {
+            setAuthState({
+              user: null,
+              loading: false,
+              initialized: true,
+            });
+          }
+        } catch (stateChangeError) {
+          console.error('Auth state change error:', stateChangeError);
+          setAuthState({
+            user: null,
+            loading: false,
+            initialized: true,
+          });
+        }
+      });
+      
+      subscription = result.data?.subscription;
+    } catch (subscriptionError) {
+      console.error('Auth subscription error:', subscriptionError);
+    }
+
+    return () => {
+      if (subscription?.unsubscribe) {
+        subscription.unsubscribe();
       }
-    });
-
-    return () => subscription.unsubscribe();
+    };
   }, []);
 
   const signIn = async () => {
@@ -122,7 +144,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('Sign in error:', error);
       setAuthState((prev) => ({ ...prev, loading: false }));
-      throw error;
+      // Don't throw in production to prevent crashes
+      if (process.env.NODE_ENV === 'development') {
+        throw error;
+      }
+      // Return a user-friendly error message instead
+      throw new Error('로그인 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
     }
   };
 
