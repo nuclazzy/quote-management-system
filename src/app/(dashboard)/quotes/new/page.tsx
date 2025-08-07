@@ -45,54 +45,20 @@ import { useFormProtection } from '@/hooks/useBeforeUnload';
 import { useState, useEffect, useCallback } from 'react';
 import MasterItemSelector from '@/components/quotes/MasterItemSelector';
 import TemplateSelector from '@/components/quotes/TemplateSelector';
-import DebugPanel from '@/components/debug/DebugPanel';
 import { MasterItem } from '@/types/motionsense-quote';
-
-// Debug step 인터페이스
-interface DebugStep {
-  id: string;
-  name: string;
-  status: 'pending' | 'loading' | 'success' | 'error' | 'warning';
-  message?: string;
-  details?: any;
-  timestamp?: Date;
-}
 
 export default function QuoteNewPage() {
   const router = useRouter();
   
-  // 에러 상태 관리
-  const [hasError, setHasError] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
-  
-  // 디버그 상태 관리
-  const [debugSteps, setDebugSteps] = useState<DebugStep[]>([
-    {
-      id: 'test-1',
-      name: 'Test System',
-      status: 'success',
-      message: '디버그 패널 테스트 - 이것이 보이면 패널이 작동중입니다!',
-      timestamp: new Date()
-    },
-    {
-      id: 'test-2', 
-      name: 'Test Error',
-      status: 'error',
-      message: '테스트 에러 - 빨간색 테두리가 보여야 합니다',
-      timestamp: new Date()
-    }
-  ]);
-  const [showDebugPanel, setShowDebugPanel] = useState(true);
+  // 단순한 상태 관리만 - 복잡한 디버그 시스템 제거
+  const [pageError, setPageError] = useState('');
+  const [pageStatus, setPageStatus] = useState('loading');
   
   // 펼침/접힘 상태 관리 (기본값: 모든 항목 펼침)
   const [expandedItems, setExpandedItems] = useState<{[key: string]: boolean}>({});
   
   // 마스터 품목 선택 다이얼로그 상태
-  const [masterItemDialog, setMasterItemDialog] = useState<{
-    open: boolean;
-    groupIndex: number;
-    itemIndex: number;
-  }>({
+  const [masterItemDialog, setMasterItemDialog] = useState({
     open: false,
     groupIndex: -1,
     itemIndex: -1
@@ -110,81 +76,16 @@ export default function QuoteNewPage() {
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'info' | 'warning' | 'error'>('info');
   
-  // 디버그 로거 설정
-  const addDebugStep = useCallback((step: DebugStep) => {
-    setDebugSteps(prev => [...prev, step]);
-  }, []);
-
-  const clearDebugLogs = useCallback(() => {
-    setDebugSteps([]);
-  }, []);
-
-  // 전역 디버그 로거 설정
+  // 안전한 훅 호출 - 조건부 호출 제거
+  const hookData = useMotionsenseQuoteSafe();
+  
+  // 초기화 완료 체크
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      window.debugLogger = {
-        addStep: addDebugStep,
-        steps: debugSteps
-      };
+    if (hookData?.formData) {
+      setPageStatus('ready');
+      console.log('✅ 페이지 초기화 완료');
     }
-    return () => {
-      if (typeof window !== 'undefined' && window.debugLogger) {
-        delete window.debugLogger;
-      }
-    };
-  }, [addDebugStep, debugSteps]);
-
-  // 시스템 초기화 디버그 로그 추가
-  useEffect(() => {
-    addDebugStep({
-      id: `system-init-${Date.now()}`,
-      name: 'Quote System',
-      status: 'loading',
-      message: '견적서 시스템 초기화 시작',
-      timestamp: new Date()
-    });
-  }, [addDebugStep]);
-
-  // 안전한 훅 사용
-  let hookData;
-  try {
-    hookData = useMotionsenseQuoteSafe();
-  } catch (error) {
-    console.error('Hook initialization error:', error);
-    setHasError(true);
-    setErrorMessage('견적서 시스템 초기화 중 오류가 발생했습니다. 페이지를 새로고침해주세요.');
-  }
-
-  // 훅 초기화 후 디버그 로그 추가
-  useEffect(() => {
-    if (hookData) {
-      addDebugStep({
-        id: `hook-success-${Date.now()}`,
-        name: 'Hook Initialization',
-        status: 'success',
-        message: 'useMotionsenseQuoteSafe 훅 초기화 성공',
-        details: {
-          hasFormData: !!hookData?.formData,
-          hasUpdateFormData: !!hookData?.updateFormData,
-          hasCalculation: !!hookData?.calculation,
-          projectTitle: hookData?.formData?.project_title || 'empty',
-          groupsCount: hookData?.formData?.groups?.length || 0
-        },
-        timestamp: new Date()
-      });
-    } else if (hasError) {
-      addDebugStep({
-        id: `hook-error-${Date.now()}`,
-        name: 'Hook Initialization',
-        status: 'error',
-        message: 'useMotionsenseQuoteSafe 훅 초기화 실패',
-        details: {
-          errorMessage: errorMessage
-        },
-        timestamp: new Date()
-      });
-    }
-  }, [hookData, hasError, errorMessage, addDebugStep]);
+  }, [hookData?.formData]);
   
   const { 
     formData, 
@@ -229,40 +130,12 @@ export default function QuoteNewPage() {
 
   // 견적서 저장 함수 (수동 저장)
   const handleSaveQuote = async () => {
-    addDebugStep({
-      id: `save-quote-${Date.now()}`,
-      name: 'Quote Save',
-      status: 'loading',
-      message: '견적서 저장 시작',
-      details: {
-        projectTitle: formData?.project_title,
-        customerName: formData?.customer_name_snapshot,
-        groupsCount: formData?.groups?.length || 0,
-        totalAmount: calculation?.final_total || 0
-      },
-      timestamp: new Date()
-    });
-    
     if (!formData?.project_title?.trim()) {
-      addDebugStep({
-        id: `save-validation-error-${Date.now()}`,
-        name: 'Quote Save',
-        status: 'error',
-        message: '유효성 검사 실패: 프로젝트명 누락',
-        timestamp: new Date()
-      });
       showSnackbar('프로젝트명을 입력해주세요.', 'warning');
       return;
     }
 
     if (!formData?.groups?.length || formData.groups.length === 0) {
-      addDebugStep({
-        id: `save-validation-error-${Date.now()}`,
-        name: 'Quote Save',
-        status: 'error',
-        message: '유효성 검사 실패: 그룹 없음',
-        timestamp: new Date()
-      });
       showSnackbar('최소 하나 이상의 그룹을 추가해주세요.', 'warning');
       return;
     }
@@ -285,21 +158,6 @@ export default function QuoteNewPage() {
         status: 'draft'
       };
       
-      addDebugStep({
-        id: `api-request-${Date.now()}`,
-        name: 'Quote Save',
-        status: 'loading',
-        message: 'API 요청 전송 중',
-        details: {
-          endpoint: '/api/motionsense-quotes',
-          method: 'POST',
-          requestSize: JSON.stringify(requestData).length,
-          groupsCount: requestData.groups.length,
-          totalItems: requestData.groups.reduce((sum, g) => sum + g.items.length, 0)
-        },
-        timestamp: new Date()
-      });
-      
       const response = await fetch('/api/motionsense-quotes', {
         method: 'POST',
         headers: {
@@ -308,67 +166,18 @@ export default function QuoteNewPage() {
         body: JSON.stringify(requestData),
       });
 
-      addDebugStep({
-        id: `api-response-${Date.now()}`,
-        name: 'Quote Save',
-        status: response.ok ? 'success' : 'error',
-        message: `API 응답 수신: ${response.status} ${response.statusText}`,
-        details: {
-          status: response.status,
-          statusText: response.statusText,
-          ok: response.ok
-        },
-        timestamp: new Date()
-      });
-
       const result = await response.json();
 
       if (response.ok && result.success) {
-        addDebugStep({
-          id: `save-success-${Date.now()}`,
-          name: 'Quote Save',
-          status: 'success',
-          message: '견적서 저장 성공',
-          details: {
-            quoteId: result.data.id,
-            quoteNumber: result.data.quote_number
-          },
-          timestamp: new Date()
-        });
-        
         setSavedQuoteId(result.data.id);
         showSnackbar('견적서가 성공적으로 저장되었습니다.', 'success');
         
         // 저장 성공 시 임시 데이터 삭제
         clearTempData?.();
       } else {
-        addDebugStep({
-          id: `save-fail-${Date.now()}`,
-          name: 'Quote Save',
-          status: 'error',
-          message: '견적서 저장 실패',
-          details: {
-            resultSuccess: result.success,
-            resultMessage: result.message,
-            resultError: result.error
-          },
-          timestamp: new Date()
-        });
         throw new Error(result.message || '저장에 실패했습니다.');
       }
     } catch (error) {
-      addDebugStep({
-        id: `save-error-${Date.now()}`,
-        name: 'Quote Save',
-        status: 'error',
-        message: '견적서 저장 중 예외 발생',
-        details: {
-          error: error instanceof Error ? error.message : String(error),
-          stack: error instanceof Error ? error.stack : undefined
-        },
-        timestamp: new Date()
-      });
-      
       console.error('견적서 저장 실패:', error);
       showSnackbar(error instanceof Error ? error.message : '견적서 저장에 실패했습니다.', 'error');
     } finally {
@@ -472,7 +281,7 @@ export default function QuoteNewPage() {
       setRecoveredData(null);
       clearTempData?.();
     }
-  }, [recoveredData, updateFormData, showSnackbar, clearTempData]);
+  }, [recoveredData, updateFormData, showSnackbar]);
 
   // 데이터 복구 거부 처리
   const handleDiscardRecovery = useCallback(() => {
@@ -480,115 +289,85 @@ export default function QuoteNewPage() {
     setRecoveredData(null);
     clearTempData?.();
     showSnackbar('임시 저장된 데이터를 삭제했습니다.', 'info');
-  }, [showSnackbar, clearTempData]);
+  }, [showSnackbar]);
 
-  // 자동 저장 훅 사용
-  const { recoverTempData, clearTempData } = useAutoSave({
+  // 자동 저장 훅 사용 - 단순화
+  const autoSaveHook = formData ? useAutoSave({
     data: formData,
     onSave: handleAutoSave,
     enabled: true,
     delay: 3000, // 3초 후 자동 저장
     key: 'quote_draft'
-  });
+  }) : { recoverTempData: () => null, clearTempData: () => {} };
+  
+  const { recoverTempData, clearTempData } = autoSaveHook;
 
-  // 페이지 이탈 방지 훅 사용
-  useFormProtection(isDirty && !savedQuoteId, {
-    message: '변경사항이 저장되지 않았습니다. 정말 페이지를 떠나시겠습니까?'
-  });
-
-  // 컴포넌트 마운트 시 임시 저장된 데이터가 있는지 확인
-  useEffect(() => {
-    addDebugStep({
-      id: `recovery-check-${Date.now()}`,
-      name: 'Data Recovery',
-      status: 'loading',
-      message: '임시 저장된 데이터 확인 중',
-      timestamp: new Date()
+  // 페이지 이탈 방지 훅 사용 - 단순화
+  if (formData) {
+    useFormProtection(isDirty && !savedQuoteId, {
+      message: '변경사항이 저장되지 않았습니다. 정말 페이지를 떠나시겠습니까?'
     });
-    
-    try {
-      const tempData = recoverTempData?.();
-      if (tempData && Object.keys(tempData).length > 0) {
-        // 현재 폼에 데이터가 거의 없는 경우에만 복구 다이얼로그 표시
-        const hasMinimalData = !formData?.project_title && (!formData?.groups || formData.groups.length === 0);
-        
-        addDebugStep({
-          id: `recovery-found-${Date.now()}`,
-          name: 'Data Recovery',
-          status: hasMinimalData ? 'success' : 'warning',
-          message: hasMinimalData ? '임시 저장 데이터 발견, 복구 다이얼로그 표시' : '임시 저장 데이터가 있지만 현재 폼에 데이터가 있어 무시',
-          details: {
-            tempDataKeys: Object.keys(tempData),
-            hasMinimalData,
-            currentProjectTitle: formData?.project_title,
-            currentGroupsCount: formData?.groups?.length
-          },
-          timestamp: new Date()
-        });
-        
-        if (hasMinimalData) {
-          setRecoveredData(tempData);
-          setShowRecoveryDialog(true);
-        }
-      } else {
-        addDebugStep({
-          id: `recovery-none-${Date.now()}`,
-          name: 'Data Recovery',
-          status: 'success',
-          message: '임시 저장된 데이터 없음',
-          timestamp: new Date()
-        });
-      }
-    } catch (error) {
-      addDebugStep({
-        id: `recovery-error-${Date.now()}`,
-        name: 'Data Recovery',
-        status: 'error',
-        message: '임시 저장 데이터 확인 중 오류 발생',
-        details: {
-          error: error instanceof Error ? error.message : String(error),
-          stack: error instanceof Error ? error.stack : undefined
-        },
-        timestamp: new Date()
-      });
-    }
-  }, [recoverTempData, formData?.project_title, formData?.groups, addDebugStep]);
+  }
 
-  // 에러가 있거나 훅이 초기화되지 않았을 때 로딩/에러 처리
-  if (hasError || !hookData) {
+  // 데이터 복구 체크 - 단순화
+  useEffect(() => {
+    if (pageStatus === 'ready' && recoverTempData) {
+      try {
+        const tempData = recoverTempData();
+        if (tempData && Object.keys(tempData).length > 0) {
+          const hasMinimalData = !formData?.project_title && (!formData?.groups || formData.groups.length === 0);
+          if (hasMinimalData) {
+            setRecoveredData(tempData);
+            setShowRecoveryDialog(true);
+          }
+        }
+      } catch (error) {
+        console.log('Data recovery check failed:', error);
+      }
+    }
+  }, [pageStatus, recoverTempData, formData?.project_title, formData?.groups]);
+
+  // 로딩 중이거나 에러가 있을 때 처리
+  if (pageStatus === 'loading' || !hookData || !formData) {
     return (
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <Box sx={{ textAlign: 'center', py: 8 }}>
-          <WarningIcon sx={{ fontSize: 64, color: 'error.main', mb: 2 }} />
-          <Typography variant="h5" gutterBottom>
-            견적서 시스템 오류
-          </Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-            {errorMessage || '시스템 초기화 중 문제가 발생했습니다.'}
-          </Typography>
-          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
-            <Button 
-              variant="contained" 
-              onClick={() => window.location.reload()}
-              startIcon={<RestoreIcon />}
-            >
-              페이지 새로고침
-            </Button>
-            <Button 
-              variant="outlined" 
-              onClick={() => router.push('/quotes')}
-            >
-              견적서 목록으로
-            </Button>
-          </Box>
+          {pageError ? (
+            <>
+              <WarningIcon sx={{ fontSize: 64, color: 'error.main', mb: 2 }} />
+              <Typography variant="h5" gutterBottom>
+                견적서 시스템 오류
+              </Typography>
+              <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+                {pageError}
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
+                <Button 
+                  variant="contained" 
+                  onClick={() => window.location.reload()}
+                  startIcon={<RestoreIcon />}
+                >
+                  페이지 새로고침
+                </Button>
+                <Button 
+                  variant="outlined" 
+                  onClick={() => router.push('/quotes')}
+                >
+                  견적서 목록으로
+                </Button>
+              </Box>
+            </>
+          ) : (
+            <>
+              <Typography variant="h5" gutterBottom>
+                견적서 시스템 초기화 중...
+              </Typography>
+              <Typography variant="body1" color="text.secondary">
+                잠시만 기다려주세요.
+              </Typography>
+            </>
+          )}
         </Box>
-        
-        {/* 에러 상황에서도 디버그 패널 표시 */}
-        <DebugPanel
-          steps={debugSteps}
-          onClearLogs={clearDebugLogs}
-          visible={showDebugPanel}
-        />
       </Container>
     );
   }
@@ -1387,64 +1166,25 @@ export default function QuoteNewPage() {
         </Alert>
       </Snackbar>
 
-      {/* 에러 상태 다이얼로그 */}
-      <Dialog open={hasError} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <WarningIcon color="error" />
-          시스템 오류
-        </DialogTitle>
-        <DialogContent>
-          <Typography variant="body1" gutterBottom>
-            견적서 시스템 초기화 중 문제가 발생했습니다.
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            {errorMessage || '알 수 없는 오류가 발생했습니다.'}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            페이지를 새로고침하거나 잠시 후 다시 시도해주세요.
-            문제가 계속되면 관리자에게 문의하세요.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => window.location.reload()} variant="contained">
-            페이지 새로고침
-          </Button>
-          <Button onClick={() => router.push('/quotes')} variant="outlined">
-            견적서 목록으로
-          </Button>
-        </DialogActions>
-      </Dialog>
-      
-      {/* 디버그 패널 - 직접 HTML 테스트 */}
-      <div
-        style={{
-          position: 'fixed',
-          bottom: '20px',
-          left: '20px',
-          width: '400px',
-          height: '300px',
-          backgroundColor: 'red',
-          border: '5px solid black',
-          zIndex: 99999,
-          padding: '20px',
-          color: 'white',
-          fontSize: '18px',
-          fontWeight: 'bold'
-        }}
-      >
-        <h2>🚨 디버그 테스트 패널</h2>
-        <p>이 패널이 보이면 렌더링이 작동합니다!</p>
-        <p>Debug Steps: {debugSteps.length}개</p>
-        <p>Show Panel: {showDebugPanel ? 'True' : 'False'}</p>
-        <p>현재 시간: {new Date().toLocaleTimeString()}</p>
-      </div>
-      
-      {/* 원래 디버그 패널도 함께 */}
-      <DebugPanel
-        steps={debugSteps}
-        onClearLogs={clearDebugLogs}
-        visible={showDebugPanel}
-      />
+      {/* 간단한 상태 표시 */}
+      {pageStatus === 'ready' && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '20px',
+            left: '20px',
+            padding: '15px',
+            backgroundColor: '#e8f5e8',
+            border: '2px solid #4caf50',
+            borderRadius: '8px',
+            zIndex: 10000
+          }}
+        >
+          <p style={{ margin: 0, color: '#2e7d32', fontWeight: 'bold' }}>
+            ✅ 시스템 정상 작동 중
+          </p>
+        </div>
+      )}
     </Container>
   );
 }
