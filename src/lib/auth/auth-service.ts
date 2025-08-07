@@ -10,29 +10,39 @@ export class AuthService {
    * Google OAuth 로그인
    */
   static async signInWithGoogle() {
-    // 환경 변수에서 사이트 URL 가져오기 - 프로덕션에서는 Vercel URL 사용
-    const siteUrl =
-      process.env.NEXT_PUBLIC_SITE_URL ||
-      (typeof window !== 'undefined'
-        ? window.location.origin
-        : 'https://motionsense-quote-system.vercel.app');
-    const redirectTo = `${siteUrl}/auth/callback`;
+    try {
+      // 환경 변수에서 사이트 URL 가져오기 - 프로덕션에서는 Vercel URL 사용
+      const siteUrl =
+        process.env.NEXT_PUBLIC_SITE_URL ||
+        (typeof window !== 'undefined'
+          ? window.location.origin
+          : 'https://motionsense-quote-system.vercel.app');
+      
+      const redirectTo = `${siteUrl}/auth/callback`;
+      
+      console.log('Google OAuth redirect URL:', redirectTo);
 
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo,
-        queryParams: {
-          hd: 'motionsense.co.kr', // Google Workspace 도메인 제한
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo,
+          queryParams: {
+            hd: 'motionsense.co.kr', // Google Workspace 도메인 제한
+          },
         },
-      },
-    });
+      });
 
-    if (error) {
-      throw new Error(error.message);
+      if (error) {
+        console.error('Google OAuth error:', error);
+        throw new Error(`Google 로그인 오류: ${error.message}`);
+      }
+
+      console.log('Google OAuth success:', data);
+      return data;
+    } catch (error) {
+      console.error('signInWithGoogle failed:', error);
+      throw error;
     }
-
-    return data;
   }
 
   /**
