@@ -1421,7 +1421,31 @@ export default function QuoteNewPage() {
         </DialogActions>
       </Dialog>
       
-      {/* 디버그 패널 */}
+      {/* 디버그 패널 - 직접 HTML 테스트 */}
+      <div
+        style={{
+          position: 'fixed',
+          bottom: '20px',
+          left: '20px',
+          width: '400px',
+          height: '300px',
+          backgroundColor: 'red',
+          border: '5px solid black',
+          zIndex: 99999,
+          padding: '20px',
+          color: 'white',
+          fontSize: '18px',
+          fontWeight: 'bold'
+        }}
+      >
+        <h2>🚨 디버그 테스트 패널</h2>
+        <p>이 패널이 보이면 렌더링이 작동합니다!</p>
+        <p>Debug Steps: {debugSteps.length}개</p>
+        <p>Show Panel: {showDebugPanel ? 'True' : 'False'}</p>
+        <p>현재 시간: {new Date().toLocaleTimeString()}</p>
+      </div>
+      
+      {/* 원래 디버그 패널도 함께 */}
       <DebugPanel
         steps={debugSteps}
         onClearLogs={clearDebugLogs}
