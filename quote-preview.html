@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>견적서 - MotionSense</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Malgun Gothic', '맑은 고딕', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            max-width: 210mm;
+            margin: 20px auto;
+            background: white;
+            padding: 30mm 25mm;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+
+        /* 헤더 스타일 */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #333;
+        }
+
+        .header-left h1 {
+            font-size: 36px;
+            font-weight: bold;
+            color: #1976d2;
+            margin-bottom: 10px;
+            letter-spacing: 5px;
+        }
+
+        .header-left .info {
+            font-size: 12px;
+            color: #666;
+            margin: 3px 0;
+        }
+
+        .header-right {
+            text-align: right;
+        }
+
+        .header-right .company-name {
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .header-right .info {
+            font-size: 11px;
+            color: #666;
+            margin: 2px 0;
+        }
+
+        /* 고객 정보 섹션 */
+        .customer-section {
+            margin-bottom: 30px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+
+        .customer-section h2 {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #1976d2;
+        }
+
+        .customer-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .customer-info p {
+            font-size: 13px;
+        }
+
+        .customer-info strong {
+            display: inline-block;
+            width: 80px;
+            color: #555;
+        }
+
+        /* 프로젝트 정보 */
+        .project-section {
+            margin-bottom: 30px;
+            padding: 15px;
+            background-color: #e3f2fd;
+            border-radius: 5px;
+        }
+
+        .project-section h2 {
+            font-size: 18px;
+            font-weight: bold;
+            color: #1976d2;
+            margin-bottom: 8px;
+        }
+
+        .project-section p {
+            font-size: 13px;
+            color: #555;
+        }
+
+        /* 테이블 스타일 */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+
+        thead {
+            background-color: #1976d2;
+            color: white;
+        }
+
+        th {
+            padding: 10px;
+            text-align: left;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        th:nth-child(2),
+        th:nth-child(3),
+        th:nth-child(4) {
+            text-align: center;
+            width: 80px;
+        }
+
+        th:nth-child(5),
+        th:nth-child(6) {
+            text-align: right;
+            width: 120px;
+        }
+
+        td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 12px;
+        }
+
+        /* 그룹 헤더 */
+        .group-header {
+            background-color: #e3f2fd;
+            font-weight: bold;
+            font-size: 13px;
+        }
+
+        .group-header td {
+            padding: 10px;
+            color: #1976d2;
+        }
+
+        /* 항목 행 */
+        .item-row {
+            background-color: #f5f5f5;
+        }
+
+        .item-row td:first-child {
+            padding-left: 30px;
+            font-weight: 600;
+        }
+
+        /* 세부 항목 행 */
+        .detail-row td:first-child {
+            padding-left: 50px;
+            color: #666;
+        }
+
+        .detail-row td {
+            font-size: 11px;
+        }
+
+        /* 정렬 */
+        .text-center {
+            text-align: center;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        /* 금액 요약 섹션 */
+        .summary-section {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 30px;
+        }
+
+        .summary-box {
+            width: 350px;
+            border: 2px solid #1976d2;
+            border-radius: 5px;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .summary-row.discount {
+            color: #d32f2f;
+        }
+
+        .summary-row.total {
+            font-size: 18px;
+            font-weight: bold;
+            color: #1976d2;
+            padding-top: 10px;
+            border-top: 2px solid #1976d2;
+            margin-top: 10px;
+        }
+
+        /* 조건 섹션 */
+        .terms-section {
+            padding: 20px;
+            background-color: #fff3e0;
+            border-radius: 5px;
+            border: 1px solid #ffb74d;
+        }
+
+        .terms-section h3 {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #e65100;
+        }
+
+        .terms-section ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .terms-section li {
+            font-size: 12px;
+            margin-bottom: 5px;
+            padding-left: 20px;
+            position: relative;
+        }
+
+        .terms-section li:before {
+            content: "•";
+            position: absolute;
+            left: 5px;
+            color: #e65100;
+        }
+
+        /* 인쇄 버튼 */
+        .print-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            background-color: #1976d2;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+
+        .print-button:hover {
+            background-color: #1565c0;
+        }
+
+        /* 인쇄 스타일 */
+        @media print {
+            body {
+                background: white;
+            }
+
+            .container {
+                box-shadow: none;
+                margin: 0;
+                padding: 20mm;
+            }
+
+            .print-button {
+                display: none;
+            }
+
+            @page {
+                size: A4;
+                margin: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="print-button" onclick="window.print()">🖨️ 인쇄하기</button>
+
+    <div class="container">
+        <!-- 헤더 -->
+        <div class="header">
+            <div class="header-left">
+                <h1>견 적 서</h1>
+                <p class="info">견적번호: QT-2025-0001</p>
+                <p class="info">작성일: 2025년 1월 7일</p>
+                <p class="info">유효기한: 2025년 2월 6일</p>
+            </div>
+            <div class="header-right">
+                <p class="company-name">MotionSense</p>
+                <p class="info">서울시 강남구 테헤란로 456</p>
+                <p class="info">Tel: 02-9876-5432</p>
+                <p class="info">Email: sales@motionsense.kr</p>
+                <p class="info">사업자번호: 123-45-67890</p>
+            </div>
+        </div>
+
+        <!-- 고객 정보 -->
+        <div class="customer-section">
+            <h2>고객 정보</h2>
+            <div class="customer-info">
+                <p><strong>회사명:</strong> (주)모션센스</p>
+                <p><strong>담당자:</strong> 김대표</p>
+                <p><strong>연락처:</strong> 02-1234-5678</p>
+                <p><strong>이메일:</strong> info@motionsense.co.kr</p>
+                <p><strong>주소:</strong> 서울시 강남구 테헤란로 123</p>
+            </div>
+        </div>
+
+        <!-- 프로젝트 정보 -->
+        <div class="project-section">
+            <h2>모션센스 웹사이트 개발 프로젝트</h2>
+            <p>반응형 웹사이트 개발 및 관리 시스템 구축 - 기업 홈페이지 리뉴얼 및 백오피스 시스템 개발</p>
+        </div>
+
+        <!-- 견적 항목 테이블 -->
+        <table>
+            <thead>
+                <tr>
+                    <th>항목</th>
+                    <th>수량</th>
+                    <th>일수</th>
+                    <th>단위</th>
+                    <th>단가</th>
+                    <th>금액</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- 그룹 1: 기획 및 디자인 -->
+                <tr class="group-header">
+                    <td colspan="5">1. 기획 및 디자인</td>
+                    <td class="text-right">6,900,000원</td>
+                </tr>
+                
+                <!-- 항목: UI/UX 설계 -->
+                <tr class="item-row">
+                    <td>• UI/UX 설계</td>
+                    <td colspan="4"></td>
+                    <td class="text-right">3,900,000원</td>
+                </tr>
+                <tr class="detail-row">
+                    <td>- 와이어프레임 제작</td>
+                    <td class="text-center">1</td>
+                    <td class="text-center">5</td>
+                    <td class="text-center">식</td>
+                    <td class="text-right">500,000원</td>
+                    <td class="text-right">2,500,000원</td>
+                </tr>
+                <tr class="detail-row">
+                    <td>- 프로토타입 제작</td>
+                    <td class="text-center">1</td>
+                    <td class="text-center">3</td>
+                    <td class="text-center">식</td>
+                    <td class="text-right">300,000원</td>
+                    <td class="text-right">900,000원</td>
+                </tr>
+                <tr class="detail-row">
+                    <td>- 사용자 경험 설계</td>
+                    <td class="text-center">1</td>
+                    <td class="text-center">2</td>
+                    <td class="text-center">식</td>
+                    <td class="text-right">250,000원</td>
+                    <td class="text-right">500,000원</td>
+                </tr>
+
+                <!-- 항목: 디자인 -->
+                <tr class="item-row">
+                    <td>• 디자인</td>
+                    <td colspan="4"></td>
+                    <td class="text-right">3,000,000원</td>
+                </tr>
+                <tr class="detail-row">
+                    <td>- 메인 페이지 디자인</td>
+                    <td class="text-center">1</td>
+                    <td class="text-center">3</td>
+                    <td class="text-center">페이지</td>
+                    <td class="text-right">800,000원</td>
+                    <td class="text-right">2,400,000원</td>
+                </tr>
+                <tr class="detail-row">
+                    <td>- 서브 페이지 디자인</td>
+                    <td class="text-center">5</td>
+                    <td class="text-center">2</td>
+                    <td class="text-center">페이지</td>
+                    <td class="text-right">60,000원</td>
+                    <td class="text-right">600,000원</td>
+                </tr>
+
+                <!-- 그룹 2: 개발 -->
+                <tr class="group-header">
+                    <td colspan="5">2. 개발</td>
+                    <td class="text-right">11,000,000원</td>
+                </tr>
+
+                <!-- 항목: 프론트엔드 개발 -->
+                <tr class="item-row">
+                    <td>• 프론트엔드 개발</td>
+                    <td colspan="4"></td>
+                    <td class="text-right">5,500,000원</td>
+                </tr>
+                <tr class="detail-row">
+                    <td>- React 컴포넌트 개발</td>
+                    <td class="text-center">1</td>
+                    <td class="text-center">10</td>
+                    <td class="text-center">식</td>
+                    <td class="text-right">400,000원</td>
+                    <td class="text-right">4,000,000원</td>
+                </tr>
+                <tr class="detail-row">
+                    <td>- 반응형 처리</td>
+                    <td class="text-center">1</td>
+                    <td class="text-center">3</td>
+                    <td class="text-center">식</td>
+                    <td class="text-right">300,000원</td>
+                    <td class="text-right">900,000원</td>
+                </tr>
+                <tr class="detail-row">
+                    <td>- 애니메이션 구현</td>
+                    <td class="text-center">1</td>
+                    <td class="text-center">2</td>
+                    <td class="text-center">식</td>
+                    <td class="text-right">300,000원</td>
+                    <td class="text-right">600,000원</td>
+                </tr>
+
+                <!-- 항목: 백엔드 개발 -->
+                <tr class="item-row">
+                    <td>• 백엔드 개발</td>
+                    <td colspan="4"></td>
+                    <td class="text-right">5,500,000원</td>
+                </tr>
+                <tr class="detail-row">
+                    <td>- API 서버 구축</td>
+                    <td class="text-center">1</td>
+                    <td class="text-center">7</td>
+                    <td class="text-center">식</td>
+                    <td class="text-right">500,000원</td>
+                    <td class="text-right">3,500,000원</td>
+                </tr>
+                <tr class="detail-row">
+                    <td>- 데이터베이스 설계</td>
+                    <td class="text-center">1</td>
+                    <td class="text-center">3</td>
+                    <td class="text-center">식</td>
+                    <td class="text-right">400,000원</td>
+                    <td class="text-right">1,200,000원</td>
+                </tr>
+                <tr class="detail-row">
+                    <td>- 관리자 시스템 개발</td>
+                    <td class="text-center">1</td>
+                    <td class="text-center">2</td>
+                    <td class="text-center">식</td>
+                    <td class="text-right">400,000원</td>
+                    <td class="text-right">800,000원</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- 금액 요약 -->
+        <div class="summary-section">
+            <div class="summary-box">
+                <div class="summary-row">
+                    <span>순 공급가액:</span>
+                    <span>17,900,000원</span>
+                </div>
+                <div class="summary-row">
+                    <span>대행수수료 (15%):</span>
+                    <span>2,685,000원</span>
+                </div>
+                <div class="summary-row">
+                    <span>부가세 (10%):</span>
+                    <span>2,058,500원</span>
+                </div>
+                <div class="summary-row discount">
+                    <span>할인 금액:</span>
+                    <span>-500,000원</span>
+                </div>
+                <div class="summary-row total">
+                    <span>최종 견적가:</span>
+                    <span>22,143,500원</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 조건 및 참고사항 -->
+        <div class="terms-section">
+            <h3>조건 및 참고사항</h3>
+            <ul>
+                <li>본 견적서의 유효기간은 작성일로부터 30일입니다.</li>
+                <li>부가가치세는 별도입니다.</li>
+                <li>작업 범위 변경 시 추가 비용이 발생할 수 있습니다.</li>
+                <li>계약금(30%), 중도금(30%), 잔금(40%)으로 분할 납부 가능합니다.</li>
+                <li>프로젝트 시작 후 취소 시 진행된 작업에 대한 비용이 청구됩니다.</li>
+                <li>유지보수 계약은 별도 협의가 필요합니다.</li>
+                <li>제안된 일정은 계약 시점 및 요구사항에 따라 조정될 수 있습니다.</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

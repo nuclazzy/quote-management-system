@@ -23,8 +23,8 @@ export async function checkPermission(
       .eq('id', user.id)
       .single();
 
-    // 최고 관리자는 모든 권한 보유
-    if (profile?.role === 'super_admin') {
+    // 관리자는 모든 권한 보유
+    if (profile?.role === 'admin') {
       return true;
     }
 
@@ -69,7 +69,7 @@ export async function canAccess(permission: string): Promise<boolean> {
 
 // 역할 기반 접근 제어
 export async function hasRole(
-  role: 'super_admin' | 'admin' | 'member'
+  role: 'admin' | 'member'
 ): Promise<boolean> {
   try {
     const {
@@ -96,7 +96,7 @@ export async function hasRole(
 
 // 최소 역할 요구사항 체크
 export async function hasMinimumRole(
-  minimumRole: 'member' | 'admin' | 'super_admin'
+  minimumRole: 'member' | 'admin'
 ): Promise<boolean> {
   try {
     const {
@@ -119,7 +119,6 @@ export async function hasMinimumRole(
     const roleHierarchy = {
       member: 0,
       admin: 1,
-      super_admin: 2,
     };
 
     const userRoleLevel =
@@ -145,14 +144,14 @@ export async function getUserPermissions(): Promise<string[]> {
       return [];
     }
 
-    // 최고 관리자는 모든 권한 보유
+    // 관리자는 모든 권한 보유
     const { data: profile } = await supabase
       .from('profiles')
       .select('role')
       .eq('id', user.id)
       .single();
 
-    if (profile?.role === 'super_admin') {
+    if (profile?.role === 'admin') {
       // 모든 권한 반환
       const { data: allPermissions } = await supabase
         .from('permissions')

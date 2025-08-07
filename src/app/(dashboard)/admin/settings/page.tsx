@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import PermissionGuard from '@/components/common/PermissionGuard';
 import {
   Box,
   Typography,
@@ -257,7 +258,8 @@ export default function AdminSettingsPage() {
   }
 
   return (
-    <Box>
+    <PermissionGuard requireMinimumRole="admin">
+      <Box>
       <Box
         sx={{
           display: 'flex',
@@ -666,5 +668,6 @@ export default function AdminSettingsPage() {
         </Alert>
       </Snackbar>
     </Box>
+    </PermissionGuard>
   );
 }

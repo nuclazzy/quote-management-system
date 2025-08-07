@@ -77,19 +77,17 @@ async function handlePatch(req: AuthenticatedRequest, validatedData: any) {
 }
 
 /**
- * 상태 변경 유효성 검사 (강화된 비즈니스 로직)
+ * 상태 변경 유효성 검사 (단순화된 3단계)
  */
 function isValidStatusTransition(
   currentStatus: string,
   newStatus: string
 ): boolean {
+  // 단순화된 3단계 상태: draft(임시저장), accepted(수주확정), rejected(수주실패)
   const transitions: Record<string, string[]> = {
-    draft: ['sent', 'canceled'],
-    sent: ['accepted', 'revised', 'canceled'],
-    revised: ['sent', 'canceled'], // revised에서 accepted로 바로 가지 못하도록 수정
-    accepted: ['completed'], // accepted 후에는 완료만 가능 (취소 불가)
-    completed: [], // 완료된 견적서는 상태 변경 불가
-    canceled: [], // 취소된 견적서는 상태 변경 불가
+    draft: ['accepted', 'rejected'], // 임시저장 → 수주확정 or 수주실패
+    accepted: ['draft'], // 수주확정 → 임시저장 (재검토 위해)
+    rejected: ['draft'], // 수주실패 → 임시저장 (재검토 위해)
   };
 
   return transitions[currentStatus]?.includes(newStatus) || false;

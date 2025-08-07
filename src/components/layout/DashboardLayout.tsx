@@ -33,7 +33,6 @@ import {
   AccountCircle,
   AdminPanelSettings,
   ManageAccounts,
-  BugReport,
   Notifications,
 } from '@mui/icons-material';
 import { useRouter, usePathname } from 'next/navigation';
@@ -56,8 +55,7 @@ const navItems: NavItem[] = [
   { text: '공급처', icon: <Business />, path: '/suppliers' },
   { text: '품목 관리', icon: <Inventory />, path: '/items' },
   { text: '프로젝트', icon: <Analytics />, path: '/projects' },
-  { text: '정산 관리', icon: <Analytics />, path: '/revenue' },
-  { text: 'PDF 테스트', icon: <BugReport />, path: '/pdf-test' },
+  { text: '정산 관리', icon: <Analytics />, path: '/revenue', adminOnly: true },
   {
     text: '사용자 관리',
     icon: <ManageAccounts />,
@@ -111,8 +109,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     }
   };
 
-  const isAdmin =
-    user?.profile?.role === 'admin' || user?.profile?.role === 'super_admin';
+  const isAdmin = user?.profile?.role === 'admin';
 
   const drawer = (
     <div>
@@ -204,11 +201,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             </MenuItem>
             <MenuItem disabled>
               <Typography variant='caption' color='textSecondary'>
-                {user?.profile?.role === 'super_admin'
-                  ? '최고 관리자'
-                  : user?.profile?.role === 'admin'
-                    ? '관리자'
-                    : '사용자'}
+                {user?.profile?.role === 'admin' ? '관리자' : '일반 사용자'}
               </Typography>
             </MenuItem>
             <Divider />

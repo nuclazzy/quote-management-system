@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import PermissionGuard from '@/components/common/PermissionGuard';
 import {
   Box,
   Card,
@@ -269,8 +270,6 @@ export default function UsersManagementPage() {
   // 역할 색상
   const getRoleColor = (role: string) => {
     switch (role) {
-      case 'super_admin':
-        return 'error';
       case 'admin':
         return 'warning';
       case 'member':
@@ -283,8 +282,6 @@ export default function UsersManagementPage() {
   // 역할 한글명
   const getRoleLabel = (role: string) => {
     switch (role) {
-      case 'super_admin':
-        return '최고 관리자';
       case 'admin':
         return '관리자';
       case 'member':
@@ -300,7 +297,8 @@ export default function UsersManagementPage() {
   }, [page, roleFilter, statusFilter]);
 
   return (
-    <Box sx={{ p: 3 }}>
+    <PermissionGuard requireMinimumRole="admin">
+      <Box sx={{ p: 3 }}>
       <Typography variant='h4' sx={{ mb: 3, fontWeight: 'bold' }}>
         사용자 관리
       </Typography>
@@ -617,5 +615,6 @@ export default function UsersManagementPage() {
         user={selectedUser}
       />
     </Box>
+    </PermissionGuard>
   );
 }

@@ -263,15 +263,29 @@ export function useQuote4Tier(options: UseQuote4TierOptions = {}) {
     const discount = formData.discount_amount;
     
     let vatAmount = 0;
+    let totalBeforeDiscount = 0;
     let finalTotal = 0;
 
+    // 1. 소계 + 대행수수료 계산
+    const totalBeforeVat = subtotal + agencyFee;
+    
+    // 2. VAT 계산
     if (formData.vat_type === 'exclusive') {
-      finalTotal = subtotal + agencyFee - discount;
-      vatAmount = finalTotal * 0.1;
-      finalTotal += vatAmount;
+      // 부가세 별도: VAT를 추가
+      vatAmount = totalBeforeVat * 0.1;
+      totalBeforeDiscount = totalBeforeVat + vatAmount;
     } else {
-      finalTotal = subtotal + agencyFee - discount;
-      vatAmount = finalTotal * 0.1 / 1.1;
+      // 부가세 포함: 총액에서 VAT 역산
+      totalBeforeDiscount = totalBeforeVat;
+      vatAmount = totalBeforeVat * 0.1 / 1.1;
+    }
+    
+    // 3. 할인 적용 (VAT 포함된 최종 금액에서 차감)
+    finalTotal = totalBeforeDiscount - discount;
+    
+    // 4. 할인 후 금액이 음수가 되지 않도록 보정
+    if (finalTotal < 0) {
+      finalTotal = 0;
     }
 
     const totalProfit = finalTotal - totalCost;

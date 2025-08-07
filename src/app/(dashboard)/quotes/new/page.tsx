@@ -36,7 +36,8 @@ import {
   CloudDone as CloudDoneIcon,
   CloudUpload as CloudUploadIcon,
   Warning as WarningIcon,
-  Restore as RestoreIcon
+  Restore as RestoreIcon,
+  Close as CloseIcon
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { useMotionsenseQuoteSafe } from '@/hooks/useMotionsenseQuote-safe';
@@ -45,7 +46,26 @@ import { useFormProtection } from '@/hooks/useBeforeUnload';
 import { useState, useEffect, useCallback } from 'react';
 import MasterItemSelector from '@/components/quotes/MasterItemSelector';
 import TemplateSelector from '@/components/quotes/TemplateSelector';
+import QuoteSummaryDisplay from '@/components/QuoteSummaryDisplay';
 import { MasterItem } from '@/types/motionsense-quote';
+import QuotePDFView from '@/components/quotes/QuotePDFView';
+import { Quote4TierData } from '@/types/quote-4tier';
+
+// 숫자 포맷팅 함수 (3자리마다 콤마)
+const formatNumber = (value) => {
+  if (!value && value !== 0) return '';
+  const num = typeof value === 'string' ? value.replace(/,/g, '') : value.toString();
+  const parts = num.split('.');
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return parts.join('.');
+};
+
+// 포맷팅된 문자열을 숫자로 변환
+const parseFormattedNumber = (value) => {
+  if (!value) return 0;
+  const cleaned = value.toString().replace(/,/g, '');
+  return parseFloat(cleaned) || 0;
+};
 
 export default function QuoteNewPage() {
   const router = useRouter();
@@ -53,6 +73,21 @@ export default function QuoteNewPage() {
   // 단순한 상태 관리만 - 복잡한 디버그 시스템 제거
   const [pageError, setPageError] = useState('');
   const [pageStatus, setPageStatus] = useState('loading');
+  
+  // CSS 스타일 - 숫자 입력 화살표 제거
+  const numberInputStyle = {
+    '& input[type=number]': {
+      MozAppearance: 'textfield',
+    },
+    '& input[type=number]::-webkit-outer-spin-button': {
+      WebkitAppearance: 'none',
+      margin: 0,
+    },
+    '& input[type=number]::-webkit-inner-spin-button': {
+      WebkitAppearance: 'none',
+      margin: 0,
+    },
+  };
   
   // 펼침/접힘 상태 관리 (기본값: 모든 항목 펼침)
   const [expandedItems, setExpandedItems] = useState<{[key: string]: boolean}>({});
@@ -67,6 +102,7 @@ export default function QuoteNewPage() {
   // 저장 및 PDF 상태
   const [isSaving, setIsSaving] = useState(false);
   const [savedQuoteId, setSavedQuoteId] = useState<string | null>(null);
+  const [pdfDialogOpen, setPdfDialogOpen] = useState(false);
   
   // 자동 저장 및 페이지 보호 상태
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
@@ -192,7 +228,68 @@ export default function QuoteNewPage() {
     setSnackbarOpen(true);
   }, []);
 
-  // PDF 다운로드 함수
+  // PDF 미리보기 열기
+  const handlePDFPreview = () => {
+    if (!formData?.project_title?.trim()) {
+      showSnackbar('프로젝트명을 입력해주세요.', 'warning');
+      return;
+    }
+
+    if (!formData?.groups?.length || formData.groups.length === 0) {
+      showSnackbar('최소 하나 이상의 그룹을 추가해주세요.', 'warning');
+      return;
+    }
+
+    setPdfDialogOpen(true);
+  };
+
+  // PDF 다이얼로그 닫기
+  const handleClosePdfDialog = () => {
+    setPdfDialogOpen(false);
+  };
+
+  // Quote4TierData 형식으로 변환 (미리보기용)
+  const convertToQuote4Tier = (): Quote4TierData => {
+    return {
+      id: 'preview',
+      quote_number: 'PREVIEW-001',
+      project_title: formData?.project_title || '미리보기 프로젝트',
+      customer_name_snapshot: formData?.customer_name_snapshot || '고객사명',
+      issue_date: formData?.issue_date || new Date().toISOString().split('T')[0],
+      valid_until: formData?.issue_date || new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0],
+      agency_fee_rate: formData?.agency_fee_rate || 0.15,
+      discount_amount: formData?.discount_amount || 0,
+      vat_type: (formData?.vat_type as 'inclusive' | 'exclusive') || 'exclusive',
+      show_cost_management: formData?.show_cost_management || false,
+      groups: formData?.groups?.map((group, groupIdx) => ({
+        name: group.name,
+        sort_order: groupIdx,
+        include_in_fee: group.include_in_fee,
+        items: group.items?.map((item, itemIdx) => ({
+          name: item.name,
+          sort_order: itemIdx,
+          include_in_fee: item.include_in_fee,
+          details: item.details?.map((detail, detailIdx) => ({
+            name: detail.name,
+            description: detail.description || '',
+            quantity: detail.quantity,
+            days: detail.days,
+            unit: detail.unit,
+            unit_price: detail.unit_price,
+            is_service: detail.is_service || false,
+            cost_price: detail.cost_price || 0,
+            sort_order: detailIdx,
+          })) || []
+        })) || []
+      })) || [],
+      subtotal: calculation?.subtotal || 0,
+      agency_fee: calculation?.agency_fee || 0,
+      vat_amount: calculation?.vat_amount || 0,
+      final_total: calculation?.final_total || 0,
+    };
+  };
+
+  // PDF 다운로드 함수 (저장된 견적서용)
   const handleDownloadPDF = async () => {
     if (!savedQuoteId) {
       showSnackbar('먼저 견적서를 저장해주세요.', 'warning');
@@ -451,8 +548,8 @@ export default function QuoteNewPage() {
           <Button
             variant="outlined"
             startIcon={<PdfIcon />}
-            onClick={handleDownloadPDF}
-            disabled={!savedQuoteId}
+            onClick={handlePDFPreview}
+            disabled={!formData?.project_title?.trim() || !formData?.groups?.length}
             sx={{
               borderColor: 'primary.main',
               color: 'primary.main',
@@ -466,7 +563,7 @@ export default function QuoteNewPage() {
               fontSize: { xs: '0.875rem', sm: '0.875rem' }
             }}
           >
-            PDF 다운로드
+            PDF 미리보기
           </Button>
         </Box>
       </Box>
@@ -751,38 +848,42 @@ export default function QuoteNewPage() {
                                                   />
                                                 </Grid>
                                                 
-                                                {/* 첫 번째 행: 수량, 일수, 단위 - 모바일 최적화 */}
-                                                <Grid item xs={6} sm={4}>
+                                                {/* 수량, 일수, 단위, 단가, 원가 - 한 줄에 배치 (10%/10%/10%/70% 또는 10%/10%/10%/35%/35%) */}
+                                                <Grid item xs={1.2}>
                                                   <TextField
                                                     label="수량"
-                                                    type="number"
-                                                    value={detail.quantity}
-                                                    onChange={(e) => updateDetail?.(groupIndex, itemIndex, detailIndex, { quantity: Number(e.target.value) || 0 })}
+                                                    value={formatNumber(detail.quantity)}
+                                                    onChange={(e) => {
+                                                      const numValue = parseFormattedNumber(e.target.value);
+                                                      updateDetail?.(groupIndex, itemIndex, detailIndex, { quantity: numValue });
+                                                    }}
                                                     size="small"
                                                     fullWidth
+                                                    sx={numberInputStyle}
                                                     inputProps={{ 
-                                                      min: 0, 
-                                                      step: 0.1,
-                                                      inputMode: 'decimal' // 모바일 숫자 키보드
+                                                      inputMode: 'decimal', // 모바일 숫자 키보드
+                                                      style: { textAlign: 'right' }
                                                     }}
                                                   />
                                                 </Grid>
-                                                <Grid item xs={6} sm={4}>
+                                                <Grid item xs={1.2}>
                                                   <TextField
                                                     label="일수"
-                                                    type="number"
-                                                    value={detail.days}
-                                                    onChange={(e) => updateDetail?.(groupIndex, itemIndex, detailIndex, { days: Number(e.target.value) || 0 })}
+                                                    value={formatNumber(detail.days)}
+                                                    onChange={(e) => {
+                                                      const numValue = parseFormattedNumber(e.target.value);
+                                                      updateDetail?.(groupIndex, itemIndex, detailIndex, { days: numValue });
+                                                    }}
                                                     size="small"
                                                     fullWidth
+                                                    sx={numberInputStyle}
                                                     inputProps={{ 
-                                                      min: 0, 
-                                                      step: 0.5,
-                                                      inputMode: 'decimal' // 모바일 숫자 키보드
+                                                      inputMode: 'decimal', // 모바일 숫자 키보드
+                                                      style: { textAlign: 'right' }
                                                     }}
                                                   />
                                                 </Grid>
-                                                <Grid item xs={12} sm={4}>
+                                                <Grid item xs={1.2}>
                                                   <TextField
                                                     label="단위"
                                                     value={detail.unit}
@@ -792,37 +893,40 @@ export default function QuoteNewPage() {
                                                     placeholder="개"
                                                   />
                                                 </Grid>
-                                                
-                                                {/* 두 번째 행: 단가, 원가 관리 정보 - 모바일 최적화 */}
-                                                <Grid item xs={12} sm={formData?.show_cost_management ? 6 : 12}>
+                                                <Grid item xs={formData?.show_cost_management ? 4.2 : 8.4}>
                                                   <TextField
                                                     label="단가"
-                                                    type="number"
-                                                    value={detail.unit_price}
-                                                    onChange={(e) => updateDetail?.(groupIndex, itemIndex, detailIndex, { unit_price: Number(e.target.value) || 0 })}
+                                                    value={formatNumber(detail.unit_price)}
+                                                    onChange={(e) => {
+                                                      const numValue = parseFormattedNumber(e.target.value);
+                                                      updateDetail?.(groupIndex, itemIndex, detailIndex, { unit_price: numValue });
+                                                    }}
                                                     size="small"
                                                     fullWidth
+                                                    sx={numberInputStyle}
                                                     inputProps={{ 
-                                                      min: 0, 
-                                                      step: 1000,
-                                                      inputMode: 'numeric' // 모바일 숫자 키보드
+                                                      inputMode: 'numeric', // 모바일 숫자 키보드
+                                                      style: { textAlign: 'right' }
                                                     }}
                                                   />
                                                 </Grid>
                                                 
+                                                {/* 원가 - 같은 행에 배치 */}
                                                 {formData?.show_cost_management && (
-                                                  <Grid item xs={12} sm={6}>
+                                                  <Grid item xs={4.2}>
                                                     <TextField
                                                       label="원가"
-                                                      type="number"
-                                                      value={detail.cost_price || 0}
-                                                      onChange={(e) => updateDetail?.(groupIndex, itemIndex, detailIndex, { cost_price: Number(e.target.value) || 0 })}
+                                                      value={formatNumber(detail.cost_price || 0)}
+                                                      onChange={(e) => {
+                                                        const numValue = parseFormattedNumber(e.target.value);
+                                                        updateDetail?.(groupIndex, itemIndex, detailIndex, { cost_price: numValue });
+                                                      }}
                                                       size="small"
                                                       fullWidth
+                                                      sx={numberInputStyle}
                                                       inputProps={{ 
-                                                        min: 0, 
-                                                        step: 1000,
-                                                        inputMode: 'numeric' // 모바일 숫자 키보드
+                                                        inputMode: 'numeric', // 모바일 숫자 키보드
+                                                        style: { textAlign: 'right' }
                                                       }}
                                                     />
                                                   </Grid>
@@ -935,16 +1039,17 @@ export default function QuoteNewPage() {
               <Grid item xs={12}>
                 <TextField
                   label="대행 수수료율 (%)"
-                  type="number"
-                  value={(formData?.agency_fee_rate || 0) * 100}
-                  onChange={(e) => updateFormData?.({ agency_fee_rate: Number(e.target.value) / 100 || 0 })}
+                  value={formatNumber((formData?.agency_fee_rate || 0) * 100)}
+                  onChange={(e) => {
+                    const numValue = parseFormattedNumber(e.target.value);
+                    updateFormData?.({ agency_fee_rate: numValue / 100 || 0 });
+                  }}
                   fullWidth
                   size="small"
+                  sx={numberInputStyle}
                   inputProps={{ 
-                    min: 0, 
-                    max: 100, 
-                    step: 0.1,
-                    inputMode: 'decimal' // 모바일 숫자 키보드
+                    inputMode: 'decimal', // 모바일 숫자 키보드
+                    style: { textAlign: 'right' }
                   }}
                 />
               </Grid>
@@ -952,15 +1057,17 @@ export default function QuoteNewPage() {
               <Grid item xs={12}>
                 <TextField
                   label="할인 금액"
-                  type="number"
-                  value={formData?.discount_amount || 0}
-                  onChange={(e) => updateFormData?.({ discount_amount: Number(e.target.value) || 0 })}
+                  value={formatNumber(formData?.discount_amount || 0)}
+                  onChange={(e) => {
+                    const numValue = parseFormattedNumber(e.target.value);
+                    updateFormData?.({ discount_amount: numValue });
+                  }}
                   fullWidth
                   size="small"
+                  sx={numberInputStyle}
                   inputProps={{ 
-                    min: 0, 
-                    step: 1000,
-                    inputMode: 'numeric' // 모바일 숫자 키보드
+                    inputMode: 'numeric', // 모바일 숫자 키보드
+                    style: { textAlign: 'right' }
                   }}
                 />
               </Grid>
@@ -1039,23 +1146,32 @@ export default function QuoteNewPage() {
                 </Box>
                 
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                  <Typography variant="body2">할인</Typography>
-                  <Typography variant="body2" color="error">
-                    -{(calculation?.discount_amount || 0).toLocaleString()}원
-                  </Typography>
-                </Box>
-                
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                   <Typography variant="body2">부가세</Typography>
                   <Typography variant="body2">
                     {(calculation?.vat_amount || 0).toLocaleString()}원
                   </Typography>
                 </Box>
                 
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    소계 (부가세 포함)
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {((calculation?.subtotal || 0) + (calculation?.agency_fee || 0) + (calculation?.vat_amount || 0)).toLocaleString()}원
+                  </Typography>
+                </Box>
+                
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                  <Typography variant="body2">할인 금액</Typography>
+                  <Typography variant="body2" color="error">
+                    -{(calculation?.discount_amount || 0).toLocaleString()}원
+                  </Typography>
+                </Box>
+                
                 <Divider sx={{ my: 1 }} />
                 
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography variant="h6">총액</Typography>
+                  <Typography variant="h6">최종 금액</Typography>
                   <Typography variant="h6" color="primary">
                     {(calculation?.final_total || 0).toLocaleString()}원
                   </Typography>
@@ -1195,25 +1311,42 @@ export default function QuoteNewPage() {
         </Alert>
       </Snackbar>
 
-      {/* 간단한 상태 표시 */}
-      {pageStatus === 'ready' && (
-        <div
-          style={{
-            position: 'fixed',
-            bottom: '20px',
-            left: '20px',
-            padding: '15px',
-            backgroundColor: '#e8f5e8',
-            border: '2px solid #4caf50',
-            borderRadius: '8px',
-            zIndex: 10000
+      {/* PDF 미리보기 다이얼로그 */}
+      <Dialog
+        open={pdfDialogOpen}
+        onClose={handleClosePdfDialog}
+        maxWidth={false}
+        PaperProps={{
+          sx: {
+            width: '95vw',
+            height: '95vh',
+            maxWidth: 'none',
+            maxHeight: 'none',
+          },
+        }}
+      >
+        <Box
+          sx={{
+            position: 'absolute',
+            top: 8,
+            right: 8,
+            zIndex: 1,
           }}
         >
-          <p style={{ margin: 0, color: '#2e7d32', fontWeight: 'bold' }}>
-            ✅ 시스템 정상 작동 중
-          </p>
-        </div>
-      )}
+          <IconButton onClick={handleClosePdfDialog}>
+            <CloseIcon />
+          </IconButton>
+        </Box>
+        <DialogContent sx={{ p: 0, overflow: 'hidden' }}>
+          {formData && (
+            <QuotePDFView
+              quote={convertToQuote4Tier()}
+              showPrintButtons={true}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
     </Container>
   );
 }

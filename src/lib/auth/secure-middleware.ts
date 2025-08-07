@@ -7,10 +7,8 @@ const ALLOWED_DOMAINS = ['motionsense.co.kr'];
 
 // 역할 계층 구조 정의
 const ROLE_HIERARCHY = {
-  super_admin: ['super_admin', 'admin', 'member'],
   admin: ['admin', 'member'],
   member: ['member'],
-  user: ['user'], // 하위 호환성을 위해 유지
 } as const;
 
 export type UserRole = keyof typeof ROLE_HIERARCHY;
@@ -226,16 +224,6 @@ export function requireAdmin(options: AuthOptions = {}): AuthOptions {
   return {
     ...options,
     requireMinimumRole: 'admin',
-  };
-}
-
-/**
- * 슈퍼 관리자 권한 확인 헬퍼
- */
-export function requireSuperAdmin(options: AuthOptions = {}): AuthOptions {
-  return {
-    ...options,
-    requireSpecificRole: 'super_admin',
   };
 }
 
