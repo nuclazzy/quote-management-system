@@ -40,11 +40,19 @@ export class QuoteTemplatesService {
     });
 
     if (!response.ok) {
-      const error: ApiError = await response.json();
-      throw new Error(error.error || 'Failed to fetch quote templates');
+      const errorBody = await response.json();
+      console.error('템플릿 조회 오류:', errorBody);
+      throw new Error(errorBody.error || errorBody.message || 'Failed to fetch quote templates');
     }
 
-    return response.json();
+    const responseData = await response.json();
+    
+    // 직접 연동 API 응답 형식 처리
+    if (responseData.success && responseData.data) {
+      return responseData.data;
+    }
+    
+    return responseData;
   }
 
   // 특정 견적서 템플릿 조회
@@ -75,11 +83,19 @@ export class QuoteTemplatesService {
     });
 
     if (!response.ok) {
-      const error: ApiError = await response.json();
-      throw new Error(error.error || 'Failed to create quote template');
+      const errorBody = await response.json();
+      console.error('템플릿 생성 오류:', errorBody);
+      throw new Error(errorBody.error || errorBody.message || 'Failed to create quote template');
     }
 
-    return response.json();
+    const responseData = await response.json();
+    
+    // 직접 연동 API 응답 형식 처리
+    if (responseData.success && responseData.data) {
+      return responseData.data;
+    }
+    
+    return responseData;
   }
 
   // 견적서 템플릿 수정

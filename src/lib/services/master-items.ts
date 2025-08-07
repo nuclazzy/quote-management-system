@@ -40,11 +40,19 @@ export class MasterItemsService {
     });
 
     if (!response.ok) {
-      const error: ApiError = await response.json();
-      throw new Error(error.error || 'Failed to fetch master items');
+      const errorBody = await response.json();
+      console.error('마스터 품목 조회 오류:', errorBody);
+      throw new Error(errorBody.error || errorBody.message || 'Failed to fetch master items');
     }
 
-    return response.json();
+    const responseData = await response.json();
+    
+    // 직접 연동 API 응답 형식 처리
+    if (responseData.success && responseData.data) {
+      return responseData.data;
+    }
+    
+    return responseData;
   }
 
   // 특정 마스터 품목 조회

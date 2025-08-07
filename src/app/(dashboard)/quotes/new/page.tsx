@@ -37,7 +37,8 @@ import {
   CloudUpload as CloudUploadIcon,
   Warning as WarningIcon,
   Restore as RestoreIcon,
-  Close as CloseIcon
+  Close as CloseIcon,
+  ContentCopy as ContentCopyIcon
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { useMotionsenseQuoteSafe } from '@/hooks/useMotionsenseQuote-safe';
@@ -46,6 +47,7 @@ import { useFormProtection } from '@/hooks/useBeforeUnload';
 import { useState, useEffect, useCallback } from 'react';
 import MasterItemSelector from '@/components/quotes/MasterItemSelector';
 import TemplateSelector from '@/components/quotes/TemplateSelector';
+import SaveAsTemplateDialog from '@/components/quotes/SaveAsTemplateDialog';
 import QuoteSummaryDisplay from '@/components/QuoteSummaryDisplay';
 import { MasterItem } from '@/types/motionsense-quote';
 import QuotePDFView from '@/components/quotes/QuotePDFView';
@@ -103,6 +105,7 @@ export default function QuoteNewPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [savedQuoteId, setSavedQuoteId] = useState<string | null>(null);
   const [pdfDialogOpen, setPdfDialogOpen] = useState(false);
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   
   // 자동 저장 및 페이지 보호 상태
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
@@ -564,6 +567,27 @@ export default function QuoteNewPage() {
             }}
           >
             PDF 미리보기
+          </Button>
+          
+          <Button
+            variant="outlined"
+            startIcon={<ContentCopyIcon />}
+            onClick={() => setTemplateDialogOpen(true)}
+            disabled={!formData?.project_title?.trim() || !formData?.groups?.length}
+            sx={{
+              borderColor: 'secondary.main',
+              color: 'secondary.main',
+              '&:hover': { 
+                borderColor: 'secondary.dark',
+                color: 'secondary.dark',
+                boxShadow: 'none'
+              },
+              boxShadow: 'none',
+              minHeight: 44, // 모바일 터치 타겟 크기
+              fontSize: { xs: '0.875rem', sm: '0.875rem' }
+            }}
+          >
+            템플릿으로 저장
           </Button>
         </Box>
       </Box>
@@ -1346,6 +1370,16 @@ export default function QuoteNewPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* 템플릿으로 저장 다이얼로그 */}
+      <SaveAsTemplateDialog
+        open={templateDialogOpen}
+        onClose={() => setTemplateDialogOpen(false)}
+        quoteData={formData}
+        onSuccess={() => {
+          showSnackbar('템플릿이 성공적으로 저장되었습니다.', 'success');
+        }}
+      />
 
     </Container>
   );
