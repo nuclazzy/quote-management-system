@@ -66,7 +66,22 @@ export default function QuoteNewPage() {
   const [errorMessage, setErrorMessage] = useState('');
   
   // 디버그 상태 관리
-  const [debugSteps, setDebugSteps] = useState<DebugStep[]>([]);
+  const [debugSteps, setDebugSteps] = useState<DebugStep[]>([
+    {
+      id: 'test-1',
+      name: 'Test System',
+      status: 'success',
+      message: '디버그 패널 테스트 - 이것이 보이면 패널이 작동중입니다!',
+      timestamp: new Date()
+    },
+    {
+      id: 'test-2', 
+      name: 'Test Error',
+      status: 'error',
+      message: '테스트 에러 - 빨간색 테두리가 보여야 합니다',
+      timestamp: new Date()
+    }
+  ]);
   const [showDebugPanel, setShowDebugPanel] = useState(true);
   
   // 펼침/접힘 상태 관리 (기본값: 모든 항목 펼침)

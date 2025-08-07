@@ -98,18 +98,20 @@ export default function DebugPanel({ steps, onClearLogs, visible = true }: Debug
   return (
     <Paper
       sx={{
-        position: 'fixed',
-        bottom: 20,
-        left: 20,
-        maxWidth: 450,
-        maxHeight: '80vh',
-        overflow: 'auto',
-        zIndex: 9999,
-        border: '3px solid',
-        borderColor: errorCount > 0 ? 'error.main' : warningCount > 0 ? 'warning.main' : 'primary.main',
-        backgroundColor: 'background.paper',
-        boxShadow: '0px 8px 32px rgba(0, 0, 0, 0.3)',
-        borderRadius: 2
+        position: 'fixed !important',
+        bottom: '20px !important',
+        left: '20px !important',
+        width: '450px !important',
+        maxHeight: '80vh !important',
+        overflow: 'auto !important',
+        zIndex: '99999 !important',
+        border: '5px solid red !important',
+        backgroundColor: 'white !important',
+        boxShadow: '0px 8px 32px rgba(255, 0, 0, 0.8) !important',
+        borderRadius: '8px !important',
+        display: 'block !important',
+        visibility: 'visible !important',
+        opacity: '1 !important'
       }}
     >
       <Box sx={{ p: 2, bgcolor: errorCount > 0 ? 'error.light' : warningCount > 0 ? 'warning.light' : 'primary.light' }}>
