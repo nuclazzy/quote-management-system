@@ -40,17 +40,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         if (session?.user) {
-          // 간단한 사용자 객체 생성 (프로필 생성 스킵)
+          // 프로필 데이터 가져오기
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+
+          // 사용자 객체 생성
           const user = {
             ...session.user,
-            profile: {
+            profile: profile || {
               id: session.user.id,
               email: session.user.email!,
               full_name:
                 session.user.user_metadata?.full_name ||
                 session.user.email!.split('@')[0],
-              role: 'user',
-              is_active: true,
+              role: profile?.role || 'member', // 실제 role 사용
+              is_active: profile?.is_active ?? true,
             },
           };
 
@@ -89,17 +96,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const result = supabase.auth.onAuthStateChange(async (event, session) => {
         try {
           if (event === 'SIGNED_IN' && session?.user) {
-            // 간단한 사용자 객체 생성 (프로필 생성 스킵)
+            // 프로필 데이터 가져오기
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', session.user.id)
+              .single();
+
+            // 사용자 객체 생성
             const user = {
               ...session.user,
-              profile: {
+              profile: profile || {
                 id: session.user.id,
                 email: session.user.email!,
                 full_name:
                   session.user.user_metadata?.full_name ||
                   session.user.email!.split('@')[0],
-                role: 'user',
-                is_active: true,
+                role: profile?.role || 'member', // 실제 role 사용
+                is_active: profile?.is_active ?? true,
               },
             };
 
