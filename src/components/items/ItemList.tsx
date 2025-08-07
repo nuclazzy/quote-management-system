@@ -374,7 +374,7 @@ export function ItemList({ items, categories, onRefresh }: ItemListProps) {
   });
 
   return (
-    <Box>
+    <Box sx={{ px: 3 }}>
       {/* 헤더 */}
       <Box
         sx={{

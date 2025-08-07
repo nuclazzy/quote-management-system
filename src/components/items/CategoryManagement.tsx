@@ -155,7 +155,7 @@ export function CategoryManagement({
   };
 
   return (
-    <Box>
+    <Box sx={{ px: 3 }}>
       {/* 헤더 */}
       <Box
         sx={{
@@ -173,13 +173,15 @@ export function CategoryManagement({
             품목 카테고리를 생성, 수정, 삭제할 수 있습니다
           </Typography>
         </Box>
-        <Button
-          variant='contained'
-          startIcon={<Add />}
-          onClick={handleCreateCategory}
-        >
-          카테고리 추가
-        </Button>
+        {categories.length > 0 && (
+          <Button
+            variant='contained'
+            startIcon={<Add />}
+            onClick={handleCreateCategory}
+          >
+            카테고리 추가
+          </Button>
+        )}
       </Box>
 
       {/* 카테고리 없음 상태 */}
