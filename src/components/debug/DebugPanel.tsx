@@ -59,7 +59,7 @@ const statusColors = {
 };
 
 export default function DebugPanel({ steps, onClearLogs, visible = true }: DebugPanelProps) {
-  const [isVisible, setIsVisible] = useState(visible);
+  const [isVisible, setIsVisible] = useState(true); // 항상 처음에 보이도록 설정
   const [expandedAccordion, setExpandedAccordion] = useState<string | false>(false);
 
   useEffect(() => {
@@ -101,23 +101,32 @@ export default function DebugPanel({ steps, onClearLogs, visible = true }: Debug
         position: 'fixed',
         bottom: 20,
         left: 20,
-        maxWidth: 400,
-        maxHeight: '70vh',
+        maxWidth: 450,
+        maxHeight: '80vh',
         overflow: 'auto',
-        zIndex: 1000,
-        border: '1px solid',
-        borderColor: errorCount > 0 ? 'error.main' : warningCount > 0 ? 'warning.main' : 'divider'
+        zIndex: 9999,
+        border: '3px solid',
+        borderColor: errorCount > 0 ? 'error.main' : warningCount > 0 ? 'warning.main' : 'primary.main',
+        backgroundColor: 'background.paper',
+        boxShadow: '0px 8px 32px rgba(0, 0, 0, 0.3)',
+        borderRadius: 2
       }}
     >
-      <Box sx={{ p: 2, bgcolor: 'grey.50' }}>
+      <Box sx={{ p: 2, bgcolor: errorCount > 0 ? 'error.light' : warningCount > 0 ? 'warning.light' : 'primary.light' }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-          <Typography variant="h6" sx={{ fontSize: '1rem' }}>
-            시스템 디버그 정보
+          <Typography variant="h6" sx={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'white' }}>
+            🔍 시스템 디버그 정보
           </Typography>
           <Button
             size="small"
             onClick={() => setIsVisible(false)}
             startIcon={<VisibilityOffIcon />}
+            sx={{ 
+              color: 'white',
+              '&:hover': { 
+                bgcolor: 'rgba(255,255,255,0.1)' 
+              }
+            }}
           >
             숨기기
           </Button>
