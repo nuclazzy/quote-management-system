@@ -2,8 +2,6 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-
-const supabase = createClient();
 import { AuthService } from '@/lib/auth/auth-service';
 import { AuthContextType, AuthState, ProfileUpdate } from '@/types/auth';
 
@@ -16,92 +14,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initialized: false,
   });
 
-  // 인증 상태 변경 감지 - 단순화 버전
   useEffect(() => {
     const initializeAuth = async () => {
+      console.log('AuthContext: Initializing...');
+      
       try {
-        // Supabase client 생성 확인
-        let session = null;
+        // Supabase 클라이언트 생성
+        const supabase = createClient();
+        
+        // 세션 가져오기 (타임아웃 포함)
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Session timeout')), 5000)
+        );
+        
+        const sessionPromise = supabase.auth.getSession();
+        
         try {
-          const result = await supabase.auth.getSession();
-          session = result.data?.session;
-          if (result.error) {
-            console.error('Session error:', result.error);
-          }
-        } catch (clientError) {
-          console.error('Supabase client error:', clientError);
-          // 클라이언트 생성 실패 시 기본 상태로 설정
-          setAuthState({
-            user: null,
-            loading: false,
-            initialized: true,
-          });
-          return;
-        }
-
-        if (session?.user) {
-          // 프로필 데이터 가져오기
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
-
-          // 사용자 객체 생성
-          const user = {
-            ...session.user,
-            profile: profile || {
-              id: session.user.id,
-              email: session.user.email!,
-              full_name:
-                session.user.user_metadata?.full_name ||
-                session.user.email!.split('@')[0],
-              role: profile?.role || 'member', // 실제 role 사용
-              is_active: profile?.is_active ?? true,
-            },
-          };
-
-          setAuthState({
-            user,
-            loading: false,
-            initialized: true,
-          });
-        } else {
-          setAuthState({
-            user: null,
-            loading: false,
-            initialized: true,
-          });
-        }
-      } catch (error) {
-        console.error('Auth initialization error:', error);
-        // More detailed error logging
-        if (error instanceof Error) {
-          console.error('Error message:', error.message);
-          console.error('Error stack:', error.stack);
-        }
-        setAuthState({
-          user: null,
-          loading: false,
-          initialized: true,
-        });
-      }
-    };
-
-    initializeAuth();
-
-    // Auth state change subscription with error handling
-    let subscription: any = null;
-    try {
-      const result = supabase.auth.onAuthStateChange(async (event, session) => {
-        try {
-          if (event === 'SIGNED_IN' && session?.user) {
-            // 프로필 데이터 가져오기
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', session.user.id)
-              .single();
+          const result = await Promise.race([sessionPromise, timeoutPromise]);
+          const session = (result as any).data?.session;
+          
+          if (session?.user) {
+            console.log('AuthContext: Session found, fetching profile...');
+            
+            // 프로필 데이터 가져오기 (에러 무시)
+            let profile = null;
+            try {
+              const { data } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', session.user.id)
+                .single();
+              profile = data;
+            } catch (profileError) {
+              console.warn('Profile fetch failed, using defaults');
+            }
 
             // 사용자 객체 생성
             const user = {
@@ -112,25 +58,88 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 full_name:
                   session.user.user_metadata?.full_name ||
                   session.user.email!.split('@')[0],
-                role: profile?.role || 'member', // 실제 role 사용
+                role: profile?.role || 'member',
                 is_active: profile?.is_active ?? true,
               },
             };
 
+            console.log('AuthContext: User authenticated');
             setAuthState({
               user,
               loading: false,
               initialized: true,
             });
-          } else if (event === 'SIGNED_OUT') {
+          } else {
+            console.log('AuthContext: No session found');
             setAuthState({
               user: null,
               loading: false,
               initialized: true,
             });
           }
-        } catch (stateChangeError) {
-          console.error('Auth state change error:', stateChangeError);
+        } catch (timeoutError) {
+          console.error('AuthContext: Session timeout, proceeding without auth');
+          setAuthState({
+            user: null,
+            loading: false,
+            initialized: true,
+          });
+        }
+      } catch (error) {
+        console.error('AuthContext: Fatal error during initialization:', error);
+        // 에러가 있어도 초기화는 완료로 처리
+        setAuthState({
+          user: null,
+          loading: false,
+          initialized: true,
+        });
+      }
+    };
+
+    // 즉시 실행
+    initializeAuth();
+
+    // Auth state 구독 (별도로 처리)
+    let subscription: any = null;
+    
+    try {
+      const supabase = createClient();
+      const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
+        console.log('AuthContext: Auth state changed:', event);
+        
+        if (event === 'SIGNED_IN' && session?.user) {
+          // 프로필 데이터 가져오기
+          let profile = null;
+          try {
+            const { data } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', session.user.id)
+              .single();
+            profile = data;
+          } catch (profileError) {
+            console.warn('Profile fetch failed in state change');
+          }
+
+          const user = {
+            ...session.user,
+            profile: profile || {
+              id: session.user.id,
+              email: session.user.email!,
+              full_name:
+                session.user.user_metadata?.full_name ||
+                session.user.email!.split('@')[0],
+              role: profile?.role || 'member',
+              is_active: profile?.is_active ?? true,
+            },
+          };
+
+          setAuthState({
+            user,
+            loading: false,
+            initialized: true,
+          });
+        } else if (event === 'SIGNED_OUT') {
           setAuthState({
             user: null,
             loading: false,
@@ -139,9 +148,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       });
       
-      subscription = result.data?.subscription;
+      subscription = data?.subscription;
     } catch (subscriptionError) {
-      console.error('Auth subscription error:', subscriptionError);
+      console.error('AuthContext: Subscription setup failed:', subscriptionError);
     }
 
     return () => {
@@ -158,11 +167,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('Sign in error:', error);
       setAuthState((prev) => ({ ...prev, loading: false }));
-      // Don't throw in production to prevent crashes
-      if (process.env.NODE_ENV === 'development') {
-        throw error;
-      }
-      // Return a user-friendly error message instead
       throw new Error('로그인 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
     }
   };
