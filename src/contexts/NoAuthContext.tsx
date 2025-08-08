@@ -14,14 +14,19 @@ interface NoAuthState {
 const NoAuthContext = createContext<NoAuthState | undefined>(undefined);
 
 export function NoAuthProvider({ children }: { children: React.ReactNode }) {
+  // 서버에서는 항상 로딩 상태, 클라이언트에서만 사용자 설정
   const [user, setUser] = useState<{ id: string; email: string; name: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    console.log('🚀 NoAuthProvider 시작됨');
+    console.log('🚀 NoAuthProvider 클라이언트 초기화 시작');
     
-    // 즉시 기본 사용자로 설정
+    // 하이드레이션 완료 표시
+    setHydrated(true);
+    
+    // 기본 사용자 설정 (클라이언트에서만)
     const defaultUser = {
       id: 'anonymous',
       email: 'user@example.com',
@@ -31,7 +36,7 @@ export function NoAuthProvider({ children }: { children: React.ReactNode }) {
     console.log('👤 기본 사용자 설정:', defaultUser);
     setUser(defaultUser);
     
-    // localStorage에서 관리자 상태 복원
+    // localStorage에서 관리자 상태 복원 (클라이언트에서만)
     try {
       const adminStatus = localStorage.getItem('isAdmin');
       console.log('🔐 관리자 상태 복원:', adminStatus);
@@ -46,6 +51,22 @@ export function NoAuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(false);
   }, []);
 
+  // 하이드레이션 전에는 로딩 상태 유지
+  if (!hydrated) {
+    return (
+      <NoAuthContext.Provider value={{ 
+        user: null, 
+        loading: true, 
+        isAdmin: false, 
+        adminLogin: () => false, 
+        adminLogout: () => {} 
+      }}>
+        {children}
+      </NoAuthContext.Provider>
+    );
+  }
+
+  // 하이드레이션 후에만 실행되는 함수들
   const adminLogin = (password: string): boolean => {
     const adminPassword = 'admin123'; // 간단한 비밀번호
     
