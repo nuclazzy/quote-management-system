@@ -14,9 +14,6 @@ import {
   ListItemButton,
   ListItemIcon,
   ListItemText,
-  Avatar,
-  Menu,
-  MenuItem,
   useTheme,
   useMediaQuery,
 } from '@mui/material';
@@ -29,10 +26,7 @@ import {
   Inventory,
   Analytics,
   Settings,
-  Person,
-  AccountCircle,
   AdminPanelSettings,
-  Notifications,
 } from '@mui/icons-material';
 import { useRouter, usePathname } from 'next/navigation';
 import { useStaticAuth } from '@/contexts/StaticAuthContext';
@@ -71,7 +65,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
   const router = useRouter();
   const pathname = usePathname();
@@ -80,16 +73,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
   };
-
-  const handleUserMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleUserMenuClose = () => {
-    setAnchorEl(null);
-  };
-
-  // 로그아웃 기능 제거 - 정적 인증 시스템 사용
 
   const handleNavigation = (path: string) => {
     router.push(path);
@@ -150,56 +133,28 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               '견적서 관리 시스템'}
           </Typography>
 
+          {isAdmin && (
+            <Box
+              sx={{
+                px: 2,
+                py: 0.5,
+                mr: 2,
+                borderRadius: 1,
+                bgcolor: 'warning.main',
+                color: 'warning.contrastText',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+              }}
+            >
+              <AdminPanelSettings fontSize="small" />
+              <Typography variant="body2" fontWeight="bold">
+                관리자 모드
+              </Typography>
+            </Box>
+          )}
+
           <ThemeToggle />
-
-          <IconButton
-            size='large'
-            edge='end'
-            aria-label='사용자 계정 메뉴'
-            aria-controls='user-menu'
-            aria-haspopup='true'
-            aria-expanded={Boolean(anchorEl)}
-            onClick={handleUserMenuOpen}
-            color='inherit'
-          >
-            <Avatar sx={{ width: 32, height: 32 }}>
-              {user?.profile?.full_name?.[0] || <AccountCircle />}
-            </Avatar>
-          </IconButton>
-
-          <Menu
-            id='user-menu'
-            anchorEl={anchorEl}
-            anchorOrigin={{
-              vertical: 'bottom',
-              horizontal: 'right',
-            }}
-            keepMounted
-            transformOrigin={{
-              vertical: 'top',
-              horizontal: 'right',
-            }}
-            open={Boolean(anchorEl)}
-            onClose={handleUserMenuClose}
-          >
-            <MenuItem disabled>
-              <Typography variant='body2'>
-                {user?.profile?.full_name || user?.email}
-              </Typography>
-            </MenuItem>
-            <MenuItem disabled>
-              <Typography variant='caption' color='textSecondary'>
-                {user?.profile?.role === 'admin' ? '관리자' : '일반 사용자'}
-              </Typography>
-            </MenuItem>
-            <Divider />
-            <MenuItem disabled>
-              <ListItemIcon>
-                <Person fontSize='small' />
-              </ListItemIcon>
-              {isAdmin ? '관리자 모드' : '일반 사용자'}
-            </MenuItem>
-          </Menu>
         </Toolbar>
       </AppBar>
 
