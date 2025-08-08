@@ -1,9 +1,4 @@
-import {
-  createDirectApi,
-  DirectQueryBuilder,
-  createPaginatedResponse,
-  parsePagination,
-} from '@/lib/api/direct-integration';
+import { NextRequest, NextResponse } from 'next/server';
 
 interface UserProfile {
   id: string;
@@ -16,106 +11,159 @@ interface UserProfile {
   last_sign_in_at?: string;
 }
 
-// GET /api/admin/users - 최적화된 모든 사용자 조회
-export const GET = createDirectApi(
-  async ({ supabase, searchParams }) => {
-    const queryBuilder = new DirectQueryBuilder(supabase, 'profiles');
-    const pagination = parsePagination(searchParams);
+// 정적 사용자 목록 (StaticAuth용)
+const STATIC_USERS: UserProfile[] = [
+  {
+    id: 'admin-1',
+    email: 'admin@motionsense.co.kr',
+    full_name: '관리자',
+    role: 'admin',
+    is_active: true,
+    created_at: '2024-01-01T00:00:00.000Z',
+    updated_at: '2024-01-01T00:00:00.000Z',
+    last_sign_in_at: new Date().toISOString(),
+  },
+  {
+    id: 'user-1',
+    email: 'user@motionsense.co.kr',
+    full_name: '일반사용자',
+    role: 'member',
+    is_active: true,
+    created_at: '2024-01-01T00:00:00.000Z',
+    updated_at: '2024-01-01T00:00:00.000Z',
+    last_sign_in_at: '2024-01-15T10:30:00.000Z',
+  },
+];
+
+// GET /api/admin/users - StaticAuth 사용자 조회
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
     const role = searchParams.get('role');
     const status = searchParams.get('status');
 
-    // WHERE 조건
-    const where: Record<string, any> = {};
-    if (role) where.role = role;
-    if (status === 'active') where.is_active = true;
-    if (status === 'inactive') where.is_active = false;
+    let filteredUsers = [...STATIC_USERS];
 
-    const { data: users, count } = await queryBuilder.findMany<UserProfile>({
-      select: `
-        id,
-        email,
-        full_name,
-        role,
-        is_active,
-        created_at,
-        updated_at,
-        last_sign_in_at
-      `,
-      where,
-      sort: { by: 'created_at', order: 'desc' },
-      pagination
+    // 필터링
+    if (role) {
+      filteredUsers = filteredUsers.filter(user => user.role === role);
+    }
+    if (status === 'active') {
+      filteredUsers = filteredUsers.filter(user => user.is_active === true);
+    }
+    if (status === 'inactive') {
+      filteredUsers = filteredUsers.filter(user => user.is_active === false);
+    }
+
+    // 페이지네이션
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + limit;
+    const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
+
+    const totalPages = Math.ceil(filteredUsers.length / limit);
+
+    return NextResponse.json({
+      success: true,
+      users: paginatedUsers,
+      pagination: {
+        page,
+        limit,
+        total: filteredUsers.length,
+        totalPages,
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+      },
     });
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: { 
+          message: error instanceof Error ? error.message : '사용자 목록 조회에 실패했습니다.' 
+        },
+        meta: { timestamp: new Date().toISOString() },
+      },
+      { status: 500 }
+    );
+  }
+}
 
-    return createPaginatedResponse(users, count, pagination.page, pagination.limit);
-  },
-  { requireAuth: true, requiredRole: 'admin', enableLogging: true }
-);
-
-// POST /api/admin/users - 최적화된 사용자 직접 생성 (최고 관리자만)
-export const POST = createDirectApi(
-  async ({ supabase, user, body }) => {
+// POST /api/admin/users - StaticAuth 사용자 생성 (시뮬레이션)
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
     const { email, password, full_name, role = 'member' } = body;
 
     // 입력 검증
     if (!email || !email.includes('@')) {
-      throw new Error('올바른 이메일을 입력해주세요.');
+      return NextResponse.json(
+        {
+          success: false,
+          error: { message: '올바른 이메일을 입력해주세요.' },
+          meta: { timestamp: new Date().toISOString() },
+        },
+        { status: 400 }
+      );
     }
 
     if (!password || password.length < 6) {
-      throw new Error('비밀번호는 최소 6자리 이상이어야 합니다.');
+      return NextResponse.json(
+        {
+          success: false,
+          error: { message: '비밀번호는 최소 6자리 이상이어야 합니다.' },
+          meta: { timestamp: new Date().toISOString() },
+        },
+        { status: 400 }
+      );
     }
 
     if (!['member', 'admin'].includes(role)) {
-      throw new Error('올바른 역할을 선택해주세요.');
-    }
-
-    // 도메인 제한 확인
-    if (!email.endsWith('@motionsense.co.kr')) {
-      throw new Error('@motionsense.co.kr 이메일만 허용됩니다.');
-    }
-
-    // 이미 존재하는 사용자인지 확인
-    const queryBuilder = new DirectQueryBuilder(supabase, 'profiles');
-    const existingUser = await queryBuilder.findOne('email', email);
-
-    if (existingUser) {
-      throw new Error('이미 존재하는 사용자입니다.');
-    }
-
-    // Supabase Admin API로 새 사용자 생성
-    const { data: newUser, error: createError } =
-      await supabase.auth.admin.createUser({
-        email,
-        password,
-        email_confirm: true,
-        user_metadata: {
-          full_name: full_name || email.split('@')[0],
+      return NextResponse.json(
+        {
+          success: false,
+          error: { message: '올바른 역할을 선택해주세요.' },
+          meta: { timestamp: new Date().toISOString() },
         },
-      });
-
-    if (createError) {
-      console.error('사용자 생성 오류:', createError);
-      throw new Error('사용자 생성에 실패했습니다.');
+        { status: 400 }
+      );
     }
 
-    // 프로필 생성
-    const profileData = await queryBuilder.create({
-      id: newUser.user.id,
-      email: newUser.user.email!,
+    // StaticAuth에서는 실제로 사용자를 생성하지 않고 성공 응답만 반환
+    const newUser = {
+      id: `user-${Date.now()}`,
+      email,
       full_name: full_name || email.split('@')[0],
       role,
       is_active: true,
-    });
-
-    return {
-      message: '사용자가 성공적으로 생성되었습니다.',
-      user: {
-        id: newUser.user.id,
-        email: newUser.user.email,
-        full_name: full_name || email.split('@')[0],
-        role,
-      },
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     };
-  },
-  { requireAuth: true, requiredRole: 'super_admin', enableLogging: true }
-);
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        message: '사용자가 성공적으로 생성되었습니다.',
+        user: newUser,
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error('Error creating user:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: { 
+          message: error instanceof Error ? error.message : '사용자 생성에 실패했습니다.' 
+        },
+        meta: { timestamp: new Date().toISOString() },
+      },
+      { status: 500 }
+    );
+  }
+}

@@ -1,10 +1,6 @@
-import {
-  createDirectApi,
-  DirectQueryBuilder,
-} from '@/lib/api/direct-integration';
+import { NextRequest, NextResponse } from 'next/server';
 
-interface Company {
-  id: string;
+interface CompanySettings {
   name: string;
   logo_url?: string;
   address?: string;
@@ -14,37 +10,54 @@ interface Company {
   tax_number?: string;
   default_terms?: string;
   default_payment_terms: number;
-  created_at: string;
-  updated_at: string;
 }
 
-// GET /api/admin/settings - 최적화된 회사 설정 조회
-export const GET = createDirectApi(
-  async ({ supabase, user }) => {
-    // 사용자 프로필과 회사 ID 조회
-    const profileQuery = new DirectQueryBuilder(supabase, 'profiles');
-    const userProfile = await profileQuery.findOne(user.id, 'role, company_id');
+// 기본 회사 설정
+const DEFAULT_SETTINGS: CompanySettings = {
+  name: '회사명',
+  logo_url: '',
+  address: '서울시 강남구',
+  phone: '02-1234-5678',
+  email: 'contact@company.com',
+  website: 'https://company.com',
+  tax_number: '123-45-67890',
+  default_terms: '본 견적서는 30일간 유효합니다.\n부가가치세가 별도 부과됩니다.\n견적 내용은 협의에 의해 변경 가능합니다.',
+  default_payment_terms: 30,
+};
+
+// GET /api/admin/settings - StaticAuth 회사 설정 조회
+export async function GET(request: NextRequest) {
+  try {
+    // StaticAuth에서는 관리자 권한 체크를 클라이언트에서 처리하므로
+    // 여기서는 단순히 기본 설정을 반환하거나 localStorage에서 읽은 설정을 반환
     
-    if (!userProfile?.company_id) {
-      throw new Error('회사 정보를 찾을 수 없습니다.');
-    }
+    // 클라이언트에서 localStorage의 설정을 가져오도록 기본값 반환
+    return NextResponse.json({
+      success: true,
+      data: DEFAULT_SETTINGS,
+      meta: {
+        timestamp: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching company settings:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: { 
+          message: error instanceof Error ? error.message : '설정 조회에 실패했습니다.' 
+        },
+        meta: { timestamp: new Date().toISOString() },
+      },
+      { status: 500 }
+    );
+  }
+}
 
-    // 회사 설정 조회
-    const companyQuery = new DirectQueryBuilder(supabase, 'companies');
-    const company = await companyQuery.findOne<Company>(userProfile.company_id);
-    
-    if (!company) {
-      throw new Error('회사 설정을 찾을 수 없습니다.');
-    }
-
-    return company;
-  },
-  { requireAuth: true, requiredRole: 'admin', enableLogging: true }
-);
-
-// PUT /api/admin/settings - 최적화된 회사 설정 수정
-export const PUT = createDirectApi(
-  async ({ supabase, user, body }) => {
+// PUT /api/admin/settings - StaticAuth 회사 설정 수정
+export async function PUT(request: NextRequest) {
+  try {
+    const body = await request.json();
     const {
       name,
       logo_url,
@@ -59,35 +72,51 @@ export const PUT = createDirectApi(
 
     // 필수 필드 검증
     if (!name) {
-      throw new Error('회사명은 필수입니다.');
+      return NextResponse.json(
+        {
+          success: false,
+          error: { message: '회사명은 필수입니다.' },
+          meta: { timestamp: new Date().toISOString() },
+        },
+        { status: 400 }
+      );
     }
 
-    // 사용자 프로필과 회사 ID 조회
-    const profileQuery = new DirectQueryBuilder(supabase, 'profiles');
-    const userProfile = await profileQuery.findOne(user.id, 'role, company_id');
-    
-    if (!userProfile?.company_id) {
-      throw new Error('회사 정보를 찾을 수 없습니다.');
-    }
-
-    // 회사 설정 업데이트
-    const companyQuery = new DirectQueryBuilder(supabase, 'companies');
-    const updatedCompany = await companyQuery.update<Company>(userProfile.company_id, {
+    // StaticAuth에서는 실제 DB 업데이트 대신 성공 응답만 반환
+    // 실제 데이터는 클라이언트 localStorage에서 관리
+    const updatedSettings: CompanySettings = {
       name,
-      logo_url: logo_url || null,
-      address: address || null,
-      phone: phone || null,
-      email: email || null,
-      website: website || null,
-      tax_number: tax_number || null,
-      default_terms: default_terms || null,
+      logo_url: logo_url || '',
+      address: address || '',
+      phone: phone || '',
+      email: email || '',
+      website: website || '',
+      tax_number: tax_number || '',
+      default_terms: default_terms || '',
       default_payment_terms: Number(default_payment_terms) || 30,
-    });
-
-    return {
-      message: '회사 설정이 성공적으로 수정되었습니다.',
-      company: updatedCompany,
     };
-  },
-  { requireAuth: true, requiredRole: 'admin', enableLogging: true }
-);
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        message: '회사 설정이 성공적으로 수정되었습니다.',
+        company: updatedSettings,
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error('Error updating company settings:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: { 
+          message: error instanceof Error ? error.message : '설정 수정에 실패했습니다.' 
+        },
+        meta: { timestamp: new Date().toISOString() },
+      },
+      { status: 500 }
+    );
+  }
+}

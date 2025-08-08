@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Card,
   CardContent,
@@ -19,6 +20,7 @@ import { useStaticAuth } from '@/contexts/StaticAuthContext';
 
 export function AdminPanel() {
   const { isAdmin } = useStaticAuth();
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
 
   // 클라이언트 사이드에서만 렌더링
@@ -56,7 +58,7 @@ export function AdminPanel() {
             variant="outlined"
             startIcon={<SettingsIcon />}
             color="warning"
-            onClick={() => alert('시스템 설정 (구현 예정)')}
+            onClick={() => router.push('/admin/settings')}
           >
             시스템 설정
           </Button>
