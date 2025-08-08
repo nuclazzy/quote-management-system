@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Box, CircularProgress, Typography, Skeleton } from '@mui/material';
 
 interface LoadingStateProps {
@@ -15,6 +16,11 @@ export function LoadingState({
   height = 200,
   rows = 3,
 }: LoadingStateProps) {
+  const [hydrated, setHydrated] = useState(false);
+  
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
   if (type === 'skeleton') {
     return (
       <Box sx={{ width: '100%' }}>
@@ -46,9 +52,14 @@ export function LoadingState({
         </Typography>
       )}
       {/* 하이드레이션 디버깅 */}
-      <Typography variant='caption' color='error' sx={{ mt: 1 }}>
-        🔧 LOADING: {typeof window !== 'undefined' ? 'Client ✅' : 'Server ❌'} 
-        {' '}{new Date().toLocaleTimeString()}
+      <Typography 
+        variant='caption' 
+        color='error' 
+        sx={{ mt: 1 }} 
+        suppressHydrationWarning
+      >
+        🔧 LOADING: {hydrated ? 'Client ✅' : 'Server ❌'} 
+        {hydrated && ` ${new Date().toLocaleTimeString()}`}
       </Typography>
     </Box>
   );

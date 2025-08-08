@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { LoadingState } from '@/components/common/LoadingState';
@@ -16,15 +16,19 @@ import {
 import { Login as LoginIcon } from '@mui/icons-material';
 
 export default function HomePage() {
-  // 하이드레이션 디버깅을 위한 HTML 메타데이터
-  if (typeof document !== 'undefined') {
-    document.title = 'DEBUG: Client Side Loaded - ' + new Date().toLocaleTimeString();
-  }
-  
-  console.log('📍 HOME PAGE LOADED at:', new Date().toISOString());
-  
+  const [hydrated, setHydrated] = useState(false);
   const { user, loading } = useAuth();
   const router = useRouter();
+
+  // 하이드레이션 완료 후에만 실제 로직 실행
+  useEffect(() => {
+    setHydrated(true);
+    console.log('📍 HOME PAGE HYDRATED at:', new Date().toISOString());
+    
+    if (typeof document !== 'undefined') {
+      document.title = 'DEBUG: Client Side Loaded - ' + new Date().toLocaleTimeString();
+    }
+  }, []);
   
   console.log('📍 HOME PAGE Auth State:', { 
     hasUser: !!user, 
@@ -32,21 +36,27 @@ export default function HomePage() {
     userEmail: user?.email 
   });
 
-  // 인증된 사용자는 대시보드로 리다이렉트
+  // 하이드레이션 후 인증 상태 확인
   useEffect(() => {
-    console.log('📍 HOME PAGE useEffect:', { hasUser: !!user, loading });
-    
-    if (!loading && user) {
-      console.log('📍 HOME PAGE - Redirecting to dashboard');
-      router.push('/dashboard');
-    } else if (!loading && !user) {
-      console.log('📍 HOME PAGE - No user, staying on home');
+    if (hydrated && !loading) {
+      console.log('📍 HOME PAGE useEffect:', { hasUser: !!user, loading, hydrated });
+      
+      if (user) {
+        console.log('📍 HOME PAGE - Redirecting to dashboard');
+        router.push('/dashboard');
+      } else {
+        console.log('📍 HOME PAGE - No user, staying on home');
+      }
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, hydrated]);
 
-  // 로딩 중
-  if (loading) {
-    return <LoadingState message='시스템을 초기화하고 있습니다...' />;
+  // 하이드레이션 전이거나 로딩 중
+  if (!hydrated || loading) {
+    return (
+      <div suppressHydrationWarning>
+        <LoadingState message='시스템을 초기화하고 있습니다...' />
+      </div>
+    );
   }
 
   // 로그인하지 않은 사용자에게 랜딩 페이지 표시
@@ -61,9 +71,14 @@ export default function HomePage() {
             Motion Sense 견적서 관리 시스템에 오신 것을 환영합니다
           </Typography>
           {/* 하이드레이션 디버깅 */}
-          <Typography variant='caption' color='error' sx={{ display: 'block', mt: 2 }}>
-            🔧 DEBUG: {typeof window !== 'undefined' ? 'Client Hydrated ✅' : 'Server Render ❌'} 
-            {' '}{new Date().toLocaleTimeString()}
+          <Typography 
+            variant='caption' 
+            color='error' 
+            sx={{ display: 'block', mt: 2 }} 
+            suppressHydrationWarning
+          >
+            🔧 DEBUG: {hydrated ? 'Client Hydrated ✅' : 'Server Render ❌'} 
+            {hydrated && ` ${new Date().toLocaleTimeString()}`}
           </Typography>
         </Box>
 
@@ -103,5 +118,9 @@ export default function HomePage() {
   }
 
   // 이 시점에는 리다이렉트가 진행 중이므로 로딩 표시
-  return <LoadingState message='대시보드로 이동 중...' />;
+  return (
+    <div suppressHydrationWarning>
+      <LoadingState message='대시보드로 이동 중...' />
+    </div>
+  );
 }

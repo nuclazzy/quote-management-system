@@ -30,26 +30,34 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    console.log('Dashboard DEBUG - Auth state:', {
-      authLoading,
-      hasUser: !!user,
-      userEmail: user?.email,
-      initialized: user ? 'User exists' : 'No user'
-    });
-    
-    // 인증 체크
-    if (!authLoading) {
-      if (!user) {
-        console.log('Dashboard DEBUG - Redirecting to login (no user)');
-        router.push('/auth/login');
-      } else {
-        console.log('Dashboard DEBUG - User authenticated, loading data');
-        loadDashboardData();
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (hydrated) {
+      console.log('Dashboard DEBUG - Auth state:', {
+        authLoading,
+        hasUser: !!user,
+        userEmail: user?.email,
+        initialized: user ? 'User exists' : 'No user',
+        hydrated
+      });
+      
+      // 인증 체크
+      if (!authLoading) {
+        if (!user) {
+          console.log('Dashboard DEBUG - Redirecting to login (no user)');
+          router.push('/auth/login');
+        } else {
+          console.log('Dashboard DEBUG - User authenticated, loading data');
+          loadDashboardData();
+        }
       }
     }
-  }, [user, authLoading, router]);
+  }, [user, authLoading, router, hydrated]);
 
   const loadDashboardData = async () => {
     try {
@@ -83,65 +91,76 @@ export default function DashboardPage() {
     }
   };
 
-  // 인증 로딩 중
-  if (authLoading) {
+  // 하이드레이션 전이거나 인증 로딩 중
+  if (!hydrated || authLoading) {
     return (
-      <Box sx={{ 
-        display: 'flex', 
-        flexDirection: 'column',
-        justifyContent: 'center', 
-        alignItems: 'center',
-        minHeight: '80vh',
-        gap: 2 
-      }}>
-        <CircularProgress size={48} />
-        <Typography variant="body1" color="text.secondary">
-          인증 확인 중...
-        </Typography>
-        {/* 하이드레이션 디버깅 */}
-        <Typography variant="caption" color="error" sx={{ mt: 2 }}>
-          🔧 DASHBOARD: {typeof window !== 'undefined' ? 'Client Hydrated ✅' : 'Server Render ❌'} 
-          {' '}{new Date().toLocaleTimeString()}
-        </Typography>
-      </Box>
+      <div suppressHydrationWarning>
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: 'column',
+          justifyContent: 'center', 
+          alignItems: 'center',
+          minHeight: '80vh',
+          gap: 2 
+        }}>
+          <CircularProgress size={48} />
+          <Typography variant="body1" color="text.secondary">
+            {!hydrated ? '시스템 초기화 중...' : '인증 확인 중...'}
+          </Typography>
+          {/* 하이드레이션 디버깅 */}
+          <Typography 
+            variant="caption" 
+            color="error" 
+            sx={{ mt: 2 }} 
+            suppressHydrationWarning
+          >
+            🔧 DASHBOARD: {hydrated ? 'Client Hydrated ✅' : 'Server Render ❌'} 
+            {hydrated && ` ${new Date().toLocaleTimeString()}`}
+          </Typography>
+        </Box>
+      </div>
     );
   }
 
   // 로그인되지 않은 경우 (이미 리다이렉트 중)
   if (!user) {
     return (
-      <Box sx={{ 
-        display: 'flex', 
-        flexDirection: 'column',
-        justifyContent: 'center', 
-        alignItems: 'center',
-        minHeight: '80vh',
-        gap: 2 
-      }}>
-        <CircularProgress size={48} />
-        <Typography variant="body1" color="text.secondary">
-          로그인 페이지로 이동 중...
-        </Typography>
-      </Box>
+      <div suppressHydrationWarning>
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: 'column',
+          justifyContent: 'center', 
+          alignItems: 'center',
+          minHeight: '80vh',
+          gap: 2 
+        }}>
+          <CircularProgress size={48} />
+          <Typography variant="body1" color="text.secondary">
+            로그인 페이지로 이동 중...
+          </Typography>
+        </Box>
+      </div>
     );
   }
 
   // 데이터 로딩 중
   if (loading) {
     return (
-      <Box sx={{ 
-        display: 'flex', 
-        flexDirection: 'column',
-        justifyContent: 'center', 
-        alignItems: 'center',
-        minHeight: '80vh',
-        gap: 2 
-      }}>
-        <CircularProgress size={48} />
-        <Typography variant="body1" color="text.secondary">
-          대시보드 데이터 로딩 중...
-        </Typography>
-      </Box>
+      <div suppressHydrationWarning>
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: 'column',
+          justifyContent: 'center', 
+          alignItems: 'center',
+          minHeight: '80vh',
+          gap: 2 
+        }}>
+          <CircularProgress size={48} />
+          <Typography variant="body1" color="text.secondary">
+            대시보드 데이터 로딩 중...
+          </Typography>
+        </Box>
+      </div>
     );
   }
 
