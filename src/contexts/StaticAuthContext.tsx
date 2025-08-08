@@ -6,6 +6,7 @@ import React, { createContext, useContext } from 'react';
 interface StaticAuthState {
   user: { id: string; email: string; name: string };
   loading: false; // 절대 로딩하지 않음
+  initialized: true; // 항상 초기화됨
   isAdmin: boolean;
   adminLogin: (password: string) => boolean;
   adminLogout: () => void;
@@ -44,6 +45,7 @@ export function StaticAuthProvider({ children }: { children: React.ReactNode }) 
   const contextValue: StaticAuthState = {
     user: STATIC_USER,
     loading: false,
+    initialized: true,
     isAdmin: isAdminFlag,
     adminLogin,
     adminLogout
