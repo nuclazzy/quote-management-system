@@ -22,33 +22,52 @@ const STATIC_USER = {
 };
 
 export function StaticAuthProvider({ children }: { children: React.ReactNode }) {
-  // 초기값은 false로 설정 (서버/클라이언트 동일)
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [isHydrated, setIsHydrated] = useState(false);
-  
-  // 클라이언트 사이드에서만 localStorage 읽기
-  useEffect(() => {
-    setIsHydrated(true);
+  // localStorage에서 초기값 가져오기 (클라이언트에서만)
+  const getInitialAdminState = () => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('isAdmin');
-      if (stored === 'true') {
-        setIsAdmin(true);
-      }
+      console.log('[StaticAuth] 초기값 읽기 - localStorage isAdmin:', stored);
+      return stored === 'true';
     }
+    return false;
+  };
+
+  const [isAdmin, setIsAdmin] = useState(getInitialAdminState);
+  const [isHydrated, setIsHydrated] = useState(false);
+  
+  // 하이드레이션 완료 표시
+  useEffect(() => {
+    console.log('[StaticAuth] 컴포넌트 마운트됨, 현재 isAdmin:', isAdmin);
+    setIsHydrated(true);
   }, []);
   
-  // isAdmin 상태가 변경될 때 localStorage에 저장 (hydration 이후에만)
+  // isAdmin 상태가 변경될 때 localStorage에 저장
   useEffect(() => {
-    if (isHydrated && typeof window !== 'undefined') {
-      localStorage.setItem('isAdmin', isAdmin.toString());
+    console.log('[StaticAuth] isAdmin 상태 변경됨:', isAdmin);
+    if (typeof window !== 'undefined') {
+      if (isAdmin) {
+        localStorage.setItem('isAdmin', 'true');
+        console.log('[StaticAuth] localStorage에 isAdmin=true 저장');
+      } else {
+        localStorage.removeItem('isAdmin');
+        console.log('[StaticAuth] localStorage에서 isAdmin 제거');
+      }
     }
-  }, [isAdmin, isHydrated]);
+  }, [isAdmin]);
   
   const adminLogin = (password: string): boolean => {
+    console.log('[StaticAuth] adminLogin 호출됨, password:', password);
     if (password === 'admin123') {
+      console.log('[StaticAuth] 비밀번호 일치! isAdmin을 true로 설정');
       setIsAdmin(true);
+      // localStorage에 즉시 저장
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('isAdmin', 'true');
+        console.log('[StaticAuth] localStorage에 isAdmin=true 저장 완료');
+      }
       return true;
     }
+    console.log('[StaticAuth] 비밀번호 불일치');
     return false;
   };
 

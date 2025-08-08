@@ -38,8 +38,13 @@ export default function DashboardPage() {
   const [adminLoginOpen, setAdminLoginOpen] = useState(false);
 
   useEffect(() => {
+    console.log('[Dashboard] 컴포넌트 마운트, isAdmin:', isAdmin);
     setHydrated(true);
   }, []);
+
+  useEffect(() => {
+    console.log('[Dashboard] isAdmin 상태 변경됨:', isAdmin);
+  }, [isAdmin]);
 
   useEffect(() => {
     loadDashboardData();
