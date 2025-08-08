@@ -1,18 +1,4 @@
-import {
-  createDirectApi,
-  DirectQueryBuilder,
-} from '@/lib/api/direct-integration';
-import { z } from 'zod';
-
-const updateTransactionSchema = z.object({
-  status: z.enum(['pending', 'processing', 'completed', 'issue']).optional(),
-  tax_invoice_status: z.enum(['not_issued', 'issued', 'received']).optional(),
-  notes: z.string().optional(),
-  partner_name: z.string().optional(),
-  item_name: z.string().optional(),
-  amount: z.number().positive().optional(),
-  due_date: z.string().nullable().optional(),
-});
+import { NextRequest, NextResponse } from 'next/server';
 
 interface Transaction {
   id: string;
@@ -26,113 +12,217 @@ interface Transaction {
   tax_invoice_status: 'not_issued' | 'issued' | 'received';
   notes?: string;
   created_at: string;
-  created_by: string;
+  created_by?: string;
+  updated_at?: string;
 }
 
-// GET /api/transactions/[id] - 최적화된 거래 상세 조회
-export const GET = createDirectApi(
-  async ({ supabase }, { params }: { params: { id: string } }) => {
-    const queryBuilder = new DirectQueryBuilder(supabase, 'transactions');
-    
-    const transaction = await queryBuilder.findOne<Transaction>(params.id, `
-      *,
-      projects!inner(id, name, quotes!inner(customer_name_snapshot))
-    `);
+// Mock 데이터 저장소 (실제로는 localStorage 또는 다른 저장소 사용)
+const MOCK_TRANSACTIONS: Map<string, Transaction> = new Map([
+  ['1', {
+    id: '1',
+    project_id: 'proj-1',
+    type: 'income',
+    partner_name: '삼성전자',
+    item_name: '센서 개발 프로젝트',
+    amount: 50000000,
+    due_date: '2024-02-28',
+    status: 'completed',
+    tax_invoice_status: 'issued',
+    notes: '1차 계약금',
+    created_at: '2024-01-15T10:00:00Z',
+    created_by: 'static'
+  }],
+  ['2', {
+    id: '2',
+    project_id: 'proj-1',
+    type: 'expense',
+    partner_name: 'ABC 부품상사',
+    item_name: '센서 부품 구매',
+    amount: 15000000,
+    due_date: '2024-02-15',
+    status: 'processing',
+    tax_invoice_status: 'received',
+    notes: '부품 대금',
+    created_at: '2024-01-20T14:30:00Z',
+    created_by: 'static'
+  }],
+  ['3', {
+    id: '3',
+    project_id: 'proj-2',
+    type: 'income',
+    partner_name: 'LG전자',
+    item_name: '컨설팅 서비스',
+    amount: 30000000,
+    due_date: '2024-03-31',
+    status: 'pending',
+    tax_invoice_status: 'not_issued',
+    notes: '2차 프로젝트',
+    created_at: '2024-02-01T09:00:00Z',
+    created_by: 'static'
+  }]
+]);
+
+// GET /api/transactions/[id] - StaticAuth 거래 상세 조회
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const transaction = MOCK_TRANSACTIONS.get(params.id);
     
     if (!transaction) {
-      throw new Error('거래를 찾을 수 없습니다.');
+      return NextResponse.json(
+        {
+          success: false,
+          error: { message: '거래를 찾을 수 없습니다.' },
+          meta: { timestamp: new Date().toISOString() },
+        },
+        { status: 404 }
+      );
     }
 
-    return { transaction };
-  },
-  { requireAuth: true, enableLogging: true }
-);
-
-// PATCH /api/transactions/[id] - 최적화된 거래 수정
-export const PATCH = createDirectApi(
-  async ({ supabase, user, body }, { params }: { params: { id: string } }) => {
-    const queryBuilder = new DirectQueryBuilder(supabase, 'transactions');
-    
-    // 스키마 검증
-    let validatedData;
-    try {
-      validatedData = updateTransactionSchema.parse(body);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        throw new Error(`입력 데이터가 유효하지 않습니다: ${error.errors.map(e => e.message).join(', ')}`);
-      }
-      throw error;
-    }
-
-    // 기존 거래 확인
-    const existingTransaction = await queryBuilder.findOne<Transaction>(params.id);
-    if (!existingTransaction) {
-      throw new Error('거래를 찾을 수 없습니다.');
-    }
-
-    // 거래 업데이트
-    const transaction = await queryBuilder.update<Transaction>(params.id, validatedData, `
-      *,
-      projects!inner(id, name)
-    `);
-
-    // 상태 변경 시 알림 생성 (비동기)
-    if (validatedData.status && validatedData.status !== existingTransaction.status) {
-      const statusText = {
-        pending: '대기',
-        processing: '진행중',
-        completed: '완료',
-        issue: '문제',
-      }[validatedData.status];
-
-      const notificationQuery = new DirectQueryBuilder(supabase, 'notifications');
-      try {
-        await notificationQuery.create({
-          user_id: user.id,
-          message: `거래 "${existingTransaction.item_name}"의 상태가 "${statusText}"로 변경되었습니다.`,
-          link_url: `/projects/${existingTransaction.project_id}`,
-          notification_type: validatedData.status === 'completed' ? 'general' : 
-                           validatedData.status === 'issue' ? 'issue' : 'general',
-          is_read: false,
-        });
-      } catch (notificationError) {
-        console.error('Notification creation error:', notificationError);
-        // 알림 생성 실패는 무시하고 계속 진행
-      }
-    }
-
-    return {
+    return NextResponse.json({
       success: true,
-      message: '거래가 성공적으로 수정되었습니다.',
-      transaction,
-    };
-  },
-  { requireAuth: true, requiredRole: 'member', enableLogging: true }
-);
+      data: { transaction },
+      meta: {
+        timestamp: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching transaction:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: { 
+          message: error instanceof Error ? error.message : '거래 조회에 실패했습니다.' 
+        },
+        meta: { timestamp: new Date().toISOString() },
+      },
+      { status: 500 }
+    );
+  }
+}
 
-// DELETE /api/transactions/[id] - 최적화된 거래 삭제
-export const DELETE = createDirectApi(
-  async ({ supabase }, { params }: { params: { id: string } }) => {
-    const queryBuilder = new DirectQueryBuilder(supabase, 'transactions');
+// PATCH /api/transactions/[id] - StaticAuth 거래 수정
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const body = await request.json();
+    const transaction = MOCK_TRANSACTIONS.get(params.id);
     
-    // 기존 거래 확인
-    const existingTransaction = await queryBuilder.findOne<Transaction>(params.id);
-    if (!existingTransaction) {
-      throw new Error('거래를 찾을 수 없습니다.');
+    if (!transaction) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { message: '거래를 찾을 수 없습니다.' },
+          meta: { timestamp: new Date().toISOString() },
+        },
+        { status: 404 }
+      );
+    }
+
+    // 업데이트 가능한 필드만 수정
+    const updatedTransaction: Transaction = {
+      ...transaction,
+      status: body.status || transaction.status,
+      tax_invoice_status: body.tax_invoice_status || transaction.tax_invoice_status,
+      notes: body.notes !== undefined ? body.notes : transaction.notes,
+      partner_name: body.partner_name || transaction.partner_name,
+      item_name: body.item_name || transaction.item_name,
+      amount: body.amount !== undefined ? Number(body.amount) : transaction.amount,
+      due_date: body.due_date !== undefined ? body.due_date : transaction.due_date,
+      updated_at: new Date().toISOString(),
+    };
+
+    // Mock 데이터 업데이트
+    MOCK_TRANSACTIONS.set(params.id, updatedTransaction);
+
+    // 상태 변경 로그 (실제로는 알림 시스템과 연동)
+    if (body.status && body.status !== transaction.status) {
+      console.log(`Transaction ${params.id} status changed from ${transaction.status} to ${body.status}`);
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        message: '거래가 성공적으로 수정되었습니다.',
+        transaction: updatedTransaction,
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error('Error updating transaction:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: { 
+          message: error instanceof Error ? error.message : '거래 수정에 실패했습니다.' 
+        },
+        meta: { timestamp: new Date().toISOString() },
+      },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE /api/transactions/[id] - StaticAuth 거래 삭제
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const transaction = MOCK_TRANSACTIONS.get(params.id);
+    
+    if (!transaction) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { message: '거래를 찾을 수 없습니다.' },
+          meta: { timestamp: new Date().toISOString() },
+        },
+        { status: 404 }
+      );
     }
 
     // 완료된 거래는 삭제 불가
-    if (existingTransaction.status === 'completed') {
-      throw new Error('완료된 거래는 삭제할 수 없습니다.');
+    if (transaction.status === 'completed') {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { message: '완료된 거래는 삭제할 수 없습니다.' },
+          meta: { timestamp: new Date().toISOString() },
+        },
+        { status: 400 }
+      );
     }
 
-    // 거래 삭제
-    await queryBuilder.delete(params.id);
+    // Mock 데이터에서 삭제
+    MOCK_TRANSACTIONS.delete(params.id);
 
-    return {
+    return NextResponse.json({
       success: true,
-      message: '거래가 성공적으로 삭제되었습니다.',
-    };
-  },
-  { requireAuth: true, requiredRole: 'member', enableLogging: true }
-);
+      data: {
+        message: '거래가 성공적으로 삭제되었습니다.',
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error('Error deleting transaction:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: { 
+          message: error instanceof Error ? error.message : '거래 삭제에 실패했습니다.' 
+        },
+        meta: { timestamp: new Date().toISOString() },
+      },
+      { status: 500 }
+    );
+  }
+}
