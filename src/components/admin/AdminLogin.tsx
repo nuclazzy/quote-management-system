@@ -27,23 +27,17 @@ export function AdminLogin({ open, onClose, onSuccess }: AdminLoginProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('[AdminLogin] 로그인 시도, password:', password);
     
     const result = adminLogin(password);
-    console.log('[AdminLogin] adminLogin 결과:', result);
     
     if (result) {
-      console.log('[AdminLogin] 로그인 성공!');
       setPassword('');
       setError('');
       if (onSuccess) {
-        console.log('[AdminLogin] onSuccess 콜백 호출');
         onSuccess();
       }
-      console.log('[AdminLogin] Dialog 닫기');
       onClose();
     } else {
-      console.log('[AdminLogin] 로그인 실패');
       setError('비밀번호가 틀렸습니다.');
     }
   };
