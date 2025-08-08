@@ -42,8 +42,8 @@ import {
   TrendingUp,
 } from '@mui/icons-material';
 import { useForm, Controller } from 'react-hook-form';
+import { createClient } from '@/lib/supabase/client';
 import {
-  ItemService,
   type Item,
   type ItemCategory,
   type CreateItemData,
