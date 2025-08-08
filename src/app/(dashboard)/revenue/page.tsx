@@ -19,7 +19,7 @@ import { createBrowserClient } from '@/lib/supabase/client';
 import LoadingState from '@/components/common/LoadingState';
 import ErrorAlert from '@/components/common/ErrorAlert';
 import KanbanBoard, { Transaction } from '@/components/revenue/KanbanBoard';
-import { useAuth } from '@/contexts/AuthContext';
+import { useStaticAuth } from '@/contexts/StaticAuthContext';
 
 interface RevenueStats {
   totalIncome: number;
@@ -34,7 +34,7 @@ type ViewMode = 'kanban' | 'dashboard';
 
 export default function RevenueKanbanPage() {
   const router = useRouter();
-  const { isAdmin } = useAuth();
+  const { isAdmin } = useStaticAuth();
   const [viewMode, setViewMode] = useState<ViewMode>('kanban');
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [stats, setStats] = useState<RevenueStats | null>(null);

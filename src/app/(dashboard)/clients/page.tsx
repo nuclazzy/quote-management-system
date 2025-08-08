@@ -30,7 +30,7 @@ import {
 } from '@mui/icons-material';
 import { DataGrid, GridColDef, GridActionsCellItem } from '@mui/x-data-grid';
 import { useForm, Controller } from 'react-hook-form';
-import { useAuth } from '@/contexts/AuthContext';
+import { useStaticAuth } from '@/contexts/StaticAuthContext';
 import { clientService, type Client, type ClientFormData } from '@/lib/services/client-service';
 
 // 컴포넌트용 폼 타입 (서비스 타입과 호환)
@@ -40,7 +40,7 @@ interface ClientFormInput extends ClientFormData {
 }
 
 export default function ClientsPage() {
-  const { user } = useAuth();
+  const { user } = useStaticAuth();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);

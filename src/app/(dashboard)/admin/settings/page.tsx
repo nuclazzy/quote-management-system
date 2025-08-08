@@ -34,7 +34,7 @@ import {
   Security,
 } from '@mui/icons-material';
 import { useForm, Controller } from 'react-hook-form';
-import { useAuth } from '@/contexts/AuthContext';
+import { useStaticAuth } from '@/contexts/StaticAuthContext';
 
 interface CompanySettings {
   name: string;
@@ -49,7 +49,7 @@ interface CompanySettings {
 }
 
 export default function AdminSettingsPage() {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin } = useStaticAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [snackbar, setSnackbar] = useState({

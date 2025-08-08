@@ -38,22 +38,18 @@ export default function DashboardPage() {
   const [adminLoginOpen, setAdminLoginOpen] = useState(false);
 
   useEffect(() => {
-    console.log('🔥 Dashboard: 하이드레이션 완료');
     setHydrated(true);
   }, []);
 
   useEffect(() => {
-    console.log('🔥 Dashboard: useEffect 실행됨 - 무조건 데이터 로딩');
-    // 모든 조건 제거하고 바로 데이터 로딩
     loadDashboardData();
-  }, []); // 의존성도 제거
+  }, []);
 
   const loadDashboardData = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      console.log('🔥 대시보드: 직접 Supabase 연동으로 데이터 로딩');
       const supabase = createClient();
       
       // 이번 달 날짜 범위 계산
@@ -135,7 +131,6 @@ export default function DashboardPage() {
         recentQuotes: recentQuotes.data || [],
       };
 
-      console.log('✅ 대시보드: 직접 연동 데이터 로딩 성공', dashboardStats);
       setStats(dashboardStats);
     } catch (err) {
       console.error('Dashboard load error:', err);
@@ -158,14 +153,6 @@ export default function DashboardPage() {
     }
   };
 
-  // 모든 조건부 체크를 로그만 남기고 바로 렌더링
-  console.log('🎯 DASHBOARD: 무조건 UI 렌더링', { 
-    stats: !!stats, 
-    loading, 
-    user: !!user,
-    authLoading,
-    hydrated 
-  });
 
   return (
     <Box sx={{ p: 3 }}>

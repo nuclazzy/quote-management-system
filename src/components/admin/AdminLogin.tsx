@@ -32,7 +32,7 @@ export function AdminLogin({ open, onClose, onSuccess }: AdminLoginProps) {
       setPassword('');
       setError('');
       onSuccess?.();
-      onClose();
+      onClose(); // Dialog 닫기 추가
     } else {
       setError('비밀번호가 틀렸습니다.');
     }

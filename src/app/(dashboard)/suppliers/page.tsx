@@ -33,7 +33,7 @@ import {
 } from '@mui/icons-material';
 import { DataGrid, GridColDef, GridActionsCellItem } from '@mui/x-data-grid';
 import { useForm, Controller } from 'react-hook-form';
-import { useAuth } from '@/contexts/AuthContext';
+import { useStaticAuth } from '@/contexts/StaticAuthContext';
 import { createClient } from '@/lib/supabase/client';
 
 interface Supplier {
@@ -93,7 +93,7 @@ const paymentTermsOptions = [
 ];
 
 export default function SuppliersPage() {
-  const { user } = useAuth();
+  const { user } = useStaticAuth();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);

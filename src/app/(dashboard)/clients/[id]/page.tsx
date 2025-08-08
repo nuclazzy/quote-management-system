@@ -55,7 +55,7 @@ import {
   AttachMoney,
   CalendarToday,
 } from '@mui/icons-material';
-import { useAuth } from '@/contexts/AuthContext';
+import { useStaticAuth } from '@/contexts/StaticAuthContext';
 import LoadingState from '@/components/common/LoadingState';
 import ErrorAlert from '@/components/common/ErrorAlert';
 
@@ -110,7 +110,7 @@ interface Meeting {
 }
 
 export default function ClientDetailPage() {
-  const { user } = useAuth();
+  const { user } = useStaticAuth();
   const router = useRouter();
   const params = useParams();
   const clientId = params?.id as string;

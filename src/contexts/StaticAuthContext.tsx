@@ -22,8 +22,6 @@ const STATIC_USER = {
 };
 
 export function StaticAuthProvider({ children }: { children: React.ReactNode }) {
-  console.log('🔧 StaticAuthProvider: 정적 인증 시작');
-  
   // 초기값은 false로 설정 (서버/클라이언트 동일)
   const [isAdmin, setIsAdmin] = useState(false);
   
@@ -39,7 +37,7 @@ export function StaticAuthProvider({ children }: { children: React.ReactNode }) 
   
   // isAdmin 상태가 변경될 때 localStorage에 저장
   useEffect(() => {
-    if (typeof window !== 'undefined' && isAdmin) {
+    if (typeof window !== 'undefined') {
       localStorage.setItem('isAdmin', isAdmin.toString());
     }
   }, [isAdmin]);
@@ -47,10 +45,8 @@ export function StaticAuthProvider({ children }: { children: React.ReactNode }) 
   const adminLogin = (password: string): boolean => {
     if (password === 'admin123') {
       setIsAdmin(true);
-      console.log('✅ 정적 관리자 로그인 성공');
       return true;
     }
-    console.log('❌ 정적 관리자 비밀번호 틀림');
     return false;
   };
 
@@ -59,7 +55,6 @@ export function StaticAuthProvider({ children }: { children: React.ReactNode }) 
     if (typeof window !== 'undefined') {
       localStorage.removeItem('isAdmin');
     }
-    console.log('✅ 정적 관리자 로그아웃');
   };
 
   // 완전히 정적인 값 - 서버와 클라이언트에서 동일
