@@ -16,51 +16,24 @@ import {
 import { Login as LoginIcon } from '@mui/icons-material';
 
 export default function HomePage() {
-  const [hydrated, setHydrated] = useState(false);
   const { user, loading } = useAuth();
   const router = useRouter();
 
-  // 하이드레이션 완료 후에만 실제 로직 실행
-  useEffect(() => {
-    console.log('🔥 HOME PAGE: 하이드레이션 완료');
-    setHydrated(true);
-    
-    if (typeof document !== 'undefined') {
-      document.title = 'NoAuth 시스템 - ' + new Date().toLocaleTimeString();
-    }
-  }, []);
-  
-  console.log('🔥 HOME PAGE: 인증 상태', { 
+  console.log('🎯 HOME PAGE: 로딩 없는 시스템', { 
     hasUser: !!user, 
     loading, 
-    userEmail: user?.email,
-    userId: user?.id,
-    hydrated
+    userEmail: user?.email 
   });
 
-  // 하이드레이션 후 바로 대시보드로 이동
+  // 로딩 상태 체크 제거 - 바로 리다이렉트
   useEffect(() => {
-    console.log('🔥 HOME PAGE: 리다이렉트 체크', {
-      hydrated,
-      loading,
-      hasUser: !!user
-    });
-    
-    if (hydrated && !loading && user) {
-      console.log('🔥 HOME PAGE: 대시보드로 자동 리다이렉트');
-      router.push('/dashboard');
-    } else if (hydrated && !loading && !user) {
-      console.log('🚨 HOME PAGE: 사용자가 없습니다! NoAuth 초기화 실패');
-    }
-  }, [user, loading, router, hydrated]);
+    console.log('🎯 HOME PAGE: 즉시 대시보드로 리다이렉트');
+    router.push('/dashboard');
+  }, [router]);
 
-  // 하이드레이션 전이거나 로딩 중
-  if (!hydrated || loading) {
-    return (
-      <div suppressHydrationWarning>
-        <LoadingState message='시스템을 초기화하고 있습니다...' />
-      </div>
-    );
+  // 로딩 화면 표시하지 않고 바로 컨텐츠
+  if (loading) {
+    console.log('🚨 HOME PAGE: 아직도 로딩 중?');
   }
 
   // 로그인하지 않은 사용자에게 랜딩 페이지 표시

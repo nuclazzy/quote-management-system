@@ -2,10 +2,10 @@
 
 import React, { createContext, useContext } from 'react';
 
-// 완전히 정적인 인증 - 하이드레이션 문제 없음
+// 완전히 정적인 인증 - 로딩 없음
 interface StaticAuthState {
   user: { id: string; email: string; name: string };
-  loading: false; // 항상 false
+  loading: false; // 절대 로딩하지 않음
   isAdmin: boolean;
   adminLogin: (password: string) => boolean;
   adminLogout: () => void;

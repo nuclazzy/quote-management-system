@@ -96,89 +96,27 @@ export default function DashboardPage() {
     }
   };
 
-  // 하이드레이션 전이거나 인증 로딩 중
-  if (!hydrated || authLoading) {
-    return (
-      <div suppressHydrationWarning>
-        <Box sx={{ 
-          display: 'flex', 
-          flexDirection: 'column',
-          justifyContent: 'center', 
-          alignItems: 'center',
-          minHeight: '80vh',
-          gap: 2 
-        }}>
-          <CircularProgress size={48} />
-          <Typography variant="body1" color="text.secondary">
-            {!hydrated ? '시스템 초기화 중...' : '인증 확인 중...'}
-          </Typography>
-          {/* 하이드레이션 디버깅 */}
-          <Typography 
-            variant="caption" 
-            color="error" 
-            sx={{ mt: 2 }} 
-            suppressHydrationWarning
-          >
-            🔧 DASHBOARD: {hydrated ? 'Client Hydrated ✅' : 'Server Render ❌'} 
-            {hydrated && ` ${new Date().toLocaleTimeString()}`}
-          </Typography>
-        </Box>
-      </div>
-    );
+  // 로딩 체크를 최소화 - 바로 진행
+  if (authLoading) {
+    console.log('🚨 DASHBOARD: 왜 아직도 로딩 중?');
+  }
+  
+  if (!hydrated) {
+    console.log('🚨 DASHBOARD: 하이드레이션이 안됨?');
   }
 
-  // NoAuth 환경에서는 사용자가 없을 수 없음
+  // 사용자 체크도 최소화
   if (!user) {
-    return (
-      <div suppressHydrationWarning>
-        <Box sx={{ 
-          display: 'flex', 
-          flexDirection: 'column',
-          justifyContent: 'center', 
-          alignItems: 'center',
-          minHeight: '80vh',
-          gap: 2 
-        }}>
-          <CircularProgress size={48} />
-          <Typography variant="body1" color="text.secondary">
-            사용자 정보 로딩 중...
-          </Typography>
-        </Box>
-      </div>
-    );
+    console.log('🚨 DASHBOARD: 사용자가 없음 - 바로 표시');
   }
 
-  // 데이터 로딩 중
+  // 데이터 로딩 중에도 기본 UI 표시
   if (loading) {
-    return (
-      <div suppressHydrationWarning>
-        <Box sx={{ 
-          display: 'flex', 
-          flexDirection: 'column',
-          justifyContent: 'center', 
-          alignItems: 'center',
-          minHeight: '80vh',
-          gap: 2 
-        }}>
-          <CircularProgress size={48} />
-          <Typography variant="body1" color="text.secondary">
-            대시보드 데이터 로딩 중...
-          </Typography>
-        </Box>
-      </div>
-    );
+    console.log('📊 DASHBOARD: 데이터 로딩 중이지만 UI 표시');
   }
 
-  // 데이터가 없는 경우
-  if (!stats) {
-    return (
-      <Box sx={{ p: 3 }}>
-        <Alert severity="warning">
-          대시보드 데이터를 불러올 수 없습니다. 잠시 후 다시 시도해주세요.
-        </Alert>
-      </Box>
-    );
-  }
+  // 조건부 렌더링 제거 - 항상 UI 표시
+  console.log('🎯 DASHBOARD: 항상 UI 렌더링', { stats: !!stats, loading, user: !!user });
 
   return (
     <Box sx={{ p: 3 }}>
@@ -221,7 +159,7 @@ export default function DashboardPage() {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <Description color="primary" />
               <Box>
-                <Typography variant="h6">{stats.totalQuotes || 0}</Typography>
+                <Typography variant="h6">{stats?.totalQuotes || 0}</Typography>
                 <Typography variant="body2" color="text.secondary">
                   전체 견적서
                 </Typography>
@@ -236,7 +174,7 @@ export default function DashboardPage() {
               <TrendingUp color="success" />
               <Box>
                 <Typography variant="h6">
-                  {stats.totalAmount ? (stats.totalAmount / 1000000).toFixed(0) : 0}M
+                  {stats?.totalAmount ? (stats.totalAmount / 1000000).toFixed(0) : 0}M
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   총 견적 금액
@@ -251,7 +189,7 @@ export default function DashboardPage() {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <People color="info" />
               <Box>
-                <Typography variant="h6">{stats.activeCustomers || 0}</Typography>
+                <Typography variant="h6">{stats?.activeCustomers || 0}</Typography>
                 <Typography variant="body2" color="text.secondary">
                   활성 고객사
                 </Typography>
@@ -265,7 +203,7 @@ export default function DashboardPage() {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <Business color="warning" />
               <Box>
-                <Typography variant="h6">{stats.activeProjects || 0}</Typography>
+                <Typography variant="h6">{stats?.activeProjects || 0}</Typography>
                 <Typography variant="body2" color="text.secondary">
                   진행중 프로젝트
                 </Typography>
@@ -314,7 +252,7 @@ export default function DashboardPage() {
         <Typography variant="h6" gutterBottom>
           최근 활동
         </Typography>
-        {stats.recentQuotes && stats.recentQuotes.length > 0 ? (
+        {stats?.recentQuotes && stats.recentQuotes.length > 0 ? (
           <Box>
             {stats.recentQuotes.map((quote: any) => (
               <Box key={quote.id} sx={{ py: 1, borderBottom: '1px solid #eee' }}>
