@@ -22,25 +22,35 @@ export default function HomePage() {
 
   // 하이드레이션 완료 후에만 실제 로직 실행
   useEffect(() => {
+    console.log('🔥 HOME PAGE: 하이드레이션 완료');
     setHydrated(true);
-    console.log('📍 HOME PAGE HYDRATED at:', new Date().toISOString());
     
     if (typeof document !== 'undefined') {
-      document.title = 'DEBUG: Client Side Loaded - ' + new Date().toLocaleTimeString();
+      document.title = 'NoAuth 시스템 - ' + new Date().toLocaleTimeString();
     }
   }, []);
   
-  console.log('📍 HOME PAGE Auth State:', { 
+  console.log('🔥 HOME PAGE: 인증 상태', { 
     hasUser: !!user, 
     loading, 
-    userEmail: user?.email 
+    userEmail: user?.email,
+    userId: user?.id,
+    hydrated
   });
 
   // 하이드레이션 후 바로 대시보드로 이동
   useEffect(() => {
+    console.log('🔥 HOME PAGE: 리다이렉트 체크', {
+      hydrated,
+      loading,
+      hasUser: !!user
+    });
+    
     if (hydrated && !loading && user) {
-      console.log('📍 HOME PAGE - Auto redirecting to dashboard (no auth required)');
+      console.log('🔥 HOME PAGE: 대시보드로 자동 리다이렉트');
       router.push('/dashboard');
+    } else if (hydrated && !loading && !user) {
+      console.log('🚨 HOME PAGE: 사용자가 없습니다! NoAuth 초기화 실패');
     }
   }, [user, loading, router, hydrated]);
 

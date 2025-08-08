@@ -36,23 +36,30 @@ export default function DashboardPage() {
   const [adminLoginOpen, setAdminLoginOpen] = useState(false);
 
   useEffect(() => {
+    console.log('🔥 Dashboard: 하이드레이션 완료');
     setHydrated(true);
   }, []);
 
   useEffect(() => {
+    console.log('🔥 Dashboard: useEffect 실행됨', {
+      hydrated,
+      authLoading,
+      hasUser: !!user,
+      userEmail: user?.email,
+      userId: user?.id
+    });
+    
     if (hydrated) {
-      console.log('Dashboard DEBUG - Auth state:', {
-        authLoading,
-        hasUser: !!user,
-        userEmail: user?.email,
-        initialized: user ? 'User exists' : 'No user',
-        hydrated
-      });
+      console.log('🔥 Dashboard: 하이드레이션 완료, 인증 상태 확인');
       
       // NoAuth - 항상 허용
       if (!authLoading && user) {
-        console.log('Dashboard DEBUG - User ready, loading data');
+        console.log('🔥 Dashboard: 사용자 준비됨, 데이터 로딩 시작');
         loadDashboardData();
+      } else if (!authLoading && !user) {
+        console.log('🚨 Dashboard: 사용자가 없습니다! NoAuth가 실패했을 수 있음');
+      } else if (authLoading) {
+        console.log('🔄 Dashboard: 아직 인증 로딩 중...');
       }
     }
   }, [user, authLoading, router, hydrated]);

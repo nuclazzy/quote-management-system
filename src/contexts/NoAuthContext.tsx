@@ -19,6 +19,8 @@ export function NoAuthProvider({ children }: { children: React.ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
+    console.log('🚀 NoAuthProvider 시작됨');
+    
     // 즉시 기본 사용자로 설정
     const defaultUser = {
       id: 'anonymous',
@@ -26,16 +28,22 @@ export function NoAuthProvider({ children }: { children: React.ReactNode }) {
       name: '사용자'
     };
     
+    console.log('👤 기본 사용자 설정:', defaultUser);
     setUser(defaultUser);
     
     // localStorage에서 관리자 상태 복원
-    const adminStatus = localStorage.getItem('isAdmin');
-    if (adminStatus === 'true') {
-      setIsAdmin(true);
+    try {
+      const adminStatus = localStorage.getItem('isAdmin');
+      console.log('🔐 관리자 상태 복원:', adminStatus);
+      if (adminStatus === 'true') {
+        setIsAdmin(true);
+      }
+    } catch (e) {
+      console.warn('localStorage 접근 실패:', e);
     }
     
+    console.log('✅ NoAuth 초기화 완료 - 로딩 false로 설정');
     setLoading(false);
-    console.log('✅ NoAuth 초기화 완료');
   }, []);
 
   const adminLogin = (password: string): boolean => {
