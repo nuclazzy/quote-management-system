@@ -18,6 +18,11 @@ function getSupabaseClient() {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  // 강제로 alert로 디버깅
+  if (typeof window !== 'undefined') {
+    console.log('🚨 AuthProvider mounted at:', new Date().toISOString());
+  }
+  
   const [authState, setAuthState] = useState<AuthState>({
     user: null,
     loading: true,
@@ -25,6 +30,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   });
 
   useEffect(() => {
+    console.log('🚨 AuthProvider useEffect started at:', new Date().toISOString());
+    
     let mounted = true;
     
     const initializeAuth = async () => {
@@ -34,11 +41,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // 세션 가져오기
         const { data: { session } } = await supabase.auth.getSession();
         
-        console.log('AuthContext DEBUG - Session check:', {
+        console.log('🚨 CRITICAL - Session check:', {
           hasSession: !!session,
           hasUser: !!session?.user,
           userEmail: session?.user?.email,
-          mounted
+          mounted,
+          timestamp: new Date().toISOString()
         });
         
         if (!mounted) return;
@@ -102,7 +110,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, 5000);
 
     // 즉시 실행
-    initializeAuth();
+    console.log('🚨 CRITICAL - About to initialize auth');
+    initializeAuth().then(() => {
+      console.log('🚨 CRITICAL - Auth initialization completed');
+    }).catch(error => {
+      console.error('🚨 CRITICAL - Auth initialization failed:', error);
+    });
 
     // Auth state 구독
     const supabase = getSupabaseClient();
