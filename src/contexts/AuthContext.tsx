@@ -34,6 +34,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // 세션 가져오기
         const { data: { session } } = await supabase.auth.getSession();
         
+        console.log('AuthContext DEBUG - Session check:', {
+          hasSession: !!session,
+          hasUser: !!session?.user,
+          userEmail: session?.user?.email,
+          mounted
+        });
+        
         if (!mounted) return;
         
         if (session?.user) {
@@ -52,12 +59,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             },
           };
 
+          console.log('AuthContext DEBUG - Setting user state:', {
+            userId: user.id,
+            email: user.email,
+            profileRole: user.profile.role
+          });
+          
           setAuthState({
             user,
             loading: false,
             initialized: true,
           });
         } else {
+          console.log('AuthContext DEBUG - No session, setting null user');
           setAuthState({
             user: null,
             loading: false,

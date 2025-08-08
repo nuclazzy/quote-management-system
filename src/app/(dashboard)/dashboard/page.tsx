@@ -32,11 +32,20 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    console.log('Dashboard DEBUG - Auth state:', {
+      authLoading,
+      hasUser: !!user,
+      userEmail: user?.email,
+      initialized: user ? 'User exists' : 'No user'
+    });
+    
     // 인증 체크
     if (!authLoading) {
       if (!user) {
+        console.log('Dashboard DEBUG - Redirecting to login (no user)');
         router.push('/auth/login');
       } else {
+        console.log('Dashboard DEBUG - User authenticated, loading data');
         loadDashboardData();
       }
     }
