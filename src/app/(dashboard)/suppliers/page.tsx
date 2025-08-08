@@ -34,6 +34,7 @@ import {
 import { DataGrid, GridColDef, GridActionsCellItem } from '@mui/x-data-grid';
 import { useForm, Controller } from 'react-hook-form';
 import { useAuth } from '@/contexts/AuthContext';
+import { createClient } from '@/lib/supabase/client';
 
 interface Supplier {
   id: string;
@@ -138,13 +139,20 @@ export default function SuppliersPage() {
 
   const fetchSuppliers = async () => {
     try {
-      const response = await fetch('/api/suppliers');
-      if (response.ok) {
-        const data = await response.json();
-        setSuppliers(data.suppliers || []);
-      } else {
-        throw new Error('공급업체 정보를 불러오는데 실패했습니다.');
+      console.log('🔥 공급처: 직접 Supabase 연동으로 데이터 로딩');
+      const supabase = createClient();
+      
+      const { data, error } = await supabase
+        .from('suppliers')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        throw error;
       }
+
+      console.log('✅ 공급처: 직접 연동 데이터 로딩 성공', data?.length);
+      setSuppliers(data || []);
     } catch (error) {
       console.error('Error fetching suppliers:', error);
       setSnackbar({
@@ -204,33 +212,67 @@ export default function SuppliersPage() {
 
   const onSubmit = async (data: SupplierFormData) => {
     try {
-      const url = editingSupplier
-        ? `/api/suppliers/${editingSupplier.id}`
-        : '/api/suppliers';
-      const method = editingSupplier ? 'PUT' : 'POST';
+      console.log('🔥 공급처: 직접 Supabase 연동으로 저장', editingSupplier ? '수정' : '생성');
+      const supabase = createClient();
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
+      if (editingSupplier) {
+        // 수정
+        const { error } = await supabase
+          .from('suppliers')
+          .update({
+            name: data.name,
+            business_registration_number: data.business_registration_number || null,
+            contact_person: data.contact_person || null,
+            email: data.email || null,
+            phone: data.phone || null,
+            address: data.address || null,
+            postal_code: data.postal_code || null,
+            website: data.website || null,
+            payment_terms: data.payment_terms || null,
+            lead_time_days: data.lead_time_days || 0,
+            quality_rating: data.quality_rating || null,
+            notes: data.notes || null,
+            is_active: data.is_active !== false,
+            updated_by: 'anonymous',
+          })
+          .eq('id', editingSupplier.id);
 
-      if (response.ok) {
-        setSnackbar({
-          open: true,
-          message: editingSupplier
-            ? '공급업체가 수정되었습니다.'
-            : '공급업체가 생성되었습니다.',
-          severity: 'success',
-        });
-        setDialogOpen(false);
-        fetchSuppliers();
+        if (error) throw error;
       } else {
-        const errorData = await response.json();
-        throw new Error(errorData.error || '공급업체 저장에 실패했습니다.');
+        // 생성
+        const { error } = await supabase
+          .from('suppliers')
+          .insert({
+            name: data.name,
+            business_registration_number: data.business_registration_number || null,
+            contact_person: data.contact_person || null,
+            email: data.email || null,
+            phone: data.phone || null,
+            address: data.address || null,
+            postal_code: data.postal_code || null,
+            website: data.website || null,
+            payment_terms: data.payment_terms || null,
+            lead_time_days: data.lead_time_days || 0,
+            quality_rating: data.quality_rating || null,
+            notes: data.notes || null,
+            is_active: data.is_active !== false,
+            created_by: 'anonymous',
+            updated_by: 'anonymous',
+          });
+
+        if (error) throw error;
       }
+
+      console.log('✅ 공급처: 직접 연동 저장 성공');
+      setSnackbar({
+        open: true,
+        message: editingSupplier
+          ? '공급업체가 수정되었습니다.'
+          : '공급업체가 생성되었습니다.',
+        severity: 'success',
+      });
+      setDialogOpen(false);
+      fetchSuppliers();
     } catch (error) {
       console.error('Error saving supplier:', error);
       setSnackbar({
@@ -248,24 +290,27 @@ export default function SuppliersPage() {
     if (!supplierToDelete) return;
 
     try {
-      const response = await fetch(`/api/suppliers/${supplierToDelete.id}`, {
-        method: 'DELETE',
-      });
+      console.log('🔥 공급처: 직접 Supabase 연동으로 삭제');
+      const supabase = createClient();
+      
+      const { error } = await supabase
+        .from('suppliers')
+        .delete()
+        .eq('id', supplierToDelete.id);
 
-      if (response.ok) {
-        const data = await response.json();
-        setSnackbar({
-          open: true,
-          message: data.message || '공급업체가 삭제되었습니다.',
-          severity: 'success',
-        });
-        setDeleteDialogOpen(false);
-        setSupplierToDelete(null);
-        fetchSuppliers();
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.error || '공급업체 삭제에 실패했습니다.');
+      if (error) {
+        throw error;
       }
+
+      console.log('✅ 공급처: 직접 연동 삭제 성공');
+      setSnackbar({
+        open: true,
+        message: '공급업체가 삭제되었습니다.',
+        severity: 'success',
+      });
+      setDeleteDialogOpen(false);
+      setSupplierToDelete(null);
+      fetchSuppliers();
     } catch (error) {
       console.error('Error deleting supplier:', error);
       setSnackbar({
