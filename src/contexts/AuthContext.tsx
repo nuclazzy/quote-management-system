@@ -29,18 +29,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     const initializeAuth = async () => {
       try {
+        console.log('AuthContext: Starting initialization');
         const supabase = getSupabaseClient();
         
         // 세션 가져오기
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
-          console.error('Session error:', error);
+          console.error('AuthContext: Session error:', error);
         }
+        
+        console.log('AuthContext: Session check:', session ? 'Found' : 'Not found');
         
         if (!mounted) return;
         
         if (session?.user) {
+          console.log('AuthContext: User found:', session.user.email);
+          
           // 프로필 데이터 가져오기 (에러 무시)
           let profile = null;
           try {
@@ -51,7 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               .single();
             profile = data;
           } catch (profileError) {
-            console.warn('Profile fetch failed, using defaults');
+            console.warn('AuthContext: Profile fetch failed, using defaults');
           }
 
           // 사용자 객체 생성
@@ -74,6 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             initialized: true,
           });
         } else {
+          console.log('AuthContext: No user found');
           setAuthState({
             user: null,
             loading: false,
@@ -81,7 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           });
         }
       } catch (error) {
-        console.error('Auth initialization error:', error);
+        console.error('AuthContext: Initialization error:', error);
         
         if (mounted) {
           setAuthState({
@@ -96,7 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // 타임아웃 설정
     const timeout = setTimeout(() => {
       if (mounted && authState.loading) {
-        console.warn('Auth initialization timeout');
+        console.warn('AuthContext: Initialization timeout');
         setAuthState({
           user: null,
           loading: false,
@@ -111,9 +117,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Auth state 구독
     const supabase = getSupabaseClient();
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('AuthContext: Auth state changed:', event);
+      
       if (!mounted) return;
       
-      if (event === 'SIGNED_IN' && session?.user) {
+      if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') && session?.user) {
+        console.log('AuthContext: User signed in:', session.user.email);
+        
         // 프로필 데이터 가져오기
         let profile = null;
         try {
@@ -124,7 +134,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             .single();
           profile = data;
         } catch (profileError) {
-          console.warn('Profile fetch failed in state change');
+          console.warn('AuthContext: Profile fetch failed in state change');
         }
 
         const user = {
@@ -146,13 +156,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           initialized: true,
         });
       } else if (event === 'SIGNED_OUT') {
+        console.log('AuthContext: User signed out');
         setAuthState({
           user: null,
           loading: false,
           initialized: true,
         });
-      } else if (event === 'TOKEN_REFRESHED') {
-        console.log('Token refreshed');
+      } else if (event === 'USER_UPDATED') {
+        console.log('AuthContext: User updated');
+        // Re-fetch user data
+        if (session?.user) {
+          initializeAuth();
+        }
       }
     });
 
