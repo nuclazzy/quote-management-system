@@ -24,9 +24,11 @@ const STATIC_USER = {
 export function StaticAuthProvider({ children }: { children: React.ReactNode }) {
   // 초기값은 false로 설정 (서버/클라이언트 동일)
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(false);
   
   // 클라이언트 사이드에서만 localStorage 읽기
   useEffect(() => {
+    setIsHydrated(true);
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('isAdmin');
       if (stored === 'true') {
@@ -35,12 +37,12 @@ export function StaticAuthProvider({ children }: { children: React.ReactNode }) 
     }
   }, []);
   
-  // isAdmin 상태가 변경될 때 localStorage에 저장
+  // isAdmin 상태가 변경될 때 localStorage에 저장 (hydration 이후에만)
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (isHydrated && typeof window !== 'undefined') {
       localStorage.setItem('isAdmin', isAdmin.toString());
     }
-  }, [isAdmin]);
+  }, [isAdmin, isHydrated]);
   
   const adminLogin = (password: string): boolean => {
     if (password === 'admin123') {
@@ -77,7 +79,19 @@ export function StaticAuthProvider({ children }: { children: React.ReactNode }) 
 export function useStaticAuth() {
   const context = useContext(StaticAuthContext);
   if (context === undefined) {
-    throw new Error('useStaticAuth must be used within a StaticAuthProvider');
+    // Provider 외부에서 호출된 경우 기본값 반환
+    console.warn('useStaticAuth called outside of StaticAuthProvider, returning default values');
+    return {
+      user: STATIC_USER,
+      loading: false as const,
+      initialized: true as const,
+      isAdmin: false,
+      adminLogin: () => false,
+      adminLogout: () => {}
+    };
   }
   return context;
 }
+
+// useAuth를 useStaticAuth의 별칭으로 export (호환성)
+export const useAuth = useStaticAuth;
