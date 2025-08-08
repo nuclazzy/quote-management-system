@@ -342,15 +342,10 @@ export class BrowserPDFGenerator {
     <div class="quote-meta">
         <div>견적서 번호: ${quote.quote_number}</div>
         <div>작성일: ${new Date(quote.created_at).toLocaleDateString('ko-KR')}</div>
-        ${quote.valid_until ? `<div>유효기한: ${new Date(quote.valid_until).toLocaleDateString('ko-KR')}</div>` : ''}
     </div>
     
     <div class="customer-info">
-        <h3>고객 정보</h3>
-        <div>회사명: ${quote.customers.name}</div>
-        ${quote.customers.contact_person ? `<div>담당자: ${quote.customers.contact_person}</div>` : ''}
-        ${quote.customers.phone ? `<div>연락처: ${quote.customers.phone}</div>` : ''}
-        ${quote.customers.email ? `<div>이메일: ${quote.customers.email}</div>` : ''}
+        <h3>고객사: ${quote.customers.name}</h3>
     </div>
     
     <div class="quote-info">
@@ -434,7 +429,7 @@ export class BrowserPDFGenerator {
       quote.terms || this.companyInfo.default_terms || quote.notes
         ? `
     <div class="terms-section">
-        <h4>조건 및 특이사항</h4>
+        <h4>비고</h4>
         <div class="terms-content">${[
           quote.terms || this.companyInfo.default_terms,
           quote.notes
