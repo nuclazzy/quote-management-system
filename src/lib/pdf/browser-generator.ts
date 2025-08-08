@@ -8,6 +8,8 @@ export interface QuoteData {
   subtotal: number;
   tax_rate: number;
   tax_amount: number;
+  commission_fee?: number;
+  discount_amount?: number;
   total: number;
   valid_until?: string;
   terms?: string;
@@ -202,19 +204,23 @@ export class BrowserPDFGenerator {
             justify-content: space-between;
             margin-bottom: 15px;
             font-size: 10px;
-        }
-        
-        .customer-info {
-            margin-bottom: 15px;
             padding: 10px;
             background-color: #f8f9fa;
             border-radius: 5px;
         }
         
-        .customer-info h3 {
-            margin: 0 0 5px 0;
-            font-size: 11px;
+        .quote-meta-left {
+            flex: 1;
+        }
+        
+        .quote-meta-right {
+            text-align: right;
+            flex: 1;
+        }
+        
+        .customer-name {
             font-weight: bold;
+            font-size: 11px;
         }
         
         .quote-info {
@@ -273,27 +279,41 @@ export class BrowserPDFGenerator {
         
         .total-section {
             float: right;
-            width: 250px;
+            width: 280px;
             margin-top: 10px;
+            margin-bottom: 30px;
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #dee2e6;
         }
         
         .total-row {
             display: flex;
             justify-content: space-between;
-            padding: 3px 0;
+            padding: 4px 0;
             border-bottom: 1px solid #eee;
+            font-size: 10px;
+        }
+        
+        .total-row.subtotal-row {
+            margin-top: 5px;
+            padding-top: 8px;
+            border-top: 1px solid #dee2e6;
         }
         
         .total-row.final {
             font-weight: bold;
             font-size: 12px;
             border-bottom: 2px solid #333;
-            padding-top: 5px;
+            border-top: 2px solid #333;
+            padding: 8px 0;
+            margin-top: 5px;
         }
         
         .terms-section {
             clear: both;
-            margin-top: 20px;
+            margin-top: 50px;
             padding: 10px;
             border: 1px solid #ddd;
             border-radius: 4px;
@@ -340,12 +360,13 @@ export class BrowserPDFGenerator {
     <div class="quote-title">견 적 서</div>
     
     <div class="quote-meta">
-        <div>견적서 번호: ${quote.quote_number}</div>
-        <div>작성일: ${new Date(quote.created_at).toLocaleDateString('ko-KR')}</div>
-    </div>
-    
-    <div class="customer-info">
-        <h3>고객사: ${quote.customers.name}</h3>
+        <div class="quote-meta-left">
+            <div>견적서 번호: ${quote.quote_number}</div>
+            <div>작성일: ${new Date(quote.created_at).toLocaleDateString('ko-KR')}</div>
+        </div>
+        <div class="quote-meta-right">
+            <div class="customer-name">고객사: ${quote.customers.name}</div>
+        </div>
     </div>
     
     <div class="quote-info">
@@ -415,6 +436,16 @@ export class BrowserPDFGenerator {
             <span>소계:</span>
             <span>${this.formatCurrency(quote.subtotal)}</span>
         </div>
+        ${quote.commission_fee && quote.commission_fee > 0 ? `
+        <div class="total-row">
+            <span>대행수수료:</span>
+            <span>${this.formatCurrency(quote.commission_fee)}</span>
+        </div>` : ''}
+        ${quote.discount_amount && quote.discount_amount > 0 ? `
+        <div class="total-row">
+            <span>할인금액:</span>
+            <span>-${this.formatCurrency(quote.discount_amount)}</span>
+        </div>` : ''}
         <div class="total-row">
             <span>세금 (${quote.tax_rate}%):</span>
             <span>${this.formatCurrency(quote.tax_amount)}</span>
