@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 
 // 완전히 정적인 인증 - 로딩 없음
 interface StaticAuthState {
@@ -23,7 +23,26 @@ const STATIC_USER = {
 
 export function StaticAuthProvider({ children }: { children: React.ReactNode }) {
   console.log('🔧 StaticAuthProvider: 정적 인증 시작');
+  
+  // 초기값은 false로 설정 (서버/클라이언트 동일)
   const [isAdmin, setIsAdmin] = useState(false);
+  
+  // 클라이언트 사이드에서만 localStorage 읽기
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('isAdmin');
+      if (stored === 'true') {
+        setIsAdmin(true);
+      }
+    }
+  }, []);
+  
+  // isAdmin 상태가 변경될 때 localStorage에 저장
+  useEffect(() => {
+    if (typeof window !== 'undefined' && isAdmin) {
+      localStorage.setItem('isAdmin', isAdmin.toString());
+    }
+  }, [isAdmin]);
   
   const adminLogin = (password: string): boolean => {
     if (password === 'admin123') {
@@ -37,6 +56,9 @@ export function StaticAuthProvider({ children }: { children: React.ReactNode }) 
 
   const adminLogout = () => {
     setIsAdmin(false);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('isAdmin');
+    }
     console.log('✅ 정적 관리자 로그아웃');
   };
 

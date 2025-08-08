@@ -192,6 +192,10 @@ export default function DashboardPage() {
       <AdminLogin 
         open={adminLoginOpen}
         onClose={() => setAdminLoginOpen(false)}
+        onSuccess={() => {
+          setAdminLoginOpen(false);
+          // 상태가 자동으로 업데이트되므로 새로고침 불필요
+        }}
       />
 
       {/* 에러 메시지 표시 */}
