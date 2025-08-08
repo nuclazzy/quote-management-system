@@ -20,16 +20,13 @@ import {
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { DashboardService } from '@/lib/services/dashboard-service';
-import { DashboardStats } from '@/types/dashboard';
 import { AdminPanel } from '@/components/admin/AdminPanel';
 import { AdminLogin } from '@/components/admin/AdminLogin';
-
-const dashboardService = new DashboardService();
 
 export default function DashboardPage() {
   const router = useRouter();
   const { user, loading: authLoading, isAdmin } = useAuth();
-  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
@@ -51,8 +48,8 @@ export default function DashboardPage() {
       setLoading(true);
       setError(null);
       
-      // API 호출 시도
-      const data = await dashboardService.getDashboardStats();
+      // API 호출 시도 - static 메서드 사용
+      const data = await DashboardService.getDashboardStats();
       setStats(data);
     } catch (err) {
       console.error('Dashboard load error:', err);
@@ -62,16 +59,13 @@ export default function DashboardPage() {
       setStats({
         totalQuotes: 0,
         totalAmount: 0,
-        activeCustomers: 0,
-        activeProjects: 0,
-        pendingQuotes: 0,
         acceptedQuotes: 0,
+        activeCustomers: 0,
+        pendingApproval: 0,
+        activeProjects: 0,
+        newCustomers: 0,
+        unreadNotifications: 0,
         recentQuotes: [],
-        monthlyStats: {
-          quotes: 0,
-          amount: 0,
-          growth: 0,
-        },
       });
     } finally {
       setLoading(false);

@@ -99,5 +99,5 @@ export const GET = createDirectApi(
       };
     }
   },
-  { requireAuth: true, enableLogging: true }
+  { requireAuth: false, enableLogging: true }
 );
