@@ -18,24 +18,29 @@ import {
   Typography,
   Box,
   InputAdornment,
-  Chip,
   useMediaQuery,
   useTheme,
   CircularProgress,
   Alert,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem
 } from '@mui/material';
-import { Search as SearchIcon, FilterList as FilterIcon } from '@mui/icons-material';
-import { MasterItem } from '@/types/motionsense-quote';
-import { MasterItemsService } from '@/lib/services/master-items';
+import { Search as SearchIcon } from '@mui/icons-material';
+import { createClient } from '@/lib/supabase/client';
+
+// 간소화된 품목 타입
+interface SimpleItem {
+  id: string;
+  name: string;
+  unit_price: number;
+  unit: string;
+  description?: string;
+  is_active: boolean;
+  created_at: string;
+}
 
 interface MasterItemSelectorProps {
   open: boolean;
   onClose: () => void;
-  onSelect: (item: MasterItem) => void;
+  onSelect: (item: SimpleItem) => void;
 }
 
 export default function MasterItemSelector({ 
@@ -48,74 +53,65 @@ export default function MasterItemSelector({
   
   // 상태 관리
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('');
-  const [masterItems, setMasterItems] = useState<MasterItem[]>([]);
-  const [categories, setCategories] = useState<string[]>([]);
+  const [items, setItems] = useState<SimpleItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
 
-  // API 데이터 로딩
-  const loadMasterItems = async (resetData = false) => {
+  // 직접 Supabase 연동으로 품목 데이터 로딩
+  const loadItems = async () => {
     try {
       setLoading(true);
       setError(null);
-
-      const currentPage = resetData ? 1 : page;
-      const response = await MasterItemsService.getAll({
-        search: searchTerm || undefined,
-        category: selectedCategory || undefined,
-        is_active: true,
-        page: currentPage,
-        limit: 20,
-      });
-
-      if (resetData) {
-        setMasterItems(response.data);
-        setPage(1);
-      } else {
-        setMasterItems(prev => [...prev, ...response.data]);
+      
+      console.log('🔥 품목 선택: 직접 Supabase 연동으로 데이터 로딩');
+      const supabase = createClient();
+      
+      let query = supabase
+        .from('items')
+        .select('id, name, unit_price, unit, description, is_active, created_at')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+      
+      // 검색어가 있으면 필터링
+      if (searchTerm) {
+        query = query.or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
       }
-
-      setHasMore(response.pagination?.hasNextPage || false);
+      
+      const { data, error: queryError } = await query.limit(100);
+      
+      if (queryError) {
+        throw queryError;
+      }
+      
+      console.log('✅ 품목 선택: 직접 연동 데이터 로딩 성공', data?.length);
+      setItems(data || []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : '마스터 품목을 불러오는 중 오류가 발생했습니다.');
+      console.error('품목 로딩 오류:', err);
+      setError(err instanceof Error ? err.message : '품목을 불러오는 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
-    }
-  };
-
-  // 카테고리 목록 로딩
-  const loadCategories = async () => {
-    try {
-      const categoryList = await MasterItemsService.getCategories();
-      setCategories(categoryList);
-    } catch (err) {
-      console.error('카테고리 로딩 중 오류:', err);
     }
   };
 
   // 다이얼로그가 열릴 때 데이터 로딩
   useEffect(() => {
     if (open) {
-      loadMasterItems(true);
-      loadCategories();
+      loadItems();
     }
   }, [open]);
 
-  // 검색어나 카테고리 변경 시 데이터 다시 로딩
+  // 검색어 변경 시 데이터 다시 로딩
   useEffect(() => {
     if (open) {
       const timeoutId = setTimeout(() => {
-        loadMasterItems(true);
+        loadItems();
       }, 300); // 디바운싱
 
       return () => clearTimeout(timeoutId);
     }
-  }, [searchTerm, selectedCategory]);
+  }, [searchTerm]);
 
-  const handleSelect = (item: MasterItem) => {
+  const handleSelect = (item: SimpleItem) => {
     onSelect(item);
     onClose();
     setSearchTerm('');
@@ -124,23 +120,8 @@ export default function MasterItemSelector({
   const handleClose = () => {
     onClose();
     setSearchTerm('');
-    setSelectedCategory('');
-    setMasterItems([]);
-    setPage(1);
+    setItems([]);
     setError(null);
-  };
-
-  // 더 많은 데이터 로드
-  const handleLoadMore = () => {
-    if (!loading && hasMore) {
-      setPage(prev => prev + 1);
-      loadMasterItems(false);
-    }
-  };
-
-  // 카테고리 변경 핸들러
-  const handleCategoryChange = (category: string) => {
-    setSelectedCategory(category);
   };
 
   return (
@@ -152,48 +133,24 @@ export default function MasterItemSelector({
       fullScreen={isMobile} // 모바일에서는 전체 화면
     >
       <DialogTitle>
-        마스터 품목 선택
+        품목 선택
       </DialogTitle>
       <DialogContent>
-        {/* 검색 및 필터 섹션 */}
+        {/* 검색 섹션 */}
         <Box sx={{ mb: 2 }}>
-          <Box sx={{ display: 'flex', gap: 2, mb: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
-            <TextField
-              flex={1}
-              placeholder="품목명, 설명, 카테고리로 검색..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon />
-                  </InputAdornment>
-                ),
-              }}
-              sx={{ flex: 1 }}
-            />
-            
-            <FormControl sx={{ minWidth: 150 }}>
-              <InputLabel>카테고리</InputLabel>
-              <Select
-                value={selectedCategory}
-                onChange={(e) => handleCategoryChange(e.target.value)}
-                label="카테고리"
-                startAdornment={
-                  <InputAdornment position="start">
-                    <FilterIcon />
-                  </InputAdornment>
-                }
-              >
-                <MenuItem value="">전체</MenuItem>
-                {categories.map((category) => (
-                  <MenuItem key={category} value={category}>
-                    {category}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Box>
+          <TextField
+            fullWidth
+            placeholder="품목명, 설명으로 검색..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              ),
+            }}
+          />
         </Box>
 
         {/* 오류 메시지 */}
@@ -204,23 +161,23 @@ export default function MasterItemSelector({
         )}
 
         {/* 로딩 중 */}
-        {loading && masterItems.length === 0 && (
+        {loading && items.length === 0 && (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
             <CircularProgress />
           </Box>
         )}
 
         {/* 데이터가 없는 경우 */}
-        {!loading && masterItems.length === 0 && !error && (
+        {!loading && items.length === 0 && !error && (
           <Box sx={{ textAlign: 'center', py: 4 }}>
             <Typography variant="body1" color="text.secondary">
-              {searchTerm || selectedCategory ? '검색 결과가 없습니다.' : '마스터 품목이 없습니다.'}
+              {searchTerm ? '검색 결과가 없습니다.' : '등록된 품목이 없습니다.'}
             </Typography>
           </Box>
         )}
 
-        {/* 마스터 품목 테이블 */}
-        {masterItems.length > 0 && (
+        {/* 품목 테이블 */}
+        {items.length > 0 && (
           <TableContainer 
             component={Paper} 
             sx={{ 
@@ -230,37 +187,23 @@ export default function MasterItemSelector({
               overflowX: 'auto' // 가로 스크롤 허용
             }}
           >
-            <Table stickyHeader size="small" sx={{ minWidth: { xs: 600, sm: 'auto' } }}>
+            <Table stickyHeader size="small" sx={{ minWidth: { xs: 500, sm: 'auto' } }}>
               <TableHead>
                 <TableRow>
                   <TableCell sx={{ minWidth: { xs: 120, sm: 'auto' } }}>품목명</TableCell>
-                  <TableCell sx={{ minWidth: { xs: 80, sm: 'auto' } }}>카테고리</TableCell>
                   <TableCell sx={{ minWidth: { xs: 120, sm: 'auto' }, display: { xs: 'none', sm: 'table-cell' } }}>설명</TableCell>
                   <TableCell align="center" sx={{ minWidth: { xs: 60, sm: 'auto' } }}>단위</TableCell>
-                  <TableCell align="right" sx={{ minWidth: { xs: 80, sm: 'auto' } }}>기본단가</TableCell>
+                  <TableCell align="right" sx={{ minWidth: { xs: 80, sm: 'auto' } }}>단가</TableCell>
                   <TableCell align="center" sx={{ minWidth: { xs: 60, sm: 'auto' } }}>선택</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {masterItems.map((item) => (
+                {items.map((item) => (
                   <TableRow key={item.id} hover>
                     <TableCell>
                       <Typography variant="body2" fontWeight="medium" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                         {item.name}
                       </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Chip 
-                        label={item.category} 
-                        size="small" 
-                        variant="outlined"
-                        color={
-                          item.category.includes('편집') ? 'primary' :
-                          item.category.includes('제작') ? 'secondary' :
-                          item.category.includes('촬영') ? 'success' : 'default'
-                        }
-                        sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
-                      />
                     </TableCell>
                     <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' } }}>
                       <Typography variant="body2" color="text.secondary">
@@ -269,12 +212,12 @@ export default function MasterItemSelector({
                     </TableCell>
                     <TableCell align="center">
                       <Typography variant="body2" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                        {item.default_unit}
+                        {item.unit}
                       </Typography>
                     </TableCell>
                     <TableCell align="right">
                       <Typography variant="body2" fontWeight="medium" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                        {item.default_unit_price.toLocaleString()}원
+                        {item.unit_price.toLocaleString()}원
                       </Typography>
                     </TableCell>
                     <TableCell align="center">
@@ -300,22 +243,6 @@ export default function MasterItemSelector({
               </TableBody>
             </Table>
 
-            {/* 더 보기 버튼 */}
-            {hasMore && (
-              <Box sx={{ p: 2, textAlign: 'center' }}>
-                <Button
-                  onClick={handleLoadMore}
-                  disabled={loading}
-                  startIcon={loading ? <CircularProgress size={16} /> : null}
-                  sx={{ 
-                    boxShadow: 'none',
-                    '&:hover': { boxShadow: 'none' }
-                  }}
-                >
-                  {loading ? '로딩 중...' : '더 보기'}
-                </Button>
-              </Box>
-            )}
           </TableContainer>
         )}
       </DialogContent>

@@ -12,7 +12,7 @@ import {
   IconButton,
 } from '@mui/material';
 import { Close as CloseIcon } from '@mui/icons-material';
-import { useAuth } from '@/contexts/AuthContext';
+import { useStaticAuth } from '@/contexts/StaticAuthContext';
 
 interface AdminLoginProps {
   open: boolean;
@@ -23,7 +23,7 @@ interface AdminLoginProps {
 export function AdminLogin({ open, onClose, onSuccess }: AdminLoginProps) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const { adminLogin } = useAuth();
+  const { adminLogin } = useStaticAuth();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

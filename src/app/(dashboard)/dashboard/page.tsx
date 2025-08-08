@@ -23,14 +23,14 @@ import {
   NotificationsActive,
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
+import { useStaticAuth } from '@/contexts/StaticAuthContext';
 import { createClient } from '@/lib/supabase/client';
 import { AdminPanel } from '@/components/admin/AdminPanel';
 import { AdminLogin } from '@/components/admin/AdminLogin';
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user, loading: authLoading, isAdmin } = useAuth();
+  const { user, loading: authLoading, isAdmin } = useStaticAuth();
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

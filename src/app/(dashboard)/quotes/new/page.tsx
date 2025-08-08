@@ -49,7 +49,16 @@ import MasterItemSelector from '@/components/quotes/MasterItemSelector';
 import TemplateSelector from '@/components/quotes/TemplateSelector';
 import SaveAsTemplateDialog from '@/components/quotes/SaveAsTemplateDialog';
 import QuoteSummaryDisplay from '@/components/QuoteSummaryDisplay';
-import { MasterItem } from '@/types/motionsense-quote';
+// 간소화된 품목 타입
+interface SimpleItem {
+  id: string;
+  name: string;
+  unit_price: number;
+  unit: string;
+  description?: string;
+  is_active: boolean;
+  created_at: string;
+}
 import QuotePDFView from '@/components/quotes/QuotePDFView';
 import { Quote4TierData } from '@/types/quote-4tier';
 
@@ -359,9 +368,22 @@ export default function QuoteNewPage() {
     });
   };
 
-  // 마스터 품목 선택 처리
-  const handleMasterItemSelect = (masterItem: MasterItem) => {
+  // 간소화된 품목 선택 처리
+  const handleMasterItemSelect = (item: SimpleItem) => {
     if (masterItemDialog.groupIndex >= 0 && masterItemDialog.itemIndex >= 0) {
+      // 간소화된 품목을 MasterItem 형식으로 변환
+      const masterItem = {
+        id: item.id,
+        name: item.name,
+        category: '일반', // 카테고리 없이 기본값
+        description: item.description || '',
+        default_unit: item.unit,
+        default_unit_price: item.unit_price,
+        is_active: item.is_active,
+        created_at: item.created_at,
+        updated_at: item.created_at
+      };
+      
       addDetailFromMaster?.(
         masterItemDialog.groupIndex,
         masterItemDialog.itemIndex,

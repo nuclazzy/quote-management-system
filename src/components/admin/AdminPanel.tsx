@@ -12,14 +12,13 @@ import {
 } from '@mui/material';
 import {
   AdminPanelSettings as AdminIcon,
-  Logout as LogoutIcon,
   Settings as SettingsIcon,
   Database as DatabaseIcon,
 } from '@mui/icons-material';
-import { useAuth } from '@/contexts/AuthContext';
+import { useStaticAuth } from '@/contexts/StaticAuthContext';
 
 export function AdminPanel() {
-  const { isAdmin, adminLogout } = useAuth();
+  const { isAdmin } = useStaticAuth();
 
   if (!isAdmin) {
     return null;
@@ -64,17 +63,6 @@ export function AdminPanel() {
             데이터베이스 관리
           </Button>
 
-          <Button
-            variant="outlined"
-            startIcon={<LogoutIcon />}
-            color="error"
-            onClick={() => {
-              adminLogout();
-              alert('관리자 모드를 종료했습니다.');
-            }}
-          >
-            관리자 로그아웃
-          </Button>
         </Box>
       </CardContent>
     </Card>

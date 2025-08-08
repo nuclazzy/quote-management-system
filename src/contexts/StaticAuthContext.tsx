@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 
 // 완전히 정적인 인증 - 로딩 없음
 interface StaticAuthState {
@@ -21,14 +21,13 @@ const STATIC_USER = {
   name: '사용자'
 };
 
-let isAdminFlag = false; // 모듈 레벨 변수
-
 export function StaticAuthProvider({ children }: { children: React.ReactNode }) {
   console.log('🔧 StaticAuthProvider: 정적 인증 시작');
+  const [isAdmin, setIsAdmin] = useState(false);
   
   const adminLogin = (password: string): boolean => {
     if (password === 'admin123') {
-      isAdminFlag = true;
+      setIsAdmin(true);
       console.log('✅ 정적 관리자 로그인 성공');
       return true;
     }
@@ -37,7 +36,7 @@ export function StaticAuthProvider({ children }: { children: React.ReactNode }) 
   };
 
   const adminLogout = () => {
-    isAdminFlag = false;
+    setIsAdmin(false);
     console.log('✅ 정적 관리자 로그아웃');
   };
 
@@ -46,7 +45,7 @@ export function StaticAuthProvider({ children }: { children: React.ReactNode }) 
     user: STATIC_USER,
     loading: false,
     initialized: true,
-    isAdmin: isAdminFlag,
+    isAdmin,
     adminLogin,
     adminLogout
   };
