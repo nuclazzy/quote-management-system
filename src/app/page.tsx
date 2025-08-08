@@ -18,14 +18,21 @@ import { Login as LoginIcon } from '@mui/icons-material';
 export default function HomePage() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const [hydrated, setHydrated] = useState(false);
 
   console.log('🎯 HOME PAGE: 로딩 없는 시스템', { 
     hasUser: !!user, 
     loading, 
-    userEmail: user?.email 
+    userEmail: user?.email,
+    hydrated
   });
 
-  // 로딩 상태 체크 제거 - 바로 리다이렉트
+  // 하이드레이션 상태 설정
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
+
+  // 즉시 대시보드로 리다이렉트
   useEffect(() => {
     console.log('🎯 HOME PAGE: 즉시 대시보드로 리다이렉트');
     router.push('/dashboard');

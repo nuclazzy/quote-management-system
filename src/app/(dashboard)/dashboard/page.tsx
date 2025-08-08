@@ -41,28 +41,10 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    console.log('🔥 Dashboard: useEffect 실행됨', {
-      hydrated,
-      authLoading,
-      hasUser: !!user,
-      userEmail: user?.email,
-      userId: user?.id
-    });
-    
-    if (hydrated) {
-      console.log('🔥 Dashboard: 하이드레이션 완료, 인증 상태 확인');
-      
-      // NoAuth - 항상 허용
-      if (!authLoading && user) {
-        console.log('🔥 Dashboard: 사용자 준비됨, 데이터 로딩 시작');
-        loadDashboardData();
-      } else if (!authLoading && !user) {
-        console.log('🚨 Dashboard: 사용자가 없습니다! NoAuth가 실패했을 수 있음');
-      } else if (authLoading) {
-        console.log('🔄 Dashboard: 아직 인증 로딩 중...');
-      }
-    }
-  }, [user, authLoading, router, hydrated]);
+    console.log('🔥 Dashboard: useEffect 실행됨 - 무조건 데이터 로딩');
+    // 모든 조건 제거하고 바로 데이터 로딩
+    loadDashboardData();
+  }, []); // 의존성도 제거
 
   const loadDashboardData = async () => {
     try {
@@ -96,27 +78,14 @@ export default function DashboardPage() {
     }
   };
 
-  // 로딩 체크를 최소화 - 바로 진행
-  if (authLoading) {
-    console.log('🚨 DASHBOARD: 왜 아직도 로딩 중?');
-  }
-  
-  if (!hydrated) {
-    console.log('🚨 DASHBOARD: 하이드레이션이 안됨?');
-  }
-
-  // 사용자 체크도 최소화
-  if (!user) {
-    console.log('🚨 DASHBOARD: 사용자가 없음 - 바로 표시');
-  }
-
-  // 데이터 로딩 중에도 기본 UI 표시
-  if (loading) {
-    console.log('📊 DASHBOARD: 데이터 로딩 중이지만 UI 표시');
-  }
-
-  // 조건부 렌더링 제거 - 항상 UI 표시
-  console.log('🎯 DASHBOARD: 항상 UI 렌더링', { stats: !!stats, loading, user: !!user });
+  // 모든 조건부 체크를 로그만 남기고 바로 렌더링
+  console.log('🎯 DASHBOARD: 무조건 UI 렌더링', { 
+    stats: !!stats, 
+    loading, 
+    user: !!user,
+    authLoading,
+    hydrated 
+  });
 
   return (
     <Box sx={{ p: 3 }}>
