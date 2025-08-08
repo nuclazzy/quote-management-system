@@ -16,38 +16,23 @@ export function AuthGuard({ children, requireAdmin = false }: AuthGuardProps) {
   const [isRedirecting, setIsRedirecting] = useState(false);
 
   useEffect(() => {
-    console.log('AuthGuard state:', { 
-      initialized, 
-      loading, 
-      user: !!user,
-      userEmail: user?.email,
-      requireAdmin,
-      isRedirecting 
-    });
-
     // 타임아웃 설정 - 10초 이상 로딩이면 강제로 처리
     const timeout = setTimeout(() => {
       if (!initialized && loading) {
-        console.error('AuthGuard timeout - forcing redirect to login');
         router.push('/auth/login');
       }
     }, 10000);
 
     if (initialized && !loading) {
       if (!user) {
-        console.log('AuthGuard: No user, redirecting to login');
         setIsRedirecting(true);
         router.push('/auth/login');
       } else if (requireAdmin && user.profile?.role !== 'admin') {
-        console.log('AuthGuard: Admin required but user is not admin');
         setIsRedirecting(true);
         router.push('/unauthorized');
       } else if (!user.profile?.is_active) {
-        console.log('AuthGuard: User is inactive');
         setIsRedirecting(true);
         router.push('/inactive');
-      } else {
-        console.log('AuthGuard: Authentication successful');
       }
     }
 

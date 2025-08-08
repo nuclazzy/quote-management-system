@@ -32,15 +32,11 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    console.log('Dashboard mounted - Auth state:', { user: !!user, authLoading });
-    
     // 인증 체크
     if (!authLoading) {
       if (!user) {
-        console.log('No user found, redirecting to login...');
         router.push('/auth/login');
       } else {
-        console.log('User authenticated:', user.email);
         loadDashboardData();
       }
     }
@@ -48,20 +44,17 @@ export default function DashboardPage() {
 
   const loadDashboardData = async () => {
     try {
-      console.log('Loading dashboard data...');
       setLoading(true);
       setError(null);
       
       // API 호출 시도
       const data = await dashboardService.getDashboardStats();
-      console.log('Dashboard data loaded:', data);
       setStats(data);
     } catch (err) {
       console.error('Dashboard load error:', err);
       setError('대시보드 데이터를 불러오는 중 오류가 발생했습니다.');
       
       // 에러 발생 시 폴백 데이터 사용
-      console.log('Using fallback data due to error');
       setStats({
         totalQuotes: 0,
         totalAmount: 0,

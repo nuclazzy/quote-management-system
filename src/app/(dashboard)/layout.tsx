@@ -15,17 +15,9 @@ export default function DashboardRootLayout({
   const router = useRouter();
 
   useEffect(() => {
-    console.log('Dashboard Layout - Auth state:', { 
-      initialized, 
-      loading, 
-      user: !!user,
-      userEmail: user?.email 
-    });
-
     // 10초 타임아웃
     const timeout = setTimeout(() => {
       if (!initialized || loading) {
-        console.error('Dashboard Layout timeout - Auth state stuck');
         // 강제로 로그인 페이지로 이동
         window.location.href = '/auth/login';
       }
@@ -33,7 +25,6 @@ export default function DashboardRootLayout({
 
     // 인증 체크
     if (initialized && !loading && !user) {
-      console.log('No user found in dashboard layout, redirecting to login');
       router.push('/auth/login');
     }
 
