@@ -1,12 +1,11 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
-// 완전히 정적인 인증 - 로딩 없음
 interface StaticAuthState {
   user: { id: string; email: string; name: string };
-  loading: false; // 절대 로딩하지 않음
-  initialized: true; // 항상 초기화됨
+  loading: false;
+  initialized: true;
   isAdmin: boolean;
   adminLogin: (password: string) => boolean;
   adminLogout: () => void;
@@ -14,95 +13,77 @@ interface StaticAuthState {
 
 const StaticAuthContext = createContext<StaticAuthState | undefined>(undefined);
 
-// 정적 사용자 객체 - 절대 변하지 않음
+// 정적 사용자 객체
 const STATIC_USER = {
   id: 'static',
   email: 'user@example.com',
   name: '사용자'
 };
 
-// 전역 관리자 상태 (페이지 새로고침 시에도 유지)
-let globalIsAdmin = false;
+// localStorage 키
+const ADMIN_STORAGE_KEY = 'motionsense_admin_state';
 
 export function StaticAuthProvider({ children }: { children: React.ReactNode }) {
-  // SSR 안전한 초기값 설정 - 항상 false로 시작
+  // 초기 상태는 항상 false (SSR 안전)
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
-  const [mounted, setMounted] = useState(false);
+  const [isClient, setIsClient] = useState(false);
 
-  // 클라이언트 사이드에서 상태 동기화 - 마운트 후 즉시 실행
+  // 클라이언트 사이드 확인
   useEffect(() => {
-    setMounted(true);
-    // 컴포넌트 마운트 후 localStorage 확인
-    if (typeof window !== 'undefined') {
-      try {
-        const stored = window.localStorage.getItem('motionsense_admin');
-        const shouldBeAdmin = stored === 'true';
-        console.log('Admin state from localStorage:', shouldBeAdmin);
-        setIsAdmin(shouldBeAdmin);
-        globalIsAdmin = shouldBeAdmin;
-      } catch (e) {
-        console.error('localStorage 읽기 오류:', e);
-        setIsAdmin(false);
-        globalIsAdmin = false;
+    setIsClient(true);
+  }, []);
+
+  // 클라이언트 사이드에서만 localStorage 확인
+  useEffect(() => {
+    if (!isClient) return;
+
+    try {
+      const stored = localStorage.getItem(ADMIN_STORAGE_KEY);
+      if (stored === 'true') {
+        console.log('[Auth] Restored admin state from localStorage');
+        setIsAdmin(true);
       }
+    } catch (error) {
+      console.error('[Auth] Failed to read localStorage:', error);
+    }
+  }, [isClient]);
+
+  // 관리자 로그인 함수
+  const adminLogin = useCallback((password: string): boolean => {
+    if (password === 'admin123') {
+      console.log('[Auth] Admin login successful');
+      setIsAdmin(true);
+      
+      // localStorage에 저장
+      try {
+        localStorage.setItem(ADMIN_STORAGE_KEY, 'true');
+        console.log('[Auth] Admin state saved to localStorage');
+      } catch (error) {
+        console.error('[Auth] Failed to save to localStorage:', error);
+      }
+      
+      return true;
+    }
+    
+    console.log('[Auth] Admin login failed - incorrect password');
+    return false;
+  }, []);
+
+  // 관리자 로그아웃 함수
+  const adminLogout = useCallback(() => {
+    console.log('[Auth] Admin logout');
+    setIsAdmin(false);
+    
+    // localStorage에서 제거
+    try {
+      localStorage.removeItem(ADMIN_STORAGE_KEY);
+      console.log('[Auth] Admin state removed from localStorage');
+    } catch (error) {
+      console.error('[Auth] Failed to remove from localStorage:', error);
     }
   }, []);
 
-  // isAdmin 변경 시 localStorage 업데이트 - mounted 상태 확인
-  useEffect(() => {
-    // 초기 마운트 시에는 실행하지 않음 (false positive 방지)
-    if (!mounted) return;
-    
-    if (typeof window !== 'undefined') {
-      try {
-        if (isAdmin) {
-          window.localStorage.setItem('motionsense_admin', 'true');
-          globalIsAdmin = true;
-          console.log('Admin state saved to localStorage: true');
-        } else {
-          window.localStorage.removeItem('motionsense_admin');
-          globalIsAdmin = false;
-          console.log('Admin state removed from localStorage');
-        }
-      } catch (e) {
-        console.error('localStorage 쓰기 오류:', e);
-      }
-    }
-  }, [isAdmin, mounted]);
-
-  const adminLogin = (password: string): boolean => {
-    if (password === 'admin123') {
-      console.log('Admin login successful');
-      setIsAdmin(true);
-      // 즉시 localStorage 저장 (동기적)
-      if (typeof window !== 'undefined') {
-        try {
-          window.localStorage.setItem('motionsense_admin', 'true');
-          globalIsAdmin = true;
-          console.log('Admin state immediately saved to localStorage');
-        } catch (e) {
-          console.error('로그인 시 localStorage 저장 실패:', e);
-        }
-      }
-      return true;
-    }
-    console.log('Admin login failed - incorrect password');
-    return false;
-  };
-
-  const adminLogout = () => {
-    setIsAdmin(false);
-    globalIsAdmin = false;
-    if (typeof window !== 'undefined') {
-      try {
-        window.localStorage.removeItem('motionsense_admin');
-      } catch (e) {
-        console.error('로그아웃 시 localStorage 제거 실패:', e);
-      }
-    }
-  };
-
-  // 완전히 정적인 값 - 서버와 클라이언트에서 동일
+  // Context 값
   const contextValue: StaticAuthState = {
     user: STATIC_USER,
     loading: false,
@@ -119,21 +100,25 @@ export function StaticAuthProvider({ children }: { children: React.ReactNode }) 
   );
 }
 
+// Hook
 export function useStaticAuth() {
   const context = useContext(StaticAuthContext);
+  
+  // Context가 없는 경우 기본값 반환
   if (context === undefined) {
-    // Provider 외부에서 호출된 경우 기본값 반환
+    console.warn('[Auth] useStaticAuth called outside of StaticAuthProvider');
     return {
       user: STATIC_USER,
       loading: false as const,
       initialized: true as const,
-      isAdmin: globalIsAdmin,
+      isAdmin: false,
       adminLogin: () => false,
       adminLogout: () => {}
     };
   }
+  
   return context;
 }
 
-// useAuth를 useStaticAuth의 별칭으로 export (호환성)
+// useAuth alias for compatibility
 export const useAuth = useStaticAuth;

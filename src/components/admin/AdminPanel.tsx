@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -13,14 +13,21 @@ import {
 import {
   AdminPanelSettings as AdminIcon,
   Settings as SettingsIcon,
-  Database as DatabaseIcon,
+  Storage as DatabaseIcon,
 } from '@mui/icons-material';
 import { useStaticAuth } from '@/contexts/StaticAuthContext';
 
 export function AdminPanel() {
   const { isAdmin } = useStaticAuth();
+  const [mounted, setMounted] = useState(false);
 
-  if (!isAdmin) {
+  // 클라이언트 사이드에서만 렌더링
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // SSR 중에는 렌더링하지 않음
+  if (!mounted || !isAdmin) {
     return null;
   }
 

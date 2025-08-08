@@ -34,20 +34,20 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [hydrated, setHydrated] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [adminLoginOpen, setAdminLoginOpen] = useState(false);
 
   useEffect(() => {
-    setHydrated(true);
+    setMounted(true);
     loadDashboardData();
   }, []);
 
-  // isAdmin 변경 감지
+  // isAdmin 변경 감지 (디버깅용)
   useEffect(() => {
-    if (hydrated) {
-      console.log('Dashboard - Admin state changed:', isAdmin);
+    if (mounted) {
+      console.log('[Dashboard] Admin state:', isAdmin);
     }
-  }, [isAdmin, hydrated]);
+  }, [isAdmin, mounted]);
 
   const loadDashboardData = async () => {
     try {
@@ -165,8 +165,8 @@ export default function DashboardPage() {
           대시보드
         </Typography>
         
-        {/* 하이드레이션 후에만 관리자 버튼 표시 */}
-        {hydrated && !isAdmin && (
+        {/* 마운트 후에만 관리자 버튼 표시 */}
+        {mounted && !isAdmin && (
           <Button
             variant="outlined"
             color="warning"
