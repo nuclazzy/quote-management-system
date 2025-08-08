@@ -27,13 +27,12 @@ interface Item {
 
 // GET /api/items - 최적화된 품목 목록 조회
 export const GET = createDirectApi(
-  async ({ supabase, user, searchParams }) => {
+  async ({ supabase, searchParams }) => {
     const queryBuilder = new DirectQueryBuilder(supabase, 'items');
     
     // 필터링
     const filters: Record<string, any> = {
       is_active: true,
-      user_id: user.id,
     };
     
     const categoryId = searchParams.get('category_id');
@@ -62,7 +61,7 @@ export const GET = createDirectApi(
         favorites:item_favorites!inner(id),
         usage_stats:item_usage_stats(quote_count, unique_quotes, total_quantity_used, last_used_at)
       `;
-      filters['favorites.user_id'] = user.id;
+      // 인증 제거로 favorites 기능 비활성화
     }
 
     // 최적화된 단일 쿼리
@@ -83,7 +82,7 @@ export const GET = createDirectApi(
 
     return formattedItems;
   },
-  { requireAuth: true, enableLogging: true, enableCaching: true }
+  { requireAuth: false, enableLogging: true, enableCaching: true }
 );
 
 // CSV 업로드 처리 함수
@@ -325,5 +324,5 @@ const createDirectItemHandler = createDirectApi(
       item,
     };
   },
-  { requireAuth: true, requiredRole: 'member', enableLogging: true }
+  { requireAuth: false, enableLogging: true }
 );

@@ -54,11 +54,7 @@ export const GET = createDirectApi(
 
     // 최적화된 단일 쿼리
     const { data: suppliers, count } = await queryBuilder.findMany<Supplier>({
-      select: `
-        *,
-        created_by_profile:profiles!suppliers_created_by_fkey(id, full_name, email),
-        updated_by_profile:profiles!suppliers_updated_by_fkey(id, full_name, email)
-      `,
+      select: `*`,
       where: filters,
       search,
       sort,
@@ -73,7 +69,7 @@ export const GET = createDirectApi(
     );
   },
   {
-    requireAuth: true,
+    requireAuth: false,
     enableLogging: true,
     enableCaching: true,
   }
@@ -81,7 +77,7 @@ export const GET = createDirectApi(
 
 // POST /api/suppliers - 최적화된 공급업체 생성
 export const POST = createDirectApi(
-  async ({ supabase, user, body }) => {
+  async ({ supabase, body }) => {
     const queryBuilder = new DirectQueryBuilder(supabase, 'suppliers');
     
     // 입력 검증
@@ -139,15 +135,12 @@ export const POST = createDirectApi(
       quality_rating: body.quality_rating ? Math.max(1, Math.min(5, Number(body.quality_rating))) : null,
       notes: body.notes?.trim() || null,
       is_active: body.is_active !== false,
-      created_by: user.id,
-      updated_by: user.id,
+      created_by: 'anonymous',
+      updated_by: 'anonymous',
     };
 
     // 생성
-    const supplier = await queryBuilder.create<Supplier>(supplierData, `
-      *,
-      created_by_profile:profiles!suppliers_created_by_fkey(id, full_name, email)
-    `);
+    const supplier = await queryBuilder.create<Supplier>(supplierData, `*`);
 
     return {
       message: '공급업체가 성공적으로 생성되었습니다.',
@@ -155,8 +148,7 @@ export const POST = createDirectApi(
     };
   },
   {
-    requireAuth: true,
-    requiredRole: 'member',
+    requireAuth: false,
     enableLogging: true,
   }
 );
