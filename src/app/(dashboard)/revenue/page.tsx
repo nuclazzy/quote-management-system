@@ -64,8 +64,10 @@ export default function RevenueKanbanPage() {
         throw new Error('거래 데이터를 불러오는데 실패했습니다.');
       }
 
-      const data = await response.json();
-      const formattedTransactions: Transaction[] = data.transactions?.map((t: any) => ({
+      const result = await response.json();
+      const data = result.data || result; // API 응답 구조에 맞게 처리
+      const transactionData = data.transactions || [];
+      const formattedTransactions: Transaction[] = transactionData.map((t: any) => ({
         id: t.id,
         project_id: t.project_id,
         project_name: t.projects?.name || '알 수 없음',
@@ -78,8 +80,8 @@ export default function RevenueKanbanPage() {
         tax_invoice_status: t.tax_invoice_status,
         notes: t.notes,
         created_at: t.created_at,
-        updated_at: t.updated_at,
-      })) || [];
+        updated_at: t.updated_at || t.created_at,
+      }));
 
       setTransactions(formattedTransactions);
 

@@ -1,18 +1,4 @@
-import {
-  createDirectApi,
-  DirectQueryBuilder,
-} from '@/lib/api/direct-integration';
-import { z } from 'zod';
-
-const createTransactionSchema = z.object({
-  project_id: z.string().uuid(),
-  type: z.enum(['income', 'expense']),
-  partner_name: z.string().min(1),
-  item_name: z.string().min(1),
-  amount: z.number().positive(),
-  due_date: z.string().optional(),
-  notes: z.string().optional(),
-});
+import { NextRequest, NextResponse } from 'next/server';
 
 interface Transaction {
   id: string;
@@ -26,51 +12,84 @@ interface Transaction {
   tax_invoice_status: 'not_issued' | 'issued' | 'received';
   notes?: string;
   created_at: string;
-  created_by: string;
+  created_by?: string;
 }
 
-// GET /api/transactions - 최적화된 거래 목록 조회
-export const GET = createDirectApi(
-  async ({ supabase, searchParams }) => {
-    const queryBuilder = new DirectQueryBuilder(supabase, 'transactions');
+// Mock 데이터
+const MOCK_TRANSACTIONS: Transaction[] = [
+  {
+    id: '1',
+    project_id: 'proj-1',
+    type: 'income',
+    partner_name: '삼성전자',
+    item_name: '센서 개발 프로젝트',
+    amount: 50000000,
+    due_date: '2024-02-28',
+    status: 'completed',
+    tax_invoice_status: 'issued',
+    notes: '1차 계약금',
+    created_at: '2024-01-15T10:00:00Z',
+    created_by: 'static'
+  },
+  {
+    id: '2',
+    project_id: 'proj-1',
+    type: 'expense',
+    partner_name: 'ABC 부품상사',
+    item_name: '센서 부품 구매',
+    amount: 15000000,
+    due_date: '2024-02-15',
+    status: 'processing',
+    tax_invoice_status: 'received',
+    notes: '부품 대금',
+    created_at: '2024-01-20T14:30:00Z',
+    created_by: 'static'
+  },
+  {
+    id: '3',
+    project_id: 'proj-2',
+    type: 'income',
+    partner_name: 'LG전자',
+    item_name: '컨설팅 서비스',
+    amount: 30000000,
+    due_date: '2024-03-31',
+    status: 'pending',
+    tax_invoice_status: 'not_issued',
+    notes: '2차 프로젝트',
+    created_at: '2024-02-01T09:00:00Z',
+    created_by: 'static'
+  }
+];
+
+// GET /api/transactions - StaticAuth 거래 목록 조회
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
     
     // 필터링
-    const filters: Record<string, any> = {};
+    let transactions = [...MOCK_TRANSACTIONS];
     
     const projectId = searchParams.get('project_id');
     if (projectId) {
-      filters.project_id = projectId;
+      transactions = transactions.filter(t => t.project_id === projectId);
     }
     
     const status = searchParams.get('status');
     if (status && ['pending', 'processing', 'completed', 'issue'].includes(status)) {
-      filters.status = status;
+      transactions = transactions.filter(t => t.status === status as any);
     }
     
     const type = searchParams.get('type');
     if (type && ['income', 'expense'].includes(type)) {
-      filters.type = type;
+      transactions = transactions.filter(t => t.type === type as any);
     }
 
-    // 날짜 범위 필터는 별도 처리
+    // 날짜 범위 필터
     const dueDateFrom = searchParams.get('due_date_from');
     const dueDateTo = searchParams.get('due_date_to');
-
-    // 최적화된 단일 쿼리
-    const { data: transactions } = await queryBuilder.findMany<Transaction>({
-      select: `
-        *,
-        projects!inner(id, name, quotes!inner(customer_name_snapshot))
-      `,
-      where: filters,
-      sort: { field: 'created_at', direction: 'desc' },
-      pagination: { page: 1, limit: 1000 }, // 거래 내역은 많지 않을 것으로 예상
-    });
-
-    // 날짜 범위 필터링 (후처리)
-    let filteredTransactions = transactions;
+    
     if (dueDateFrom || dueDateTo) {
-      filteredTransactions = transactions.filter((transaction) => {
+      transactions = transactions.filter((transaction) => {
         if (!transaction.due_date) return false;
         const dueDate = new Date(transaction.due_date);
         if (dueDateFrom && dueDate < new Date(dueDateFrom)) return false;
@@ -79,66 +98,107 @@ export const GET = createDirectApi(
       });
     }
 
-    return { transactions: filteredTransactions };
-  },
-  { requireAuth: true, enableLogging: true, enableCaching: true }
-);
+    // 정렬 (최신순)
+    transactions.sort((a, b) => 
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
 
-// POST /api/transactions - 최적화된 거래 생성
-export const POST = createDirectApi(
-  async ({ supabase, user, body }) => {
-    const queryBuilder = new DirectQueryBuilder(supabase, 'transactions');
-    
-    // 스키마 검증
-    let validatedData;
-    try {
-      validatedData = createTransactionSchema.parse(body);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        throw new Error(`입력 데이터가 유효하지 않습니다: ${error.errors.map(e => e.message).join(', ')}`);
-      }
-      throw error;
-    }
-
-    // 프로젝트 존재 확인
-    const projectQuery = new DirectQueryBuilder(supabase, 'projects');
-    const project = await projectQuery.findOne(validatedData.project_id);
-    
-    if (!project) {
-      throw new Error('존재하지 않는 프로젝트입니다.');
-    }
-
-    // 거래 데이터 준비
-    const transactionData = {
-      ...validatedData,
-      status: 'pending' as const,
-      tax_invoice_status: 'not_issued' as const,
-      created_by: user.id,
-    };
-
-    // 거래 생성
-    const transaction = await queryBuilder.create<Transaction>(transactionData);
-
-    // 알림 생성 (비동기, 실패해도 거래 생성은 성공으로 처리)
-    const notificationQuery = new DirectQueryBuilder(supabase, 'notifications');
-    try {
-      await notificationQuery.create({
-        user_id: user.id,
-        message: `새로운 ${validatedData.type === 'income' ? '수입' : '지출'} 거래가 등록되었습니다: ${validatedData.item_name}`,
-        link_url: `/projects/${validatedData.project_id}`,
-        notification_type: 'general',
-        is_read: false,
-      });
-    } catch (notificationError) {
-      console.error('Notification creation error:', notificationError);
-      // 알림 생성 실패는 무시하고 계속 진행
-    }
-
-    return {
+    return NextResponse.json({
       success: true,
-      message: '거래가 성공적으로 등록되었습니다.',
-      transaction,
+      data: { transactions },
+      meta: {
+        total: transactions.length,
+        timestamp: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching transactions:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: { 
+          message: error instanceof Error ? error.message : '거래 목록 조회에 실패했습니다.' 
+        },
+        meta: { timestamp: new Date().toISOString() },
+      },
+      { status: 500 }
+    );
+  }
+}
+
+// POST /api/transactions - StaticAuth 거래 생성
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    
+    // 필수 필드 검증
+    if (!body.project_id || !body.type || !body.partner_name || !body.item_name || !body.amount) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { 
+            message: '필수 필드가 누락되었습니다.' 
+          },
+          meta: { timestamp: new Date().toISOString() },
+        },
+        { status: 400 }
+      );
+    }
+
+    // 타입 검증
+    if (!['income', 'expense'].includes(body.type)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: { 
+            message: '거래 유형이 올바르지 않습니다.' 
+          },
+          meta: { timestamp: new Date().toISOString() },
+        },
+        { status: 400 }
+      );
+    }
+
+    // 새 거래 생성
+    const newTransaction: Transaction = {
+      id: `t-${Date.now()}`,
+      project_id: body.project_id,
+      type: body.type,
+      partner_name: body.partner_name,
+      item_name: body.item_name,
+      amount: Number(body.amount),
+      due_date: body.due_date,
+      status: body.status || 'pending',
+      tax_invoice_status: body.tax_invoice_status || 'not_issued',
+      notes: body.notes,
+      created_at: new Date().toISOString(),
+      created_by: 'static',
     };
-  },
-  { requireAuth: true, requiredRole: 'member', enableLogging: true }
-);
+
+    // Mock 데이터에 추가 (실제로는 localStorage 또는 다른 저장소 사용)
+    MOCK_TRANSACTIONS.push(newTransaction);
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        message: '거래가 성공적으로 등록되었습니다.',
+        transaction: newTransaction,
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error('Error creating transaction:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: { 
+          message: error instanceof Error ? error.message : '거래 생성에 실패했습니다.' 
+        },
+        meta: { timestamp: new Date().toISOString() },
+      },
+      { status: 500 }
+    );
+  }
+}
