@@ -37,7 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!mounted) return;
         
         if (session?.user) {
-          // 프로필 데이터 가져오기 (에러 무시)
+          // 프로필 데이터 가져오기 (에러 시 기본값 사용)
           let profile = null;
           try {
             const { data } = await supabase
@@ -47,10 +47,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               .single();
             profile = data;
           } catch (profileError) {
-            // 에러 무시, 기본값 사용
+            console.warn('Profile fetch failed, using default profile');
+            // 프로필 조회 실패해도 기본 프로필로 계속 진행
           }
 
-          // 사용자 객체 생성
+          // 사용자 객체 생성 - 프로필 없어도 로그인 상태 유지
           const user = {
             ...session.user,
             profile: profile || {
@@ -59,8 +60,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               full_name:
                 session.user.user_metadata?.full_name ||
                 session.user.email!.split('@')[0],
-              role: profile?.role || 'member',
-              is_active: profile?.is_active ?? true,
+              role: 'member', // 기본 역할
+              is_active: true, // 기본 활성 상태
             },
           };
 
@@ -77,6 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           });
         }
       } catch (error) {
+        console.error('Auth initialization failed:', error);
         if (mounted) {
           setAuthState({
             user: null,
@@ -107,7 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!mounted) return;
       
       if (event === 'SIGNED_IN' && session?.user) {
-        // 프로필 데이터 가져오기
+        // 프로필 데이터 가져오기 (에러 시 기본값 사용)
         let profile = null;
         try {
           const { data } = await supabase
@@ -117,7 +119,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             .single();
           profile = data;
         } catch (profileError) {
-          // 에러 무시
+          console.warn('Profile fetch failed in auth state change');
         }
 
         const user = {
@@ -128,8 +130,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             full_name:
               session.user.user_metadata?.full_name ||
               session.user.email!.split('@')[0],
-            role: profile?.role || 'member',
-            is_active: profile?.is_active ?? true,
+            role: 'member', // 기본 역할
+            is_active: true, // 기본 활성 상태
           },
         };
 
