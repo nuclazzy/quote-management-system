@@ -16,6 +16,11 @@ import {
   People,
   TrendingUp,
   Add,
+  CheckCircle,
+  PendingActions,
+  Folder,
+  PersonAdd,
+  NotificationsActive,
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
@@ -124,7 +129,7 @@ export default function DashboardPage() {
               <Box>
                 <Typography variant="h6">{stats?.totalQuotes || 0}</Typography>
                 <Typography variant="body2" color="text.secondary">
-                  전체 견적서
+                  이번 달 견적서
                 </Typography>
               </Box>
             </Box>
@@ -150,6 +155,20 @@ export default function DashboardPage() {
         <Grid item xs={12} sm={6} md={3}>
           <Paper sx={{ p: 3 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <CheckCircle color="warning" />
+              <Box>
+                <Typography variant="h6">{stats?.acceptedQuotes || 0}</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  수주확정
+                </Typography>
+              </Box>
+            </Box>
+          </Paper>
+        </Grid>
+
+        <Grid item xs={12} sm={6} md={3}>
+          <Paper sx={{ p: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <People color="info" />
               <Box>
                 <Typography variant="h6">{stats?.activeCustomers || 0}</Typography>
@@ -164,11 +183,53 @@ export default function DashboardPage() {
         <Grid item xs={12} sm={6} md={3}>
           <Paper sx={{ p: 3 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Business color="warning" />
+              <PendingActions color="warning" />
+              <Box>
+                <Typography variant="h6">{stats?.pendingApproval || 0}</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  승인 대기
+                </Typography>
+              </Box>
+            </Box>
+          </Paper>
+        </Grid>
+
+        <Grid item xs={12} sm={6} md={3}>
+          <Paper sx={{ p: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Folder color="primary" />
               <Box>
                 <Typography variant="h6">{stats?.activeProjects || 0}</Typography>
                 <Typography variant="body2" color="text.secondary">
                   진행중 프로젝트
+                </Typography>
+              </Box>
+            </Box>
+          </Paper>
+        </Grid>
+
+        <Grid item xs={12} sm={6} md={3}>
+          <Paper sx={{ p: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <PersonAdd color="success" />
+              <Box>
+                <Typography variant="h6">{stats?.newCustomers || 0}</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  신규 고객
+                </Typography>
+              </Box>
+            </Box>
+          </Paper>
+        </Grid>
+
+        <Grid item xs={12} sm={6} md={3}>
+          <Paper sx={{ p: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <NotificationsActive color="error" />
+              <Box>
+                <Typography variant="h6">{stats?.unreadNotifications || 0}</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  읽지 않은 알림
                 </Typography>
               </Box>
             </Box>
