@@ -76,7 +76,7 @@ export default function LoginPage() {
               gutterBottom
               color='primary'
             >
-              🔥 견적서 관리 시스템 v2024
+              견적서 관리 시스템
             </Typography>
 
             <Typography variant='body1' color='text.secondary' sx={{ mb: 4 }}>
