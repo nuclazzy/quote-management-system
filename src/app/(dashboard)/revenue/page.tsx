@@ -19,6 +19,7 @@ import { createBrowserClient } from '@/lib/supabase/client';
 import LoadingState from '@/components/common/LoadingState';
 import ErrorAlert from '@/components/common/ErrorAlert';
 import KanbanBoard, { Transaction } from '@/components/revenue/KanbanBoard';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface RevenueStats {
   totalIncome: number;
@@ -33,6 +34,7 @@ type ViewMode = 'kanban' | 'dashboard';
 
 export default function RevenueKanbanPage() {
   const router = useRouter();
+  const { isAdmin } = useAuth();
   const [viewMode, setViewMode] = useState<ViewMode>('kanban');
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [stats, setStats] = useState<RevenueStats | null>(null);
@@ -40,6 +42,15 @@ export default function RevenueKanbanPage() {
   const [error, setError] = useState<string | null>(null);
 
   const supabase = createBrowserClient();
+  
+  // 관리자 권한 체크
+  if (!isAdmin) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity='error'>관리자 권한이 필요합니다.</Alert>
+      </Box>
+    );
+  }
 
   // 거래 데이터 가져오기
   const fetchTransactions = async () => {

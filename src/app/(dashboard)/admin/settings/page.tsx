@@ -49,7 +49,7 @@ interface CompanySettings {
 }
 
 export default function AdminSettingsPage() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [snackbar, setSnackbar] = useState({
@@ -79,13 +79,14 @@ export default function AdminSettingsPage() {
   });
 
   useEffect(() => {
-    if (user?.profile?.role === 'admin') {
+    // StaticAuthContext에서는 isAdmin을 직접 체크
+    if (isAdmin) {
       fetchCompanySettings();
     }
-  }, [user?.profile?.role]);
-
+  }, [isAdmin]);
+  
   // Check if current user is admin
-  if (user?.profile?.role !== 'admin') {
+  if (!isAdmin) {
     return (
       <Box sx={{ p: 3 }}>
         <Alert severity='error'>관리자 권한이 필요합니다.</Alert>
