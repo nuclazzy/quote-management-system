@@ -123,7 +123,7 @@ export class AuthService {
   }
 
   /**
-   * 현재 사용자 정보 가져오기
+   * 현재 사용자 정보 가져오기 (프로필 DB 의존성 제거)
    */
   static async getCurrentUser(): Promise<AuthUser | null> {
     const {
@@ -135,25 +135,24 @@ export class AuthService {
       return null;
     }
 
-    // 서버 측 도메인 체크 (보안 강화)
+    // 도메인 체크
     if (!user.email?.endsWith('@motionsense.co.kr')) {
-      secureLog.authEvent('domain_violation', {
-        email: user.email,
-        userId: user.id,
-      });
-      
       await this.signOut();
       throw new Error(
         '접근이 제한된 도메인입니다. @motionsense.co.kr 계정을 사용해주세요.'
       );
     }
 
-    // 프로필 정보 가져오기
-    const profile = await this.getProfile(user.id);
-
+    // 세션 정보만으로 사용자 객체 생성
     return {
       ...user,
-      profile,
+      profile: {
+        id: user.id,
+        email: user.email,
+        full_name: user.user_metadata?.full_name || user.user_metadata?.name || user.email.split('@')[0],
+        role: user.email === 'lewis@motionsense.co.kr' ? 'super_admin' : 'member',
+        is_active: true,
+      },
     };
   }
 

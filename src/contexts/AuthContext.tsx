@@ -37,31 +37,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!mounted) return;
         
         if (session?.user) {
-          // 프로필 데이터 가져오기 (에러 시 기본값 사용)
-          let profile = null;
-          try {
-            const { data } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', session.user.id)
-              .single();
-            profile = data;
-          } catch (profileError) {
-            console.warn('Profile fetch failed, using default profile');
-            // 프로필 조회 실패해도 기본 프로필로 계속 진행
-          }
-
-          // 사용자 객체 생성 - 프로필 없어도 로그인 상태 유지
+          // 프로필 데이터 사용하지 않고 세션 정보만 사용
           const user = {
             ...session.user,
-            profile: profile || {
+            profile: {
               id: session.user.id,
               email: session.user.email!,
               full_name:
                 session.user.user_metadata?.full_name ||
+                session.user.user_metadata?.name ||
                 session.user.email!.split('@')[0],
-              role: 'member', // 기본 역할
-              is_active: true, // 기본 활성 상태
+              role: session.user.email === 'lewis@motionsense.co.kr' ? 'super_admin' : 'member',
+              is_active: true,
             },
           };
 
@@ -109,29 +96,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!mounted) return;
       
       if (event === 'SIGNED_IN' && session?.user) {
-        // 프로필 데이터 가져오기 (에러 시 기본값 사용)
-        let profile = null;
-        try {
-          const { data } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
-          profile = data;
-        } catch (profileError) {
-          console.warn('Profile fetch failed in auth state change');
-        }
-
+        // 프로필 데이터 사용하지 않고 세션 정보만 사용
         const user = {
           ...session.user,
-          profile: profile || {
+          profile: {
             id: session.user.id,
             email: session.user.email!,
             full_name:
               session.user.user_metadata?.full_name ||
+              session.user.user_metadata?.name ||
               session.user.email!.split('@')[0],
-            role: 'member', // 기본 역할
-            is_active: true, // 기본 활성 상태
+            role: session.user.email === 'lewis@motionsense.co.kr' ? 'super_admin' : 'member',
+            is_active: true,
           },
         };
 
