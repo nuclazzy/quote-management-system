@@ -107,36 +107,47 @@ export class BrowserPDFGenerator {
     <style>
         @media print {
             @page {
-                margin: 20mm;
+                margin: 15mm;
                 size: A4;
             }
             body {
                 margin: 0;
                 padding: 0;
                 font-family: 'Malgun Gothic', sans-serif;
-                font-size: 12px;
-                line-height: 1.4;
+                font-size: 11px;
+                line-height: 1.3;
                 color: #333;
+            }
+            .page-container {
+                height: 100vh;
+                display: flex;
+                flex-direction: column;
             }
         }
         
         body {
             font-family: 'Malgun Gothic', sans-serif;
-            font-size: 12px;
-            line-height: 1.4;
+            font-size: 11px;
+            line-height: 1.3;
             color: #333;
             max-width: 800px;
             margin: 0 auto;
-            padding: 20px;
+            padding: 15px;
+        }
+        
+        .page-container {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
         
         .header {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
             border-bottom: 2px solid #333;
-            padding-bottom: 20px;
+            padding-bottom: 15px;
         }
         
         .logo-container {
@@ -146,86 +157,87 @@ export class BrowserPDFGenerator {
         }
         
         .logo-container img {
-            max-height: 60px;
-            max-width: 200px;
+            max-height: 50px;
+            max-width: 180px;
             object-fit: contain;
             border: 1px solid #e0e0e0;
             border-radius: 4px;
         }
         
         .logo-placeholder {
-            width: 150px;
-            height: 60px;
+            width: 120px;
+            height: 50px;
             border: 2px dashed #ccc;
             display: flex;
             align-items: center;
             justify-content: center;
             color: #999;
-            font-size: 10px;
+            font-size: 9px;
             border-radius: 4px;
         }
         
         .company-info {
             text-align: right;
-            font-size: 11px;
+            font-size: 10px;
             flex: 1;
+            line-height: 1.2;
         }
         
         .company-name {
-            font-size: 14px;
+            font-size: 12px;
             font-weight: bold;
-            margin-bottom: 5px;
+            margin-bottom: 3px;
             color: #2c3e50;
         }
         
         .quote-title {
             text-align: center;
-            font-size: 24px;
+            font-size: 20px;
             font-weight: bold;
-            margin: 20px 0;
+            margin: 15px 0;
         }
         
         .quote-meta {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 20px;
-            font-size: 11px;
+            margin-bottom: 15px;
+            font-size: 10px;
         }
         
         .customer-info {
-            margin-bottom: 20px;
-            padding: 15px;
+            margin-bottom: 15px;
+            padding: 10px;
             background-color: #f8f9fa;
             border-radius: 5px;
         }
         
         .customer-info h3 {
-            margin: 0 0 10px 0;
-            font-size: 14px;
+            margin: 0 0 5px 0;
+            font-size: 11px;
             font-weight: bold;
         }
         
         .quote-info {
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
         
         .quote-info h3 {
-            margin: 0 0 10px 0;
-            font-size: 14px;
+            margin: 0 0 5px 0;
+            font-size: 11px;
             font-weight: bold;
         }
         
         .items-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 20px;
-            font-size: 11px;
+            margin-bottom: 15px;
+            font-size: 10px;
         }
         
         .items-table th,
         .items-table td {
             border: 1px solid #ddd;
-            padding: 8px;
+            padding: 5px;
             text-align: left;
         }
         
@@ -234,6 +246,7 @@ export class BrowserPDFGenerator {
             color: white;
             font-weight: bold;
             text-align: center;
+            padding: 6px;
         }
         
         .items-table .group-header {
@@ -247,7 +260,7 @@ export class BrowserPDFGenerator {
         
         .items-table .detail-row {
             background-color: #fafafa;
-            font-size: 10px;
+            font-size: 9px;
         }
         
         .number {
@@ -260,45 +273,52 @@ export class BrowserPDFGenerator {
         
         .total-section {
             float: right;
-            width: 300px;
-            margin-top: 20px;
+            width: 250px;
+            margin-top: 10px;
         }
         
         .total-row {
             display: flex;
             justify-content: space-between;
-            padding: 5px 0;
+            padding: 3px 0;
             border-bottom: 1px solid #eee;
         }
         
         .total-row.final {
             font-weight: bold;
-            font-size: 14px;
+            font-size: 12px;
             border-bottom: 2px solid #333;
-            padding-top: 10px;
+            padding-top: 5px;
         }
         
         .terms-section {
             clear: both;
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 1px solid #eee;
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #f9f9f9;
         }
         
         .terms-section h4 {
-            margin: 0 0 10px 0;
-            font-size: 12px;
+            margin: 0 0 5px 0;
+            font-size: 10px;
             font-weight: bold;
         }
         
         .terms-content {
-            font-size: 10px;
-            line-height: 1.5;
+            font-size: 9px;
+            line-height: 1.4;
             white-space: pre-wrap;
+        }
+        
+        .content-main {
+            flex: 1;
         }
     </style>
 </head>
 <body>
+<div class="page-container">
     <div class="header">
         <div class="logo-container">
             ${this.companyInfo.logo_url 
@@ -316,6 +336,7 @@ export class BrowserPDFGenerator {
         </div>
     </div>
     
+    <div class="content-main">
     <div class="quote-title">견 적 서</div>
     
     <div class="quote-meta">
@@ -413,31 +434,17 @@ export class BrowserPDFGenerator {
       quote.terms || this.companyInfo.default_terms || quote.notes
         ? `
     <div class="terms-section">
-        ${
-          quote.terms || this.companyInfo.default_terms
-            ? `
-        <div>
-            <h4>조건 및 기타사항:</h4>
-            <div class="terms-content">${quote.terms || this.companyInfo.default_terms || ''}</div>
-        </div>
-        `
-            : ''
-        }
-        
-        ${
+        <h4>조건 및 특이사항</h4>
+        <div class="terms-content">${[
+          quote.terms || this.companyInfo.default_terms,
           quote.notes
-            ? `
-        <div style="margin-top: 15px;">
-            <h4>비고:</h4>
-            <div class="terms-content">${quote.notes}</div>
-        </div>
-        `
-            : ''
-        }
+        ].filter(Boolean).join('\n\n')}</div>
     </div>
     `
         : ''
     }
+    </div>
+</div>
 </body>
 </html>
     `;
