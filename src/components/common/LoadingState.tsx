@@ -45,6 +45,11 @@ export function LoadingState({
           {message}
         </Typography>
       )}
+      {/* 하이드레이션 디버깅 */}
+      <Typography variant='caption' color='error' sx={{ mt: 1 }}>
+        🔧 LOADING: {typeof window !== 'undefined' ? 'Client ✅' : 'Server ❌'} 
+        {' '}{new Date().toLocaleTimeString()}
+      </Typography>
     </Box>
   );
 }

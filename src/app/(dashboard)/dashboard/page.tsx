@@ -98,6 +98,11 @@ export default function DashboardPage() {
         <Typography variant="body1" color="text.secondary">
           인증 확인 중...
         </Typography>
+        {/* 하이드레이션 디버깅 */}
+        <Typography variant="caption" color="error" sx={{ mt: 2 }}>
+          🔧 DASHBOARD: {typeof window !== 'undefined' ? 'Client Hydrated ✅' : 'Server Render ❌'} 
+          {' '}{new Date().toLocaleTimeString()}
+        </Typography>
       </Box>
     );
   }

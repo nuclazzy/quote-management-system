@@ -16,6 +16,11 @@ import {
 import { Login as LoginIcon } from '@mui/icons-material';
 
 export default function HomePage() {
+  // 하이드레이션 디버깅을 위한 HTML 메타데이터
+  if (typeof document !== 'undefined') {
+    document.title = 'DEBUG: Client Side Loaded - ' + new Date().toLocaleTimeString();
+  }
+  
   console.log('📍 HOME PAGE LOADED at:', new Date().toISOString());
   
   const { user, loading } = useAuth();
@@ -54,6 +59,11 @@ export default function HomePage() {
           </Typography>
           <Typography variant='h6' color='text.secondary' paragraph>
             Motion Sense 견적서 관리 시스템에 오신 것을 환영합니다
+          </Typography>
+          {/* 하이드레이션 디버깅 */}
+          <Typography variant='caption' color='error' sx={{ display: 'block', mt: 2 }}>
+            🔧 DEBUG: {typeof window !== 'undefined' ? 'Client Hydrated ✅' : 'Server Render ❌'} 
+            {' '}{new Date().toLocaleTimeString()}
           </Typography>
         </Box>
 
