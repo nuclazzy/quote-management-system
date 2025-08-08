@@ -11,7 +11,15 @@ declare global {
   }
 }
 
+// 싱글톤 인스턴스를 위한 변수
+let supabaseInstance: ReturnType<typeof createSupabaseClient<Database>> | null = null;
+
 export const createClient = () => {
+  // 이미 인스턴스가 있으면 재사용
+  if (supabaseInstance) {
+    return supabaseInstance;
+  }
+
   const debugLog = (message: string, details?: any, status: 'success' | 'error' | 'warning' | 'loading' = 'loading') => {
     const logData = {
       id: `supabase-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -58,6 +66,9 @@ export const createClient = () => {
         autoRefreshToken: true,
         persistSession: true,
         detectSessionInUrl: true,
+        storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+        storageKey: 'motionsense-auth',
+        // Cloudflare 프록시 환경에서는 쿠키 대신 localStorage 사용
       },
     });
 
@@ -67,6 +78,9 @@ export const createClient = () => {
       fromExists: !!client?.from
     }, 'success');
 
+    // 싱글톤 인스턴스 저장
+    supabaseInstance = client;
+    
     return client;
   } catch (error) {
     debugLog('Supabase 클라이언트 생성 실패', { 
@@ -77,7 +91,10 @@ export const createClient = () => {
   }
 };
 
-// export const supabase = createClient(); // Removed to prevent build-time execution
+// 브라우저 환경에서만 싱글톤 인스턴스 생성
+if (typeof window !== 'undefined') {
+  supabaseInstance = createClient();
+}
 
 // 레거시 호환성을 위한 alias
 export const createBrowserClient = createClient;
