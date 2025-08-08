@@ -27,6 +27,7 @@ import {
   Analytics,
   Settings,
   AdminPanelSettings,
+  Logout as LogoutIcon,
 } from '@mui/icons-material';
 import { useRouter, usePathname } from 'next/navigation';
 import { useStaticAuth } from '@/contexts/StaticAuthContext';
@@ -68,7 +69,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const router = useRouter();
   const pathname = usePathname();
-  const { user, isAdmin } = useStaticAuth();
+  const { user, isAdmin, adminLogout } = useStaticAuth();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -79,6 +80,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     if (isMobile) {
       setMobileOpen(false);
     }
+  };
+
+  const handleAdminLogout = () => {
+    adminLogout();
+    router.push('/dashboard');
   };
 
 
@@ -134,24 +140,34 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </Typography>
 
           {isAdmin && (
-            <Box
-              sx={{
-                px: 2,
-                py: 0.5,
-                mr: 2,
-                borderRadius: 1,
-                bgcolor: 'warning.main',
-                color: 'warning.contrastText',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1,
-              }}
-            >
-              <AdminPanelSettings fontSize="small" />
-              <Typography variant="body2" fontWeight="bold">
-                관리자 모드
-              </Typography>
-            </Box>
+            <>
+              <Box
+                sx={{
+                  px: 2,
+                  py: 0.5,
+                  mr: 2,
+                  borderRadius: 1,
+                  bgcolor: 'warning.main',
+                  color: 'warning.contrastText',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                }}
+              >
+                <AdminPanelSettings fontSize="small" />
+                <Typography variant="body2" fontWeight="bold">
+                  관리자 모드
+                </Typography>
+              </Box>
+              <IconButton
+                color="inherit"
+                onClick={handleAdminLogout}
+                sx={{ mr: 2 }}
+                title="관리자 로그아웃"
+              >
+                <LogoutIcon />
+              </IconButton>
+            </>
           )}
 
           <ThemeToggle />

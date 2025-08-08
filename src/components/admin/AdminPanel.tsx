@@ -15,11 +15,12 @@ import {
   AdminPanelSettings as AdminIcon,
   Settings as SettingsIcon,
   Storage as DatabaseIcon,
+  Logout as LogoutIcon,
 } from '@mui/icons-material';
 import { useStaticAuth } from '@/contexts/StaticAuthContext';
 
 export function AdminPanel() {
-  const { isAdmin } = useStaticAuth();
+  const { isAdmin, adminLogout } = useStaticAuth();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
 
@@ -33,20 +34,36 @@ export function AdminPanel() {
     return null;
   }
 
+  const handleLogout = () => {
+    adminLogout();
+    router.push('/dashboard');
+  };
+
   return (
     <Card sx={{ mb: 4, border: '2px solid #ff9800' }}>
       <CardContent>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-          <AdminIcon color="warning" />
-          <Typography variant="h6" color="warning.main">
-            관리자 모드
-          </Typography>
-          <Chip 
-            label="ADMIN" 
-            color="warning" 
-            size="small" 
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <AdminIcon color="warning" />
+            <Typography variant="h6" color="warning.main">
+              관리자 모드
+            </Typography>
+            <Chip 
+              label="ADMIN" 
+              color="warning" 
+              size="small" 
+              variant="outlined"
+            />
+          </Box>
+          <Button
             variant="outlined"
-          />
+            color="warning"
+            size="small"
+            startIcon={<LogoutIcon />}
+            onClick={handleLogout}
+          >
+            로그아웃
+          </Button>
         </Box>
 
         <Alert severity="info" sx={{ mb: 3 }}>
