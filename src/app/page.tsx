@@ -16,13 +16,26 @@ import {
 import { Login as LoginIcon } from '@mui/icons-material';
 
 export default function HomePage() {
+  console.log('📍 HOME PAGE LOADED at:', new Date().toISOString());
+  
   const { user, loading } = useAuth();
   const router = useRouter();
+  
+  console.log('📍 HOME PAGE Auth State:', { 
+    hasUser: !!user, 
+    loading, 
+    userEmail: user?.email 
+  });
 
   // 인증된 사용자는 대시보드로 리다이렉트
   useEffect(() => {
+    console.log('📍 HOME PAGE useEffect:', { hasUser: !!user, loading });
+    
     if (!loading && user) {
+      console.log('📍 HOME PAGE - Redirecting to dashboard');
       router.push('/dashboard');
+    } else if (!loading && !user) {
+      console.log('📍 HOME PAGE - No user, staying on home');
     }
   }, [user, loading, router]);
 
