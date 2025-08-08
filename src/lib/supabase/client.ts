@@ -18,15 +18,13 @@ export const createClient = () => {
     throw new Error('Supabase configuration error: Please check environment variables');
   }
 
-  // Supabase 클라이언트 생성 - localStorage 명시적 사용
+  // Supabase 클라이언트 생성
   const client = createSupabaseClient<Database>(supabaseUrl, supabaseKey, {
     auth: {
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: true,
       storageKey: 'sb-motionsense-auth-token',
-      storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-      flowType: 'pkce', // PKCE flow for better security
     },
   });
 

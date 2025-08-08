@@ -11,55 +11,29 @@ export class AuthService {
    */
   static async signInWithGoogle() {
     try {
-      // 현재 호스트 확인
-      let siteUrl: string;
-      
-      if (typeof window !== 'undefined') {
-        // 클라이언트 사이드에서는 현재 URL 사용
-        const hostname = window.location.hostname;
-        
-        // Cloudflare 프록시 도메인 처리
-        if (hostname === 'quote.motionsense.co.kr') {
-          siteUrl = 'https://quote.motionsense.co.kr';
-        } else if (hostname.includes('vercel.app')) {
-          siteUrl = window.location.origin;
-        } else if (hostname === 'localhost') {
-          siteUrl = window.location.origin;
-        } else {
-          siteUrl = 'https://motionsense-quote-system.vercel.app';
-        }
-      } else {
-        // 서버 사이드
-        siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://motionsense-quote-system.vercel.app';
-      }
+      // 현재 URL 기반으로 redirect URL 결정
+      const siteUrl = typeof window !== 'undefined' 
+        ? window.location.origin
+        : process.env.NEXT_PUBLIC_SITE_URL || 'https://motionsense-quote-system.vercel.app';
       
       const redirectTo = `${siteUrl}/auth/callback`;
-      
-      console.log('Google OAuth redirect URL:', redirectTo);
-      console.log('Current hostname:', typeof window !== 'undefined' ? window.location.hostname : 'server');
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo,
           queryParams: {
-            hd: 'motionsense.co.kr', // Google Workspace 도메인 제한
-            access_type: 'offline',
-            prompt: 'consent',
+            hd: 'motionsense.co.kr',
           },
-          skipBrowserRedirect: false,
         },
       });
 
       if (error) {
-        console.error('Google OAuth error:', error);
         throw new Error(`Google 로그인 오류: ${error.message}`);
       }
 
-      console.log('Google OAuth initiated:', data);
       return data;
     } catch (error) {
-      console.error('signInWithGoogle failed:', error);
       throw error;
     }
   }
