@@ -42,6 +42,13 @@ export default function DashboardPage() {
     loadDashboardData();
   }, []);
 
+  // isAdmin 변경 감지
+  useEffect(() => {
+    if (hydrated) {
+      console.log('Dashboard - Admin state changed:', isAdmin);
+    }
+  }, [isAdmin, hydrated]);
+
   const loadDashboardData = async () => {
     try {
       setLoading(true);
@@ -158,7 +165,8 @@ export default function DashboardPage() {
           대시보드
         </Typography>
         
-        {!isAdmin && (
+        {/* 하이드레이션 후에만 관리자 버튼 표시 */}
+        {hydrated && !isAdmin && (
           <Button
             variant="outlined"
             color="warning"
