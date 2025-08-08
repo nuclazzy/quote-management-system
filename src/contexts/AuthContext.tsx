@@ -1,11 +1,21 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { AuthService } from '@/lib/auth/auth-service';
 import { AuthContextType, AuthState, ProfileUpdate } from '@/types/auth';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// 전역 Supabase 클라이언트 (싱글톤)
+let supabaseClient: ReturnType<typeof createClient> | null = null;
+
+function getSupabaseClient() {
+  if (!supabaseClient) {
+    supabaseClient = createClient();
+  }
+  return supabaseClient;
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [authState, setAuthState] = useState<AuthState>({
@@ -15,100 +25,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   });
 
   useEffect(() => {
-    const initializeAuth = async () => {
-      console.log('AuthContext: Initializing...');
-      
-      try {
-        // Supabase 클라이언트 생성
-        const supabase = createClient();
-        
-        // 세션 가져오기 (타임아웃 포함)
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Session timeout')), 5000)
-        );
-        
-        const sessionPromise = supabase.auth.getSession();
-        
-        try {
-          const result = await Promise.race([sessionPromise, timeoutPromise]);
-          const session = (result as any).data?.session;
-          
-          if (session?.user) {
-            console.log('AuthContext: Session found, fetching profile...');
-            
-            // 프로필 데이터 가져오기 (에러 무시)
-            let profile = null;
-            try {
-              const { data } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', session.user.id)
-                .single();
-              profile = data;
-            } catch (profileError) {
-              console.warn('Profile fetch failed, using defaults');
-            }
-
-            // 사용자 객체 생성
-            const user = {
-              ...session.user,
-              profile: profile || {
-                id: session.user.id,
-                email: session.user.email!,
-                full_name:
-                  session.user.user_metadata?.full_name ||
-                  session.user.email!.split('@')[0],
-                role: profile?.role || 'member',
-                is_active: profile?.is_active ?? true,
-              },
-            };
-
-            console.log('AuthContext: User authenticated');
-            setAuthState({
-              user,
-              loading: false,
-              initialized: true,
-            });
-          } else {
-            console.log('AuthContext: No session found');
-            setAuthState({
-              user: null,
-              loading: false,
-              initialized: true,
-            });
-          }
-        } catch (timeoutError) {
-          console.error('AuthContext: Session timeout, proceeding without auth');
-          setAuthState({
-            user: null,
-            loading: false,
-            initialized: true,
-          });
-        }
-      } catch (error) {
-        console.error('AuthContext: Fatal error during initialization:', error);
-        // 에러가 있어도 초기화는 완료로 처리
-        setAuthState({
-          user: null,
-          loading: false,
-          initialized: true,
-        });
-      }
-    };
-
-    // 즉시 실행
-    initializeAuth();
-
-    // Auth state 구독 (별도로 처리)
-    let subscription: any = null;
+    let mounted = true;
     
-    try {
-      const supabase = createClient();
-      const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
-        console.log('AuthContext: Auth state changed:', event);
+    const initializeAuth = async () => {
+      try {
+        const supabase = getSupabaseClient();
         
-        if (event === 'SIGNED_IN' && session?.user) {
-          // 프로필 데이터 가져오기
+        // 세션 가져오기
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Session error:', error);
+        }
+        
+        if (!mounted) return;
+        
+        if (session?.user) {
+          // 프로필 데이터 가져오기 (에러 무시)
           let profile = null;
           try {
             const { data } = await supabase
@@ -118,9 +51,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               .single();
             profile = data;
           } catch (profileError) {
-            console.warn('Profile fetch failed in state change');
+            console.warn('Profile fetch failed, using defaults');
           }
 
+          // 사용자 객체 생성
           const user = {
             ...session.user,
             profile: profile || {
@@ -139,24 +73,93 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             loading: false,
             initialized: true,
           });
-        } else if (event === 'SIGNED_OUT') {
+        } else {
           setAuthState({
             user: null,
             loading: false,
             initialized: true,
           });
         }
-      });
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+        
+        if (mounted) {
+          setAuthState({
+            user: null,
+            loading: false,
+            initialized: true,
+          });
+        }
+      }
+    };
+
+    // 타임아웃 설정
+    const timeout = setTimeout(() => {
+      if (mounted && authState.loading) {
+        console.warn('Auth initialization timeout');
+        setAuthState({
+          user: null,
+          loading: false,
+          initialized: true,
+        });
+      }
+    }, 10000);
+
+    // 즉시 실행
+    initializeAuth();
+
+    // Auth state 구독
+    const supabase = getSupabaseClient();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return;
       
-      subscription = data?.subscription;
-    } catch (subscriptionError) {
-      console.error('AuthContext: Subscription setup failed:', subscriptionError);
-    }
+      if (event === 'SIGNED_IN' && session?.user) {
+        // 프로필 데이터 가져오기
+        let profile = null;
+        try {
+          const { data } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+          profile = data;
+        } catch (profileError) {
+          console.warn('Profile fetch failed in state change');
+        }
+
+        const user = {
+          ...session.user,
+          profile: profile || {
+            id: session.user.id,
+            email: session.user.email!,
+            full_name:
+              session.user.user_metadata?.full_name ||
+              session.user.email!.split('@')[0],
+            role: profile?.role || 'member',
+            is_active: profile?.is_active ?? true,
+          },
+        };
+
+        setAuthState({
+          user,
+          loading: false,
+          initialized: true,
+        });
+      } else if (event === 'SIGNED_OUT') {
+        setAuthState({
+          user: null,
+          loading: false,
+          initialized: true,
+        });
+      } else if (event === 'TOKEN_REFRESHED') {
+        console.log('Token refreshed');
+      }
+    });
 
     return () => {
-      if (subscription?.unsubscribe) {
-        subscription.unsubscribe();
-      }
+      mounted = false;
+      clearTimeout(timeout);
+      subscription?.unsubscribe();
     };
   }, []);
 
@@ -202,12 +205,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const value: AuthContextType = {
-    ...authState,
-    signIn,
-    signOut,
-    updateProfile,
-  };
+  const value = useMemo(
+    () => ({
+      ...authState,
+      signIn,
+      signOut,
+      updateProfile,
+    }),
+    [authState]
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
