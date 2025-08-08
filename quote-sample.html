@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>견적서 샘플 - QUO-2024-001</title>
+    <style>
+        @media print {
+            @page {
+                margin: 20mm;
+                size: A4;
+            }
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: 'Malgun Gothic', sans-serif;
+                font-size: 12px;
+                line-height: 1.4;
+                color: #333;
+            }
+        }
+        
+        body {
+            font-family: 'Malgun Gothic', sans-serif;
+            font-size: 12px;
+            line-height: 1.4;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #333;
+            padding-bottom: 20px;
+        }
+        
+        .logo-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+        }
+        
+        .logo-container img {
+            max-height: 60px;
+            max-width: 200px;
+            object-fit: contain;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+        }
+        
+        .logo-placeholder {
+            width: 150px;
+            height: 60px;
+            border: 2px dashed #ccc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            font-size: 10px;
+            border-radius: 4px;
+        }
+        
+        .company-info {
+            text-align: right;
+            font-size: 11px;
+            flex: 1;
+        }
+        
+        .company-name {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #2c3e50;
+        }
+        
+        .quote-title {
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            margin: 20px 0;
+            color: #2c3e50;
+        }
+        
+        .quote-meta {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            font-size: 11px;
+        }
+        
+        .customer-info {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            border-left: 4px solid #4a90e2;
+        }
+        
+        .customer-info h3 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .quote-info {
+            margin-bottom: 20px;
+        }
+        
+        .quote-info h3 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            font-size: 11px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .items-table th,
+        .items-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        
+        .items-table th {
+            background-color: #4a90e2;
+            color: white;
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        .items-table .group-header {
+            background-color: #f0f0f0;
+            font-weight: bold;
+        }
+        
+        .items-table .item-row {
+            background-color: white;
+        }
+        
+        .items-table .detail-row {
+            background-color: #fafafa;
+            font-size: 10px;
+        }
+        
+        .number {
+            text-align: right;
+        }
+        
+        .center {
+            text-align: center;
+        }
+        
+        .total-section {
+            float: right;
+            width: 300px;
+            margin-top: 20px;
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .total-row.final {
+            font-weight: bold;
+            font-size: 14px;
+            border-bottom: 2px solid #333;
+            padding-top: 10px;
+            color: #2c3e50;
+        }
+        
+        .terms-section {
+            clear: both;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        
+        .terms-section h4 {
+            margin: 0 0 10px 0;
+            font-size: 12px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .terms-content {
+            font-size: 10px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #e9ecef;
+        }
+
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 10px;
+            color: #666;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo-container">
+            <!-- 로고가 있을 때: <img src="company-logo.png" alt="모션센스 로고"> -->
+            <!-- 로고가 없을 때: -->
+            <div class="logo-placeholder">로고 영역</div>
+        </div>
+        <div class="company-info">
+            <div class="company-name">모션센스 기술</div>
+            <div><strong>주소:</strong> 서울특별시 강남구 테헤란로 123, 456호</div>
+            <div><strong>전화:</strong> 02-1234-5678</div>
+            <div><strong>이메일:</strong> info@motionsense.co.kr</div>
+            <div><strong>웹사이트:</strong> www.motionsense.co.kr</div>
+            <div><strong>사업자등록번호:</strong> 123-45-67890</div>
+        </div>
+    </div>
+    
+    <div class="quote-title">견 적 서</div>
+    
+    <div class="quote-meta">
+        <div>견적서 번호: QUO-2024-001</div>
+        <div>작성일: 2024년 8월 8일</div>
+        <div>유효기한: 2024년 8월 22일</div>
+    </div>
+    
+    <div class="customer-info">
+        <h3>🏢 고객 정보</h3>
+        <div>회사명: ㈜테크솔루션</div>
+        <div>담당자: 김대리</div>
+        <div>연락처: 02-9876-5432</div>
+        <div>이메일: kim@techsolution.co.kr</div>
+    </div>
+    
+    <div class="quote-info">
+        <h3>📋 견적 제목: IoT 센서 시스템 구축</h3>
+        <div>스마트 빌딩을 위한 IoT 센서 네트워크 및 모니터링 시스템 구축 프로젝트</div>
+    </div>
+    
+    <table class="items-table">
+        <thead>
+            <tr>
+                <th>항목</th>
+                <th>수량</th>
+                <th>단가</th>
+                <th>금액</th>
+                <th>공급업체</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- 그룹 1: 하드웨어 -->
+            <tr class="group-header">
+                <td colspan="5">1. 하드웨어</td>
+            </tr>
+            <tr class="item-row">
+                <td>• IoT 온도/습도 센서</td>
+                <td class="center">10</td>
+                <td class="number">₩50,000</td>
+                <td class="number">₩500,000</td>
+                <td class="center">센서텍</td>
+            </tr>
+            <tr class="detail-row">
+                <td>&nbsp;&nbsp;&nbsp;&nbsp;- 고정밀 센서 모듈</td>
+                <td class="center">10</td>
+                <td class="number">₩35,000</td>
+                <td class="number">₩350,000</td>
+                <td class="center"></td>
+            </tr>
+            <tr class="detail-row">
+                <td>&nbsp;&nbsp;&nbsp;&nbsp;- 무선 통신 모듈</td>
+                <td class="center">10</td>
+                <td class="number">₩15,000</td>
+                <td class="number">₩150,000</td>
+                <td class="center"></td>
+            </tr>
+            <tr class="item-row">
+                <td>• 게이트웨이 장비</td>
+                <td class="center">2</td>
+                <td class="number">₩300,000</td>
+                <td class="number">₩600,000</td>
+                <td class="center">네트워크솔</td>
+            </tr>
+            
+            <tr><td colspan="5"></td></tr>
+            
+            <!-- 그룹 2: 소프트웨어 -->
+            <tr class="group-header">
+                <td colspan="5">2. 소프트웨어</td>
+            </tr>
+            <tr class="item-row">
+                <td>• 모니터링 시스템 개발</td>
+                <td class="center">1</td>
+                <td class="number">₩2,000,000</td>
+                <td class="number">₩2,000,000</td>
+                <td class="center">모션센스</td>
+            </tr>
+            <tr class="detail-row">
+                <td>&nbsp;&nbsp;&nbsp;&nbsp;- 웹 대시보드</td>
+                <td class="center">1</td>
+                <td class="number">₩1,200,000</td>
+                <td class="number">₩1,200,000</td>
+                <td class="center"></td>
+            </tr>
+            <tr class="detail-row">
+                <td>&nbsp;&nbsp;&nbsp;&nbsp;- 모바일 앱</td>
+                <td class="center">1</td>
+                <td class="number">₩800,000</td>
+                <td class="number">₩800,000</td>
+                <td class="center"></td>
+            </tr>
+            
+            <tr><td colspan="5"></td></tr>
+            
+            <!-- 그룹 3: 설치 및 서비스 -->
+            <tr class="group-header">
+                <td colspan="5">3. 설치 및 서비스</td>
+            </tr>
+            <tr class="item-row">
+                <td>• 현장 설치 및 설정</td>
+                <td class="center">1</td>
+                <td class="number">₩500,000</td>
+                <td class="number">₩500,000</td>
+                <td class="center">모션센스</td>
+            </tr>
+            <tr class="item-row">
+                <td>• 시스템 교육 및 매뉴얼</td>
+                <td class="center">1</td>
+                <td class="number">₩300,000</td>
+                <td class="number">₩300,000</td>
+                <td class="center">모션센스</td>
+            </tr>
+        </tbody>
+    </table>
+    
+    <div class="total-section">
+        <div class="total-row">
+            <span>소계:</span>
+            <span>₩3,900,000</span>
+        </div>
+        <div class="total-row">
+            <span>부가세 (10%):</span>
+            <span>₩390,000</span>
+        </div>
+        <div class="total-row final">
+            <span>총액:</span>
+            <span>₩4,290,000</span>
+        </div>
+    </div>
+    
+    <div class="terms-section">
+        <div>
+            <h4>📋 조건 및 기타사항</h4>
+            <div class="terms-content">1. 견적 유효기간: 견적서 발행일로부터 14일
+2. 결제 조건: 계약금 30%, 잔금 70% (완료 후 지급)
+3. 납기: 계약 체결 후 4주 이내
+4. 보증기간: 설치 완료 후 1년
+5. A/S 및 유지보수는 별도 계약 필요
+6. 부가세 별도
+7. 현장 상황에 따라 추가 작업이 발생할 수 있습니다.</div>
+        </div>
+        
+        <div style="margin-top: 15px;">
+            <h4>📝 특이사항</h4>
+            <div class="terms-content">- 고객사 네트워크 환경에 따른 추가 설정이 필요할 수 있습니다.
+- 센서 설치 위치는 현장 조사 후 최종 확정됩니다.
+- 교육은 최대 5명까지 제공됩니다.</div>
+        </div>
+    </div>
+
+    <div class="footer">
+        본 견적서는 모션센스 기술에서 제공하는 공식 견적서입니다.<br>
+        문의사항이 있으시면 언제든지 연락해 주세요.
+    </div>
+</body>
+</html>

@@ -44,24 +44,8 @@ interface CompanySettings {
   email: string;
   website: string;
   tax_number: string;
-  bank_info: {
-    bank_name?: string;
-    account_number?: string;
-    account_holder?: string;
-    swift_code?: string;
-  };
   default_terms: string;
   default_payment_terms: number;
-  settings: {
-    currency: string;
-    date_format: string;
-    number_format: string;
-    timezone: string;
-    auto_backup: boolean;
-    email_notifications: boolean;
-    quote_expiry_days: number;
-    max_file_size_mb: number;
-  };
 }
 
 export default function AdminSettingsPage() {
@@ -89,24 +73,8 @@ export default function AdminSettingsPage() {
       email: '',
       website: '',
       tax_number: '',
-      bank_info: {
-        bank_name: '',
-        account_number: '',
-        account_holder: '',
-        swift_code: '',
-      },
       default_terms: '',
       default_payment_terms: 30,
-      settings: {
-        currency: 'KRW',
-        date_format: 'YYYY-MM-DD',
-        number_format: 'ko-KR',
-        timezone: 'Asia/Seoul',
-        auto_backup: true,
-        email_notifications: true,
-        quote_expiry_days: 30,
-        max_file_size_mb: 10,
-      },
     },
   });
 
@@ -231,27 +199,6 @@ export default function AdminSettingsPage() {
     }
   };
 
-  const currencyOptions = [
-    { value: 'KRW', label: '한국 원 (₩)' },
-    { value: 'USD', label: '미국 달러 ($)' },
-    { value: 'EUR', label: '유로 (€)' },
-    { value: 'JPY', label: '일본 엔 (¥)' },
-  ];
-
-  const dateFormatOptions = [
-    { value: 'YYYY-MM-DD', label: '2024-01-01' },
-    { value: 'DD/MM/YYYY', label: '01/01/2024' },
-    { value: 'MM/DD/YYYY', label: '01/01/2024' },
-    { value: 'DD-MM-YYYY', label: '01-01-2024' },
-  ];
-
-  const timezoneOptions = [
-    { value: 'Asia/Seoul', label: '서울 (UTC+9)' },
-    { value: 'Asia/Tokyo', label: '도쿄 (UTC+9)' },
-    { value: 'America/New_York', label: '뉴욕 (UTC-5)' },
-    { value: 'Europe/London', label: '런던 (UTC+0)' },
-    { value: 'UTC', label: 'UTC (UTC+0)' },
-  ];
 
   if (loading) {
     return <Box sx={{ p: 3 }}>로딩 중...</Box>;
@@ -408,61 +355,6 @@ export default function AdminSettingsPage() {
             </Card>
           </Grid>
 
-          {/* 은행 정보 */}
-          <Grid item xs={12}>
-            <Card>
-              <CardHeader
-                avatar={<Payment />}
-                title='은행 정보'
-                subheader='결제 및 정산 관련 은행 정보를 설정합니다'
-              />
-              <CardContent>
-                <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6}>
-                    <Controller
-                      name='bank_info.bank_name'
-                      control={control}
-                      render={({ field }) => (
-                        <TextField {...field} fullWidth label='은행명' />
-                      )}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <Controller
-                      name='bank_info.account_holder'
-                      control={control}
-                      render={({ field }) => (
-                        <TextField {...field} fullWidth label='예금주' />
-                      )}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <Controller
-                      name='bank_info.account_number'
-                      control={control}
-                      render={({ field }) => (
-                        <TextField {...field} fullWidth label='계좌번호' />
-                      )}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <Controller
-                      name='bank_info.swift_code'
-                      control={control}
-                      render={({ field }) => (
-                        <TextField
-                          {...field}
-                          fullWidth
-                          label='SWIFT 코드'
-                          helperText='국제 송금 시 필요'
-                        />
-                      )}
-                    />
-                  </Grid>
-                </Grid>
-              </CardContent>
-            </Card>
-          </Grid>
 
           {/* 기본 약관 및 결제 조건 */}
           <Grid item xs={12}>
@@ -515,142 +407,6 @@ export default function AdminSettingsPage() {
             </Card>
           </Grid>
 
-          {/* 시스템 설정 */}
-          <Grid item xs={12}>
-            <Card>
-              <CardHeader
-                avatar={<Security />}
-                title='시스템 설정'
-                subheader='시스템 동작과 관련된 설정을 관리합니다'
-              />
-              <CardContent>
-                <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6}>
-                    <Controller
-                      name='settings.currency'
-                      control={control}
-                      render={({ field }) => (
-                        <FormControl fullWidth>
-                          <InputLabel>기본 통화</InputLabel>
-                          <Select {...field} label='기본 통화'>
-                            {currencyOptions.map((option) => (
-                              <MenuItem key={option.value} value={option.value}>
-                                {option.label}
-                              </MenuItem>
-                            ))}
-                          </Select>
-                        </FormControl>
-                      )}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <Controller
-                      name='settings.timezone'
-                      control={control}
-                      render={({ field }) => (
-                        <FormControl fullWidth>
-                          <InputLabel>시간대</InputLabel>
-                          <Select {...field} label='시간대'>
-                            {timezoneOptions.map((option) => (
-                              <MenuItem key={option.value} value={option.value}>
-                                {option.label}
-                              </MenuItem>
-                            ))}
-                          </Select>
-                        </FormControl>
-                      )}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <Controller
-                      name='settings.date_format'
-                      control={control}
-                      render={({ field }) => (
-                        <FormControl fullWidth>
-                          <InputLabel>날짜 형식</InputLabel>
-                          <Select {...field} label='날짜 형식'>
-                            {dateFormatOptions.map((option) => (
-                              <MenuItem key={option.value} value={option.value}>
-                                {option.label}
-                              </MenuItem>
-                            ))}
-                          </Select>
-                        </FormControl>
-                      )}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <Controller
-                      name='settings.quote_expiry_days'
-                      control={control}
-                      render={({ field }) => (
-                        <TextField
-                          {...field}
-                          fullWidth
-                          label='견적서 유효기간'
-                          type='number'
-                          InputProps={{
-                            endAdornment: (
-                              <InputAdornment position='end'>일</InputAdornment>
-                            ),
-                          }}
-                        />
-                      )}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <Controller
-                      name='settings.max_file_size_mb'
-                      control={control}
-                      render={({ field }) => (
-                        <TextField
-                          {...field}
-                          fullWidth
-                          label='최대 파일 크기'
-                          type='number'
-                          InputProps={{
-                            endAdornment: (
-                              <InputAdornment position='end'>MB</InputAdornment>
-                            ),
-                          }}
-                        />
-                      )}
-                    />
-                  </Grid>
-                  <Grid item xs={12}>
-                    <Box
-                      sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}
-                    >
-                      <Controller
-                        name='settings.auto_backup'
-                        control={control}
-                        render={({ field }) => (
-                          <FormControlLabel
-                            control={
-                              <Switch {...field} checked={field.value} />
-                            }
-                            label='자동 백업 활성화'
-                          />
-                        )}
-                      />
-                      <Controller
-                        name='settings.email_notifications'
-                        control={control}
-                        render={({ field }) => (
-                          <FormControlLabel
-                            control={
-                              <Switch {...field} checked={field.value} />
-                            }
-                            label='이메일 알림 활성화'
-                          />
-                        )}
-                      />
-                    </Box>
-                  </Grid>
-                </Grid>
-              </CardContent>
-            </Card>
-          </Grid>
         </Grid>
       </form>
 

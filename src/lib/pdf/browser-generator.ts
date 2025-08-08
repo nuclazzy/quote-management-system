@@ -67,7 +67,7 @@ export interface CompanyInfo {
   email?: string;
   website?: string;
   tax_number?: string;
-  bank_info?: any;
+  default_terms?: string;
 }
 
 export class BrowserPDFGenerator {
@@ -139,15 +139,43 @@ export class BrowserPDFGenerator {
             padding-bottom: 20px;
         }
         
+        .logo-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+        }
+        
+        .logo-container img {
+            max-height: 60px;
+            max-width: 200px;
+            object-fit: contain;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+        }
+        
+        .logo-placeholder {
+            width: 150px;
+            height: 60px;
+            border: 2px dashed #ccc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            font-size: 10px;
+            border-radius: 4px;
+        }
+        
         .company-info {
             text-align: right;
             font-size: 11px;
+            flex: 1;
         }
         
         .company-name {
             font-size: 14px;
             font-weight: bold;
             margin-bottom: 5px;
+            color: #2c3e50;
         }
         
         .quote-title {
@@ -272,14 +300,19 @@ export class BrowserPDFGenerator {
 </head>
 <body>
     <div class="header">
-        <div class="logo">
-            ${this.companyInfo.logo_url ? `<img src="${this.companyInfo.logo_url}" alt="로고" style="max-height: 50px;">` : ''}
+        <div class="logo-container">
+            ${this.companyInfo.logo_url 
+              ? `<img src="${this.companyInfo.logo_url}" alt="${this.companyInfo.name} 로고">` 
+              : `<div class="logo-placeholder">로고 영역</div>`
+            }
         </div>
         <div class="company-info">
             <div class="company-name">${this.companyInfo.name}</div>
-            ${this.companyInfo.address ? `<div>${this.companyInfo.address}</div>` : ''}
-            ${this.companyInfo.phone ? `<div>Tel: ${this.companyInfo.phone}</div>` : ''}
-            ${this.companyInfo.email ? `<div>Email: ${this.companyInfo.email}</div>` : ''}
+            ${this.companyInfo.address ? `<div><strong>주소:</strong> ${this.companyInfo.address}</div>` : ''}
+            ${this.companyInfo.phone ? `<div><strong>전화:</strong> ${this.companyInfo.phone}</div>` : ''}
+            ${this.companyInfo.email ? `<div><strong>이메일:</strong> ${this.companyInfo.email}</div>` : ''}
+            ${this.companyInfo.website ? `<div><strong>웹사이트:</strong> ${this.companyInfo.website}</div>` : ''}
+            ${this.companyInfo.tax_number ? `<div><strong>사업자등록번호:</strong> ${this.companyInfo.tax_number}</div>` : ''}
         </div>
     </div>
     
@@ -377,15 +410,15 @@ export class BrowserPDFGenerator {
     </div>
     
     ${
-      quote.terms || quote.notes
+      quote.terms || this.companyInfo.default_terms || quote.notes
         ? `
     <div class="terms-section">
         ${
-          quote.terms
+          quote.terms || this.companyInfo.default_terms
             ? `
         <div>
             <h4>조건 및 기타사항:</h4>
-            <div class="terms-content">${quote.terms}</div>
+            <div class="terms-content">${quote.terms || this.companyInfo.default_terms || ''}</div>
         </div>
         `
             : ''

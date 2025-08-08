@@ -79,7 +79,7 @@ export async function GET(
           email: company.email,
           website: company.website,
           tax_number: company.tax_number,
-          bank_info: company.bank_info,
+          default_terms: company.default_terms,
         };
 
         const generator = new BrowserPDFGenerator(companyInfo);
@@ -178,7 +178,7 @@ export async function POST(
           email: company.email,
           website: company.website,
           tax_number: company.tax_number,
-          bank_info: company.bank_info,
+          default_terms: company.default_terms,
         };
 
         const generator = new BrowserPDFGenerator(companyInfo);

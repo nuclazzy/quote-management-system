@@ -29,14 +29,13 @@ import {
   Inventory,
   Analytics,
   Settings,
-  Logout,
+  Person,
   AccountCircle,
   AdminPanelSettings,
-  ManageAccounts,
   Notifications,
 } from '@mui/icons-material';
 import { useRouter, usePathname } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
+import { useStaticAuth } from '@/contexts/StaticAuthContext';
 import ThemeToggle from '@/components/common/ThemeToggle';
 
 const drawerWidth = 240;
@@ -57,12 +56,6 @@ const navItems: NavItem[] = [
   { text: '프로젝트', icon: <Analytics />, path: '/projects' },
   { text: '정산 관리', icon: <Analytics />, path: '/revenue', adminOnly: true },
   {
-    text: '사용자 관리',
-    icon: <ManageAccounts />,
-    path: '/admin/users',
-    adminOnly: true,
-  },
-  {
     text: '시스템 설정',
     icon: <Settings />,
     path: '/admin/settings',
@@ -82,7 +75,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const router = useRouter();
   const pathname = usePathname();
-  const { user, signOut } = useAuth();
+  const { user, isAdmin } = useStaticAuth();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -96,11 +89,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     setAnchorEl(null);
   };
 
-  const handleSignOut = async () => {
-    handleUserMenuClose();
-    await signOut();
-    router.push('/auth/login');
-  };
+  // 로그아웃 기능 제거 - 정적 인증 시스템 사용
 
   const handleNavigation = (path: string) => {
     router.push(path);
@@ -109,7 +98,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     }
   };
 
-  const isAdmin = user?.profile?.role === 'admin';
 
   const drawer = (
     <div>
@@ -205,11 +193,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               </Typography>
             </MenuItem>
             <Divider />
-            <MenuItem onClick={handleSignOut}>
+            <MenuItem disabled>
               <ListItemIcon>
-                <Logout fontSize='small' />
+                <Person fontSize='small' />
               </ListItemIcon>
-              로그아웃
+              {isAdmin ? '관리자 모드' : '일반 사용자'}
             </MenuItem>
           </Menu>
         </Toolbar>

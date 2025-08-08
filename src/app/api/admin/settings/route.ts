@@ -12,10 +12,8 @@ interface Company {
   email?: string;
   website?: string;
   tax_number?: string;
-  bank_info: any;
   default_terms?: string;
   default_payment_terms: number;
-  settings: any;
   created_at: string;
   updated_at: string;
 }
@@ -39,25 +37,7 @@ export const GET = createDirectApi(
       throw new Error('회사 설정을 찾을 수 없습니다.');
     }
 
-    // 기본 설정값
-    const defaultSettings = {
-      currency: 'KRW',
-      date_format: 'YYYY-MM-DD',
-      number_format: 'ko-KR',
-      timezone: 'Asia/Seoul',
-      auto_backup: true,
-      email_notifications: true,
-      quote_expiry_days: 30,
-      max_file_size_mb: 10,
-    };
-
-    const formattedCompany = {
-      ...company,
-      bank_info: company.bank_info || {},
-      settings: { ...defaultSettings, ...(company.settings || {}) },
-    };
-
-    return formattedCompany;
+    return company;
   },
   { requireAuth: true, requiredRole: 'admin', enableLogging: true }
 );
@@ -73,10 +53,8 @@ export const PUT = createDirectApi(
       email,
       website,
       tax_number,
-      bank_info,
       default_terms,
       default_payment_terms,
-      settings,
     } = body;
 
     // 필수 필드 검증
@@ -102,10 +80,8 @@ export const PUT = createDirectApi(
       email: email || null,
       website: website || null,
       tax_number: tax_number || null,
-      bank_info: bank_info || {},
       default_terms: default_terms || null,
       default_payment_terms: Number(default_payment_terms) || 30,
-      settings: settings || {},
     });
 
     return {
