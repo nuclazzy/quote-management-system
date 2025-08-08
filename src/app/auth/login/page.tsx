@@ -13,11 +13,11 @@ import {
   Container,
 } from '@mui/material';
 import { Google as GoogleIcon } from '@mui/icons-material';
-import { useAuth } from '@/contexts/AuthContext';
+import { useSimpleAuth } from '@/contexts/SimpleAuthContext';
 import { LoadingState } from '@/components/common/LoadingState';
 
 export default function LoginPage() {
-  const { user, loading, signIn } = useAuth();
+  const { user, loading, signIn } = useSimpleAuth();
   const router = useRouter();
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [error, setError] = useState<string | null>(null);

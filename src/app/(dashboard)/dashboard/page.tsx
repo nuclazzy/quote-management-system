@@ -18,7 +18,7 @@ import {
   Add,
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
+import { useSimpleAuth } from '@/contexts/SimpleAuthContext';
 import { DashboardService } from '@/lib/services/dashboard-service';
 import { DashboardStats } from '@/types/dashboard';
 
@@ -26,7 +26,7 @@ const dashboardService = new DashboardService();
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading } = useSimpleAuth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

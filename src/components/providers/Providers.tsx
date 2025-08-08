@@ -3,7 +3,7 @@
 import React from 'react';
 import CssBaseline from '@mui/material/CssBaseline';
 import { AppRouterCacheProvider } from '@mui/material-nextjs/v14-appRouter';
-import { AuthProvider } from '@/contexts/AuthContext';
+import { SimpleAuthProvider } from '@/contexts/SimpleAuthContext';
 import { CustomThemeProvider } from '@/contexts/ThemeContext';
 import WebVitals from '@/components/analytics/WebVitals';
 import GlobalErrorBoundary from '@/components/common/GlobalErrorBoundary';
@@ -18,10 +18,10 @@ export function Providers({ children }: ProvidersProps) {
       <CustomThemeProvider>
         <CssBaseline />
         <GlobalErrorBoundary>
-          <AuthProvider>
+          <SimpleAuthProvider>
             <WebVitals />
             {children}
-          </AuthProvider>
+          </SimpleAuthProvider>
         </GlobalErrorBoundary>
       </CustomThemeProvider>
     </AppRouterCacheProvider>
