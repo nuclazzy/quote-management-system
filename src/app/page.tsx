@@ -50,7 +50,7 @@ export default function HomePage() {
       <Container maxWidth='md' sx={{ py: 8 }}>
         <Box sx={{ textAlign: 'center', mb: 6 }}>
           <Typography variant='h2' component='h1' gutterBottom>
-            견적서 관리 시스템
+            🔥 견적서 관리 시스템 v2024
           </Typography>
           <Typography variant='h6' color='text.secondary' paragraph>
             Motion Sense 견적서 관리 시스템에 오신 것을 환영합니다
