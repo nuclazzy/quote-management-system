@@ -36,17 +36,11 @@ export default function HomePage() {
     userEmail: user?.email 
   });
 
-  // 하이드레이션 후 인증 상태 확인
+  // 하이드레이션 후 바로 대시보드로 이동
   useEffect(() => {
-    if (hydrated && !loading) {
-      console.log('📍 HOME PAGE useEffect:', { hasUser: !!user, loading, hydrated });
-      
-      if (user) {
-        console.log('📍 HOME PAGE - Redirecting to dashboard');
-        router.push('/dashboard');
-      } else {
-        console.log('📍 HOME PAGE - No user, staying on home');
-      }
+    if (hydrated && !loading && user) {
+      console.log('📍 HOME PAGE - Auto redirecting to dashboard (no auth required)');
+      router.push('/dashboard');
     }
   }, [user, loading, router, hydrated]);
 
@@ -68,18 +62,19 @@ export default function HomePage() {
             견적서 관리 시스템
           </Typography>
           <Typography variant='h6' color='text.secondary' paragraph>
-            Motion Sense 견적서 관리 시스템에 오신 것을 환영합니다
+            누구나 사용할 수 있는 견적서 관리 시스템
           </Typography>
-          {/* 하이드레이션 디버깅 */}
-          <Typography 
-            variant='caption' 
-            color='error' 
-            sx={{ display: 'block', mt: 2 }} 
-            suppressHydrationWarning
-          >
-            🔧 DEBUG: {hydrated ? 'Client Hydrated ✅' : 'Server Render ❌'} 
-            {hydrated && ` ${new Date().toLocaleTimeString()}`}
-          </Typography>
+          {/* 개발모드 디버깅 (배포시 제거) */}
+          {process.env.NODE_ENV === 'development' && (
+            <Typography 
+              variant='caption' 
+              color='text.secondary' 
+              sx={{ display: 'block', mt: 2 }} 
+              suppressHydrationWarning
+            >
+              개발 모드: {hydrated ? '클라이언트 로드 완료' : '서버 렌더링'}
+            </Typography>
+          )}
         </Box>
 
         <Card sx={{ maxWidth: 600, mx: 'auto', mb: 4 }}>
@@ -104,13 +99,13 @@ export default function HomePage() {
             variant='contained'
             size='large'
             startIcon={<LoginIcon />}
-            onClick={() => router.push('/auth/login')}
+            onClick={() => router.push('/dashboard')}
             sx={{ px: 4, py: 1.5 }}
           >
-            로그인하여 시작하기
+            시작하기
           </Button>
           <Typography variant='body2' color='text.secondary' sx={{ mt: 2 }}>
-            @motionsense.co.kr 계정으로만 접근 가능합니다
+            누구나 자유롭게 이용하실 수 있습니다
           </Typography>
         </Box>
       </Container>

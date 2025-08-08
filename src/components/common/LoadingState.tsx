@@ -51,16 +51,17 @@ export function LoadingState({
           {message}
         </Typography>
       )}
-      {/* 하이드레이션 디버깅 */}
-      <Typography 
-        variant='caption' 
-        color='error' 
-        sx={{ mt: 1 }} 
-        suppressHydrationWarning
-      >
-        🔧 LOADING: {hydrated ? 'Client ✅' : 'Server ❌'} 
-        {hydrated && ` ${new Date().toLocaleTimeString()}`}
-      </Typography>
+      {/* 개발모드 디버깅 */}
+      {process.env.NODE_ENV === 'development' && (
+        <Typography 
+          variant='caption' 
+          color='text.secondary' 
+          sx={{ mt: 1 }} 
+          suppressHydrationWarning
+        >
+          {hydrated ? '로딩 완료' : '초기화중'}
+        </Typography>
+      )}
     </Box>
   );
 }

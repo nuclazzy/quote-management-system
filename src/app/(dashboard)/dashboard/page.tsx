@@ -18,19 +18,22 @@ import {
   Add,
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
-import { useSimpleAuth } from '@/contexts/SimpleAuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { DashboardService } from '@/lib/services/dashboard-service';
 import { DashboardStats } from '@/types/dashboard';
+import { AdminPanel } from '@/components/admin/AdminPanel';
+import { AdminLogin } from '@/components/admin/AdminLogin';
 
 const dashboardService = new DashboardService();
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user, loading: authLoading } = useSimpleAuth();
+  const { user, loading: authLoading, isAdmin } = useAuth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  const [adminLoginOpen, setAdminLoginOpen] = useState(false);
 
   useEffect(() => {
     setHydrated(true);
@@ -46,15 +49,10 @@ export default function DashboardPage() {
         hydrated
       });
       
-      // 인증 체크
-      if (!authLoading) {
-        if (!user) {
-          console.log('Dashboard DEBUG - Redirecting to login (no user)');
-          router.push('/auth/login');
-        } else {
-          console.log('Dashboard DEBUG - User authenticated, loading data');
-          loadDashboardData();
-        }
+      // NoAuth - 항상 허용
+      if (!authLoading && user) {
+        console.log('Dashboard DEBUG - User ready, loading data');
+        loadDashboardData();
       }
     }
   }, [user, authLoading, router, hydrated]);
@@ -122,7 +120,7 @@ export default function DashboardPage() {
     );
   }
 
-  // 로그인되지 않은 경우 (이미 리다이렉트 중)
+  // NoAuth 환경에서는 사용자가 없을 수 없음
   if (!user) {
     return (
       <div suppressHydrationWarning>
@@ -136,7 +134,7 @@ export default function DashboardPage() {
         }}>
           <CircularProgress size={48} />
           <Typography variant="body1" color="text.secondary">
-            로그인 페이지로 이동 중...
+            사용자 정보 로딩 중...
           </Typography>
         </Box>
       </div>
@@ -177,9 +175,30 @@ export default function DashboardPage() {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>
-        대시보드
-      </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h4">
+          대시보드
+        </Typography>
+        
+        {!isAdmin && (
+          <Button
+            variant="outlined"
+            color="warning"
+            onClick={() => setAdminLoginOpen(true)}
+          >
+            관리자 로그인
+          </Button>
+        )}
+      </Box>
+
+      {/* 관리자 패널 */}
+      <AdminPanel />
+
+      {/* 관리자 로그인 다이얼로그 */}
+      <AdminLogin 
+        open={adminLoginOpen}
+        onClose={() => setAdminLoginOpen(false)}
+      />
 
       {/* 에러 메시지 표시 */}
       {error && (
