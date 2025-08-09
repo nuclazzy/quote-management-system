@@ -10,11 +10,17 @@ import {
   Box,
   Chip,
   Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Snackbar,
 } from '@mui/material';
 import {
   AdminPanelSettings as AdminIcon,
   Settings as SettingsIcon,
-  Storage as DatabaseIcon,
+  Lock as PasswordIcon,
   Logout as LogoutIcon,
 } from '@mui/icons-material';
 import { useStaticAuth } from '@/contexts/StaticAuthContext';
@@ -23,6 +29,12 @@ export function AdminPanel() {
   const { isAdmin, adminLogout } = useStaticAuth();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
 
   // 클라이언트 사이드에서만 렌더링
   useEffect(() => {
@@ -37,6 +49,53 @@ export function AdminPanel() {
   const handleLogout = () => {
     adminLogout();
     router.push('/dashboard');
+  };
+
+  const handlePasswordChange = () => {
+    // 입력값 검증
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setSnackbarMessage('모든 필드를 입력해주세요.');
+      setSnackbarOpen(true);
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setSnackbarMessage('새 비밀번호가 일치하지 않습니다.');
+      setSnackbarOpen(true);
+      return;
+    }
+
+    if (newPassword.length < 4) {
+      setSnackbarMessage('새 비밀번호는 최소 4자리 이상이어야 합니다.');
+      setSnackbarOpen(true);
+      return;
+    }
+
+    // 현재 비밀번호 확인 (StaticAuth에서는 'admin')
+    if (currentPassword !== 'admin') {
+      setSnackbarMessage('현재 비밀번호가 일치하지 않습니다.');
+      setSnackbarOpen(true);
+      return;
+    }
+
+    // localStorage에 새 비밀번호 저장
+    localStorage.setItem('motionsense_admin_password', newPassword);
+    
+    setSnackbarMessage('비밀번호가 성공적으로 변경되었습니다.');
+    setSnackbarOpen(true);
+    setPasswordDialogOpen(false);
+    
+    // 입력 필드 초기화
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+  };
+
+  const handlePasswordDialogClose = () => {
+    setPasswordDialogOpen(false);
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
   };
 
   return (
@@ -82,14 +141,71 @@ export function AdminPanel() {
           
           <Button
             variant="outlined"
-            startIcon={<DatabaseIcon />}
+            startIcon={<PasswordIcon />}
             color="warning"
-            onClick={() => alert('데이터베이스 관리 (구현 예정)')}
+            onClick={() => setPasswordDialogOpen(true)}
           >
-            데이터베이스 관리
+            비밀번호 변경
           </Button>
 
         </Box>
+
+        {/* 비밀번호 변경 다이얼로그 */}
+        <Dialog
+          open={passwordDialogOpen}
+          onClose={handlePasswordDialogClose}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle>관리자 비밀번호 변경</DialogTitle>
+          <DialogContent>
+            <TextField
+              fullWidth
+              label="현재 비밀번호"
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              margin="normal"
+            />
+            <TextField
+              fullWidth
+              label="새 비밀번호"
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              margin="normal"
+            />
+            <TextField
+              fullWidth
+              label="새 비밀번호 확인"
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              margin="normal"
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handlePasswordDialogClose}>취소</Button>
+            <Button onClick={handlePasswordChange} variant="contained">
+              변경
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* 스낵바 */}
+        <Snackbar
+          open={snackbarOpen}
+          autoHideDuration={3000}
+          onClose={() => setSnackbarOpen(false)}
+        >
+          <Alert
+            onClose={() => setSnackbarOpen(false)}
+            severity="success"
+            sx={{ width: '100%' }}
+          >
+            {snackbarMessage}
+          </Alert>
+        </Snackbar>
       </CardContent>
     </Card>
   );
