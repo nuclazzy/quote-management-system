@@ -34,7 +34,7 @@ type ViewMode = 'kanban' | 'dashboard';
 
 export default function RevenueKanbanPage() {
   const router = useRouter();
-  const { isAdmin } = useStaticAuth();
+  const { isAdmin, isHydrated } = useStaticAuth();
   const [viewMode, setViewMode] = useState<ViewMode>('kanban');
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [stats, setStats] = useState<RevenueStats | null>(null);
@@ -42,15 +42,6 @@ export default function RevenueKanbanPage() {
   const [error, setError] = useState<string | null>(null);
 
   const supabase = createBrowserClient();
-  
-  // 관리자 권한 체크
-  if (!isAdmin) {
-    return (
-      <Box sx={{ p: 3 }}>
-        <Alert severity='error'>관리자 권한이 필요합니다.</Alert>
-      </Box>
-    );
-  }
 
   // 거래 데이터 가져오기
   const fetchTransactions = async () => {
@@ -219,10 +210,38 @@ export default function RevenueKanbanPage() {
   };
 
   useEffect(() => {
-    fetchTransactions();
-  }, []);
+    // Hydration 완료 후에만 권한 체크 및 데이터 로딩
+    if (!isHydrated) {
+      console.log('[Revenue] Waiting for hydration to complete...');
+      return;
+    }
 
-  if (loading) return <LoadingState />;
+    if (isAdmin) {
+      console.log('[Revenue] Admin access granted, fetching transactions');
+      fetchTransactions();
+    } else {
+      console.log('[Revenue] Admin access required, redirecting to dashboard');
+      // 비관리자 접근 시 즉시 리디렉션
+      router.replace('/dashboard');
+    }
+  }, [isHydrated, isAdmin, router]);
+
+  // Hydration 완료 전에는 항상 로딩 상태 표시
+  if (!isHydrated) {
+    console.log('[Revenue] Hydration not completed, showing loading state');
+    return <LoadingState />;
+  }
+
+  // Hydration 완료 후 관리자가 아닌 경우 로딩 상태 유지 (리디렉션 처리 중)
+  if (!isAdmin) {
+    console.log('[Revenue] Non-admin user detected, showing loading while redirecting');
+    return <LoadingState />;
+  }
+
+  // 데이터 로딩 중에는 로딩 상태 표시
+  if (loading) {
+    return <LoadingState />;
+  }
 
   return (
     <Box>

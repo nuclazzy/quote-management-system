@@ -69,7 +69,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const router = useRouter();
   const pathname = usePathname();
-  const { user, isAdmin, adminLogout } = useStaticAuth();
+  const { user, isAdmin, isHydrated, adminLogout } = useStaticAuth();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -98,7 +98,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       <Divider />
       <List>
         {navItems
-          .filter((item) => !item.adminOnly || isAdmin)
+          .filter((item) => !item.adminOnly || (isHydrated && isAdmin))
           .map((item) => (
             <ListItem key={item.text} disablePadding>
               <ListItemButton
@@ -139,7 +139,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               '견적서 관리 시스템'}
           </Typography>
 
-          {isAdmin && (
+          {isHydrated && isAdmin && (
             <>
               <Box
                 sx={{
