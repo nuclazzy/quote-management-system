@@ -36,8 +36,8 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     
-    // 필터링
-    let clients = [...MOCK_CLIENTS];
+    // 필터링 - 빈 데이터로 초기화
+    let clients = [];
     
     const isActive = searchParams.get('is_active');
     if (isActive !== null) {
