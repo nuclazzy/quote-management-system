@@ -122,6 +122,11 @@ export class ClientService extends BaseService {
   // 클라이언트 생성
   async createClient(formData: ClientFormData): Promise<ServiceResponse<Client>> {
     try {
+      // StaticAuth 모드에서는 클라이언트 생성 비활성화
+      if (typeof window !== 'undefined') {
+        return { error: 'StaticAuth 모드에서는 클라이언트 생성이 지원되지 않습니다.' };
+      }
+
       const user = await this.getUser();
       await this.getUserProfile(user.id);
 
@@ -184,6 +189,11 @@ export class ClientService extends BaseService {
   // 클라이언트 수정
   async updateClient(id: string, formData: ClientFormData): Promise<ServiceResponse<Client>> {
     try {
+      // StaticAuth 모드에서는 클라이언트 수정 비활성화
+      if (typeof window !== 'undefined') {
+        return { error: 'StaticAuth 모드에서는 클라이언트 수정이 지원되지 않습니다.' };
+      }
+
       const user = await this.getUser();
 
       // 필수 필드 검증
@@ -247,6 +257,11 @@ export class ClientService extends BaseService {
   // 클라이언트 삭제
   async deleteClient(id: string): Promise<ServiceResponse<any>> {
     try {
+      // StaticAuth 모드에서는 클라이언트 삭제 비활성화
+      if (typeof window !== 'undefined') {
+        return { error: 'StaticAuth 모드에서는 클라이언트 삭제가 지원되지 않습니다.' };
+      }
+
       const user = await this.getUser();
       const profile = await this.getUserProfile(user.id);
 
@@ -316,6 +331,24 @@ export class ClientService extends BaseService {
   // 모든 클라이언트 조회 (페이지네이션 없이)
   async getAllClients(): Promise<ServiceResponse<Client[]>> {
     try {
+      // StaticAuth 모드에서는 Mock API 사용
+      if (typeof window !== 'undefined') {
+        try {
+          const response = await fetch('/api/clients');
+          const result = await response.json();
+          
+          if (result.success) {
+            return { data: result.data || [] };
+          } else {
+            return { error: result.error?.message || 'API 요청에 실패했습니다.' };
+          }
+        } catch (apiError) {
+          // Mock API 실패 시 빈 배열 반환
+          return { data: [] };
+        }
+      }
+
+      // 서버사이드에서는 Supabase 사용
       const user = await this.getUser();
 
       const { data: clients, error } = await this.supabase
