@@ -279,13 +279,15 @@ export default function KanbanBoard({
                       const isUrgent = daysRemaining !== null && daysRemaining <= 3 && daysRemaining >= 0;
 
                       return (
-                        <Card
+                        <Box
                           key={transaction.id}
                           draggable
-                          onDragStart={(e) => handleDragStart(e, transaction)}
-                          onDragEnd={handleDragEnd}
+                          onDragStart={(e) => handleDragStart(e as any, transaction)}
+                          onDragEnd={(e) => handleDragEnd(e as any)}
+                          sx={{ cursor: 'move' }}
+                        >
+                        <Card
                           sx={{
-                            cursor: 'move',
                             '&:hover': {
                               boxShadow: 2,
                             },
@@ -383,6 +385,7 @@ export default function KanbanBoard({
                             )}
                           </CardContent>
                         </Card>
+                        </Box>
                       );
                     })}
                   </Stack>
