@@ -5,6 +5,8 @@ import {
   parseSort,
   createPaginatedResponse,
 } from '@/lib/api/direct-integration';
+import { MOCK_QUOTES, MOCK_CLIENTS } from '@/data/mock-quotes';
+import { NextRequest, NextResponse } from 'next/server';
 
 interface Quote {
   id: string;
@@ -70,104 +72,82 @@ interface QuoteCreateInput {
   quote_groups?: any[];
 }
 
-// GET /api/quotes - 최적화된 견적서 목록 조회
-export const GET = createDirectApi(
-  async ({ supabase, searchParams }) => {
-    const queryBuilder = new DirectQueryBuilder(supabase, 'quotes');
-    
-    // 파라미터 파싱
-    const pagination = parsePagination(searchParams);
-    const sort = parseSort(searchParams, [
-      'quote_number', 'title', 'status', 'total_amount', 'quote_date', 'created_at', 'updated_at'
-    ]);
+// GET /api/quotes - StaticAuth Mock 견적서 목록 조회
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
     
     // 필터링
-    const filters: Record<string, any> = {
-      is_active: true, // 활성 견적서만
-    };
+    let quotes = [...MOCK_QUOTES];
     
     const status = searchParams.get('status');
     if (status) {
-      const validStatuses = ['draft', 'submitted', 'under_review', 'approved', 'rejected', 'expired'];
-      if (validStatuses.includes(status)) {
-        filters.status = status;
-      }
+      quotes = quotes.filter(q => q.status === status);
     }
     
     const clientId = searchParams.get('client_id');
-    if (clientId && clientId.length === 36) { // UUID 형식 검증
-      filters.client_id = clientId;
-    }
-
-    const quoteType = searchParams.get('quote_type');
-    if (quoteType && ['standard', 'framework', 'service_only', 'goods_only'].includes(quoteType)) {
-      filters.quote_type = quoteType;
+    if (clientId) {
+      quotes = quotes.filter(q => q.client_id === clientId);
     }
     
-    // 검색 조건
-    const searchTerm = searchParams.get('search');
-    const search = searchTerm ? {
-      fields: ['title', 'quote_number', 'project_title', 'customer_name_snapshot'],
-      term: searchTerm.trim().slice(0, 100)
-    } : undefined;
-
+    const search = searchParams.get('search');
+    if (search) {
+      const searchTerm = search.toLowerCase();
+      quotes = quotes.filter(q => 
+        q.title.toLowerCase().includes(searchTerm) ||
+        q.quote_number.toLowerCase().includes(searchTerm) ||
+        q.client_name.toLowerCase().includes(searchTerm)
+      );
+    }
+    
     // 날짜 필터
     const fromDate = searchParams.get('from_date');
     const toDate = searchParams.get('to_date');
-
-    // 최적화된 단일 쿼리 (조인 최소화)
-    let queryOptions: any = {
-      select: `
-        id,
-        quote_number,
-        title,
-        project_title,
-        status,
-        quote_type,
-        total_amount,
-        subtotal_amount,
-        tax_amount,
-        quote_date,
-        valid_until,
-        created_at,
-        updated_at,
-        client:clients!inner(id, name),
-        creator:profiles!quotes_created_by_fkey(id, full_name)
-      `,
-      where: filters,
-      search,
-      sort,
-      pagination,
-    };
-
-    // 날짜 범위 쿼리 (별도 처리)
-    let { data: quotes, count } = await queryBuilder.findMany<Quote>(queryOptions);
-
-    // 날짜 필터링이 있는 경우 후처리
+    
     if (fromDate || toDate) {
-      const filteredQuotes = quotes.filter((quote) => {
-        const quoteDate = new Date(quote.quote_date);
+      quotes = quotes.filter((quote) => {
+        const quoteDate = new Date(quote.created_at);
         if (fromDate && quoteDate < new Date(fromDate)) return false;
         if (toDate && quoteDate > new Date(toDate)) return false;
         return true;
       });
-      quotes = filteredQuotes;
-      count = filteredQuotes.length;
     }
+    
+    // 정렬 (최신순)
+    quotes.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    
+    // 클라이언트 정보 추가
+    const quotesWithClient = quotes.map(quote => {
+      const client = MOCK_CLIENTS.find(c => c.id === quote.client_id);
+      return {
+        ...quote,
+        client: client ? { id: client.id, name: client.name } : null,
+        creator: { id: 'user_001', full_name: '관리자' }
+      };
+    });
 
-    return createPaginatedResponse(
-      quotes,
-      count,
-      pagination.page,
-      pagination.limit
+    return NextResponse.json({
+      success: true,
+      data: quotesWithClient,
+      meta: {
+        total: quotesWithClient.length,
+        timestamp: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching quotes:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: { 
+          message: error instanceof Error ? error.message : '견적서 목록 조회에 실패했습니다.' 
+        },
+        meta: { timestamp: new Date().toISOString() },
+      },
+      { status: 500 }
     );
-  },
-  {
-    requireAuth: true,
-    enableLogging: true,
-    enableCaching: true,
   }
-);
+}
 
 // POST /api/quotes - 최적화된 견적서 생성 (4-Tier 구조)
 export const POST = createDirectApi(

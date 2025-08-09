@@ -5,6 +5,8 @@ import {
   parseSort,
   createPaginatedResponse,
 } from '@/lib/api/direct-integration';
+import { MOCK_CLIENTS } from '@/data/mock-quotes';
+import { NextRequest, NextResponse } from 'next/server';
 
 interface Client {
   id: string;
@@ -29,79 +31,68 @@ interface Client {
   updated_by?: string;
 }
 
-// GET /api/clients - 최적화된 클라이언트 목록 조회
-export const GET = createDirectApi(
-  async ({ supabase, searchParams }) => {
-    const queryBuilder = new DirectQueryBuilder(supabase, 'clients');
-    
-    // 파라미터 파싱 (한 번만)
-    const pagination = parsePagination(searchParams);
-    const sort = parseSort(searchParams, [
-      'name', 'created_at', 'updated_at', 'contact_person', 'company_size'
-    ]);
+// GET /api/clients - StaticAuth Mock 클라이언트 목록 조회
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
     
     // 필터링
-    const filters: Record<string, any> = {};
+    let clients = [...MOCK_CLIENTS];
+    
     const isActive = searchParams.get('is_active');
     if (isActive !== null) {
-      filters.is_active = isActive === 'true';
+      clients = clients.filter(c => c.is_active === (isActive === 'true'));
     }
     
     const companySize = searchParams.get('company_size');
     if (companySize && ['startup', 'small', 'medium', 'large'].includes(companySize)) {
-      filters.company_size = companySize;
+      clients = clients.filter(c => c.company_size === companySize);
     }
     
-    // 검색 조건
-    const searchTerm = searchParams.get('search');
-    const search = searchTerm ? {
-      fields: ['name', 'email', 'contact_person', 'business_registration_number', 'industry_type'],
-      term: searchTerm.trim().slice(0, 100) // 보안: 길이 제한
-    } : undefined;
+    const search = searchParams.get('search');
+    if (search) {
+      const searchTerm = search.toLowerCase();
+      clients = clients.filter(c => 
+        c.name.toLowerCase().includes(searchTerm) ||
+        c.contact_person?.toLowerCase().includes(searchTerm) ||
+        c.email?.toLowerCase().includes(searchTerm) ||
+        c.business_registration_number?.includes(searchTerm) ||
+        c.industry_type?.toLowerCase().includes(searchTerm)
+      );
+    }
+    
+    // 정렬 (이름순)
+    clients.sort((a, b) => a.name.localeCompare(b.name));
+    
+    // 생성자 정보 추가
+    const clientsWithProfile = clients.map(client => ({
+      ...client,
+      created_by_profile: { id: 'user_001', full_name: '관리자', email: 'admin@motionsense.co.kr' },
+      updated_by_profile: { id: 'user_001', full_name: '관리자', email: 'admin@motionsense.co.kr' }
+    }));
 
-    // 단일 쿼리로 데이터와 카운트 동시 조회
-    const { data: clients, count } = await queryBuilder.findMany<Client>({
-      select: `
-        id,
-        name,
-        business_registration_number,
-        contact_person,
-        email,
-        phone,
-        address,
-        postal_code,
-        website,
-        notes,
-        tax_invoice_email,
-        industry_type,
-        company_size,
-        credit_rating,
-        payment_terms_days,
-        is_active,
-        created_at,
-        updated_at,
-        created_by_profile:profiles!clients_created_by_fkey(id, full_name, email),
-        updated_by_profile:profiles!clients_updated_by_fkey(id, full_name, email)
-      `,
-      where: filters,
-      search,
-      sort,
-      pagination,
+    return NextResponse.json({
+      success: true,
+      data: clientsWithProfile,
+      meta: {
+        total: clientsWithProfile.length,
+        timestamp: new Date().toISOString(),
+      },
     });
-
-    return createPaginatedResponse(
-      clients,
-      count,
-      pagination.page,
-      pagination.limit
+  } catch (error) {
+    console.error('Error fetching clients:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: { 
+          message: error instanceof Error ? error.message : '클라이언트 목록 조회에 실패했습니다.' 
+        },
+        meta: { timestamp: new Date().toISOString() },
+      },
+      { status: 500 }
     );
-  },
-  {
-    requireAuth: true,
-    enableLogging: true,
-    enableCaching: true,
   }
-);
+}
 
 // POST /api/clients - 최적화된 클라이언트 생성
 export const POST = createDirectApi(

@@ -5,6 +5,8 @@ import {
   parseSort,
   createPaginatedResponse,
 } from '@/lib/api/direct-integration';
+import { MOCK_SUPPLIERS } from '@/data/mock-quotes';
+import { NextRequest, NextResponse } from 'next/server';
 
 interface Supplier {
   id: string;
@@ -27,53 +29,55 @@ interface Supplier {
   updated_by?: string;
 }
 
-// GET /api/suppliers - 최적화된 공급업체 목록 조회
-export const GET = createDirectApi(
-  async ({ supabase, searchParams }) => {
-    const queryBuilder = new DirectQueryBuilder(supabase, 'suppliers');
-    
-    // 파라미터 파싱
-    const pagination = parsePagination(searchParams);
-    const sort = parseSort(searchParams, [
-      'name', 'contact_person', 'quality_rating', 'lead_time_days', 'created_at'
-    ]);
+// GET /api/suppliers - StaticAuth Mock 공급업체 목록 조회
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
     
     // 필터링
-    const filters: Record<string, any> = {};
+    let suppliers = [...MOCK_SUPPLIERS];
+    
     const isActive = searchParams.get('isActive');
     if (isActive !== null && isActive !== '') {
-      filters.is_active = isActive === 'true';
+      suppliers = suppliers.filter(s => s.is_active === (isActive === 'true'));
     }
     
-    // 검색 조건
-    const searchTerm = searchParams.get('search');
-    const search = searchTerm ? {
-      fields: ['name', 'contact_person', 'email', 'business_registration_number'],
-      term: searchTerm.trim().slice(0, 100)
-    } : undefined;
+    const search = searchParams.get('search');
+    if (search) {
+      const searchTerm = search.toLowerCase();
+      suppliers = suppliers.filter(s => 
+        s.name.toLowerCase().includes(searchTerm) ||
+        s.contact_person?.toLowerCase().includes(searchTerm) ||
+        s.email?.toLowerCase().includes(searchTerm) ||
+        s.business_registration_number?.includes(searchTerm)
+      );
+    }
+    
+    // 정렬 (이름순)
+    suppliers.sort((a, b) => a.name.localeCompare(b.name));
 
-    // 최적화된 단일 쿼리
-    const { data: suppliers, count } = await queryBuilder.findMany<Supplier>({
-      select: `*`,
-      where: filters,
-      search,
-      sort,
-      pagination,
+    return NextResponse.json({
+      success: true,
+      data: suppliers,
+      meta: {
+        total: suppliers.length,
+        timestamp: new Date().toISOString(),
+      },
     });
-
-    return createPaginatedResponse(
-      suppliers,
-      count,
-      pagination.page,
-      pagination.limit
+  } catch (error) {
+    console.error('Error fetching suppliers:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: { 
+          message: error instanceof Error ? error.message : '공급업체 목록 조회에 실패했습니다.' 
+        },
+        meta: { timestamp: new Date().toISOString() },
+      },
+      { status: 500 }
     );
-  },
-  {
-    requireAuth: false,
-    enableLogging: true,
-    enableCaching: true,
   }
-);
+}
 
 // POST /api/suppliers - 최적화된 공급업체 생성
 export const POST = createDirectApi(

@@ -4,6 +4,7 @@ import {
   DirectQueryBuilder,
 } from '@/lib/api/direct-integration';
 import { parseAndValidateItemCSV, parseItemsFromCSV } from '@/lib/csv-item-template';
+import { MOCK_ITEMS } from '@/data/mock-quotes';
 
 interface Item {
   id: string;
@@ -25,65 +26,74 @@ interface Item {
   updated_by?: string;
 }
 
-// GET /api/items - 최적화된 품목 목록 조회
-export const GET = createDirectApi(
-  async ({ supabase, searchParams }) => {
-    const queryBuilder = new DirectQueryBuilder(supabase, 'items');
+// GET /api/items - StaticAuth Mock 품목 목록 조회
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
     
     // 필터링
-    const filters: Record<string, any> = {
-      is_active: true,
-    };
+    let items = [...MOCK_ITEMS];
     
     const categoryId = searchParams.get('category_id');
     if (categoryId) {
-      filters.category_id = categoryId;
+      items = items.filter(i => i.category_id === categoryId);
     }
     
     const itemType = searchParams.get('item_type');
     if (itemType && ['product', 'service'].includes(itemType)) {
-      filters.item_type = itemType;
+      items = items.filter(i => i.item_type === itemType);
     }
     
-    const favorites = searchParams.get('favorites') === 'true';
-    
-    // 쿼리 선택자 구성
-    let selectQuery = `
-      *,
-      category:item_categories(*),
-      usage_stats:item_usage_stats(quote_count, unique_quotes, total_quantity_used, last_used_at)
-    `;
-    
-    if (favorites) {
-      selectQuery = `
-        *,
-        category:item_categories(*),
-        favorites:item_favorites!inner(id),
-        usage_stats:item_usage_stats(quote_count, unique_quotes, total_quantity_used, last_used_at)
-      `;
-      // 인증 제거로 favorites 기능 비활성화
+    const search = searchParams.get('search');
+    if (search) {
+      const searchTerm = search.toLowerCase();
+      items = items.filter(i => 
+        i.name.toLowerCase().includes(searchTerm) ||
+        i.description?.toLowerCase().includes(searchTerm) ||
+        i.sku.toLowerCase().includes(searchTerm)
+      );
     }
-
-    // 최적화된 단일 쿼리
-    const { data: items } = await queryBuilder.findMany<Item>({
-      select: selectQuery,
-      where: filters,
-      sort: { field: 'name', direction: 'asc' },
-      pagination: { page: 1, limit: 1000 }, // 품목은 보통 많지 않으므로
-    });
-
-    // 데이터 포맷 정리
-    const formattedItems = (items || []).map((item: any) => ({
+    
+    // 활성 품목만 필터링
+    items = items.filter(i => i.is_active);
+    
+    // 정렬 (이름순)
+    items.sort((a, b) => a.name.localeCompare(b.name));
+    
+    // 카테고리 정보 추가
+    const formattedItems = items.map(item => ({
       ...item,
-      is_favorite: favorites || (item.favorites && item.favorites.length > 0),
-      usage_count: item.usage_stats?.[0]?.quote_count || 0,
-      last_used_at: item.usage_stats?.[0]?.last_used_at
+      category: {
+        id: item.category_id,
+        name: item.category_name || '기본 카테고리'
+      },
+      is_favorite: false,
+      usage_count: Math.floor(Math.random() * 10),
+      last_used_at: item.created_at
     }));
 
-    return formattedItems;
-  },
-  { requireAuth: false, enableLogging: true, enableCaching: true }
-);
+    return NextResponse.json({
+      success: true,
+      data: formattedItems,
+      meta: {
+        total: formattedItems.length,
+        timestamp: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching items:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: { 
+          message: error instanceof Error ? error.message : '품목 목록 조회에 실패했습니다.' 
+        },
+        meta: { timestamp: new Date().toISOString() },
+      },
+      { status: 500 }
+    );
+  }
+}
 
 // CSV 업로드 처리 함수
 async function handleCSVUpload(request: NextRequest, supabase: any, user: any) {
